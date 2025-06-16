@@ -1656,6 +1656,565 @@ def home():
             const date = new Date(dateString);
             const holidays = {
                 '01-01': 'New Year - Garden Planning & Resolutions',
+                '02-14': 'Valentine\\'s Day - Flowering Plants & Love for Gardening',
+                '03-17': 'St. Patrick\\'s Day - Green Plants & Irish Garden Traditions',
+                '03-20': 'Spring Equinox - Spring Awakening & Soil Preparation',
+                '04-22': 'Earth Day - Sustainable Gardening & Environmental Stewardship',
+                '05-01': 'May Day - Spring Planting & Garden Celebrations',
+                '05-08': 'Mother\\'s Day Week - Garden Gifts & Family Gardening',
+                '05-30': 'Memorial Day - Summer Garden Prep & Remembrance Gardens',
+                '06-21': 'Summer Solstice - Peak Growing Season & Plant Care',
+                '07-04': 'Independence Day - Summer Garden Maintenance & Patriotic Plants',
+                '08-15': 'National Relaxation Day - Peaceful Garden Spaces',
+                '09-22': 'Fall Equinox - Harvest Time & Winter Preparation',
+                '10-31': 'Halloween - Fall Garden Cleanup & Decorative Plants',
+                '11-11': 'Veterans Day - Remembrance Gardens & Hardy Plants',
+                '11-24': 'Thanksgiving Week - Gratitude for Harvest & Garden Reflection',
+                '12-21': 'Winter Solstice - Garden Planning & Indoor Plant Care',
+                '12-25': 'Christmas - Holiday Plants & Winter Care'
+            };
+            
+            const monthDay = String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+            const holidayInfo = document.getElementById('holidayInfo');
+            const holidayText = document.getElementById('holidayText');
+            
+            if (holidays[monthDay] && holidayInfo && holidayText) {
+                holidayText.textContent = holidays[monthDay];
+                holidayInfo.style.display = 'block';
+            } else if (holidayInfo) {
+                holidayInfo.style.display = 'none';
+            }
+        }
+        
+        async function generateForDate() {
+            console.log('generateForDate called');
+            const dateInput = document.getElementById('specificDate');
+            if (!dateInput || !dateInput.value) {
+                alert('Please select a date first');
+                return;
+            }
+            const date = new Date(dateInput.value);
+            await generateContentForDate(date);
+        }
+        
+        async function generateToday() {
+            console.log('generateToday called');
+            await generateContentForDate(new Date());
+        }
+        
+        async function generateThisWeek() {
+            console.log('generateThisWeek called');
+            const today = new Date();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - today.getDay() + 1);
+            await generateContentForDate(monday);
+        }
+        
+        async function generateNextWeek() {
+            console.log('generateNextWeek called');
+            const today = new Date();
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() - today.getDay() + 8);
+            await generateContentForDate(nextMonday);
+        }
+        
+        async function generateContentForDate(date) {
+            console.log('generateContentForDate called with:', date);
+            
+            const status = document.getElementById('status');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const dateBtn = document.getElementById('dateBtn');
+            
+            if (!status) {
+                console.error('Status element not found');
+                return;
+            }
+            
+            // Disable button and show loading
+            if (dateBtn) {
+                dateBtn.disabled = true;
+                dateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            }
+            
+            status.innerHTML = '<div class="info">🤖 Generating content... This may take a few minutes.</div>';
+            if (resultsGrid) {
+                resultsGrid.style.display = 'none';
+            }
+            
+            try {
+                console.log('Making API call...');
+                const response = await fetch('/api/generate-content-for-date', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_date: date.toISOString() })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    generatedContent = data.content || [];
+                    displayResults(data);
+                    status.innerHTML = '<div class="success">✅ Content generated successfully!</div>';
+                } else {
+                    status.innerHTML = `<div class="error">❌ Error: ${data.error || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                status.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+            } finally {
+                // Re-enable button
+                if (dateBtn) {
+                    dateBtn.disabled = false;
+                    dateBtn.innerHTML = 'Generate Content';
+                }
+            }
+        }
+        
+        function displayResults(data) {
+            console.log('displayResults called with:', data);
+            
+            const resultsGrid = document.getElementById('resultsGrid');
+            const summaryContent = document.getElementById('summaryContent');
+            const previewContent = document.getElementById('previewContent');
+            
+            if (!resultsGrid || !summaryContent || !previewContent) {
+                console.error('Required elements not found for displaying results');
+                return;
+            }
+            
+            // Summary
+            summaryContent.innerHTML = `
+                <p><strong>📅 Date/Week:</strong> ${data.week_start_date ? new Date(data.week_start_date).toLocaleDateString() : new Date(data.date).toLocaleDateString()}</p>
+                <p><strong>🎭 Theme:</strong> ${data.theme || 'N/A'}</p>
+                <p><strong>🌸 Season:</strong> ${data.season || 'N/A'}</p>
+                <p><strong>📝 Content Pieces:</strong> ${data.content_pieces || 0}</p>
+                <p><strong>🤖 AI Provider:</strong> ${data.ai_provider || 'fallback'}</p>
+                <h4>Content Breakdown:</h4>
+                <ul>
+                    ${Object.entries(data.content_breakdown || {}).map(([platform, count]) => 
+                        `<li>${platform}: ${count} pieces</li>`
+                    ).join('')}
+                </ul>
+                ${data.holidays && data.holidays.length > 0 ? `
+                    <h4>🎉 Holidays This Week:</h4>
+                    <ul>
+                        ${data.holidays.map(([date, name, focus, theme]) => 
+                            `<li><strong>${name}</strong> - ${focus}</li>`
+                        ).join('')}
+                    </ul>
+                ` : ''}
+            `;
+            
+            // Preview
+            if (data.content && data.content.length > 0) {
+                previewContent.innerHTML = data.content.map(content => `
+                    <div class="content-item">
+                        <h4>${content.platform.toUpperCase()}: ${content.title}</h4>
+                        <p><strong>Type:</strong> ${content.content_type}</p>
+                        <p><strong>Scheduled:</strong> ${content.scheduled_time ? new Date(content.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                        ${content.seo_score ? `<p><strong>SEO Score:</strong> ${content.seo_score}/100</p>` : ''}
+                        <button class="preview-btn" onclick="previewContent('${content.id}')">
+                            👁️ Preview
+                        </button>
+                        ${content.platform === 'blog' ? `
+                            <button class="preview-btn" onclick="publishContent('${content.id}')" style="background: #28a745;">
+                                🚀 Publish to Shopify
+                            </button>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } else {
+                previewContent.innerHTML = '<p>No content generated</p>';
+            }
+            
+            resultsGrid.style.display = 'grid';
+        }
+        
+        async function previewContent(contentId) {
+            console.log('previewContent called with:', contentId);
+            
+            try {
+                const response = await fetch(`/api/content/${contentId}`);
+                const content = await response.json();
+                
+                if (content.error) {
+                    alert('Error loading content: ' + content.error);
+                    return;
+                }
+                
+                const modal = document.getElementById('contentModal');
+                const modalContent = document.getElementById('modalContent');
+                
+                if (!modal || !modalContent) {
+                    console.error('Modal elements not found');
+                    return;
+                }
+                
+                modalContent.innerHTML = `
+                    <h2>${content.title}</h2>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                        <strong>Platform:</strong> ${content.platform} | 
+                        <strong>Type:</strong> ${content.content_type} | 
+                        <strong>Status:</strong> ${content.status}
+                        ${content.seo_score ? ` | <strong>SEO Score:</strong> ${content.seo_score}/100` : ''}
+                    </div>
+                    
+                    ${content.meta_description ? `
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Meta Description:</strong> ${content.meta_description}
+                        </div>
+                    ` : ''}
+                    
+                    ${content.keywords && content.keywords.length > 0 ? `
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Keywords:</strong> ${content.keywords.join(', ')}
+                        </div>
+                    ` : ''}
+                    
+                    ${content.image_suggestions && content.image_suggestions.length > 0 ? `
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Suggested Images:</strong>
+                            <ul>
+                                ${content.image_suggestions.map(img => `<li>${img}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0;">
+                        <h3>Content:</h3>
+                        ${content.platform === 'blog' ? 
+                            content.content : 
+                            `<pre style="white-space: pre-wrap; font-family: inherit;">${content.content}</pre>`
+                        }
+                    </div>
+                    
+                    ${content.hashtags && content.hashtags.length > 0 ? `
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Hashtags:</strong> ${content.hashtags.join(' ')}
+                        </div>
+                    ` : ''}
+                `;
+                
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        async function publishContent(contentId) {
+            console.log('publishContent called with:', contentId);
+            
+            if (!confirm('Are you sure you want to publish this content to Shopify?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/publish/${contentId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Content published successfully to Shopify!');
+                } else {
+                    alert('❌ Error publishing content: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error publishing content:', error);
+                alert('❌ Network error: ' + error.message);
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('contentModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('contentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        async function viewExistingContent() {
+            console.log('viewExistingContent called');
+            
+            const startDate = prompt('Enter start date (YYYY-MM-DD):');
+            const endDate = prompt('Enter end date (YYYY-MM-DD):');
+            
+            if (!startDate || !endDate) return;
+            
+            try {
+                const response = await fetch(`/api/content-by-date-range?start=${startDate}&end=${endDate}`);
+                const content = await response.json();
+                
+                if (content.length === 0) {
+                    alert('No content found for the specified date range.');
+                    return;
+                }
+                
+                // Display existing content
+                const previewContent = document.getElementById('previewContent');
+                const summaryContent = document.getElementById('summaryContent');
+                const resultsGrid = document.getElementById('resultsGrid');
+                
+                if (previewContent && summaryContent && resultsGrid) {
+                    previewContent.innerHTML = content.map(item => `
+                        <div class="content-item">
+                            <h4>${item.platform.toUpperCase()}: ${item.title}</h4>
+                            <p><strong>Type:</strong> ${item.content_type}</p>
+                            <p><strong>Status:</strong> ${item.status}</p>
+                            <p><strong>Scheduled:</strong> ${item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                            <button class="preview-btn" onclick="previewContent('${item.id}')">
+                                👁️ Preview
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    summaryContent.innerHTML = `
+                        <h4>Found ${content.length} pieces of content</h4>
+                        <p>Date range: ${startDate} to ${endDate}</p>
+                    `;
+                    
+                    resultsGrid.style.display = 'grid';
+                }
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        // Test function to check if JavaScript is working
+        console.log('JavaScript loaded successfully');
+        
+        // Test button functionality on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, testing button functionality...');
+            
+            // Test that all buttons exist
+            const buttons = ['dateBtn', 'specificDate'];
+            buttons.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    console.log(`✅ ${id} button found`);
+                } else {
+                    console.error(`❌ ${id} button NOT found`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    ''') 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            margin: 5px; 
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { 
+            background: linear-gradient(135deg, #45a049, #388e3c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border-radius: 10px; 
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .content-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .content-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .content-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .content-item h4 {
+            margin: 0 0 10px 0;
+            color: #2E7D32;
+        }
+        .preview-btn {
+            background: #17a2b8;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .preview-btn:hover {
+            background: #138496;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌱 Elm Dirt Content Automation Platform</h1>
+        <p>Generate seasonal content with 6 daily blog posts, social media content, and video scripts</p>
+    </div>
+    
+    <div class="control-panel">
+        <h2>Content Generation</h2>
+        
+        <div class="date-section">
+            <div class="date-input-group">
+                <h3>📅 Generate for Specific Date</h3>
+                <p>Select any date to generate content for that specific day, or select a Monday to generate content for the entire week.</p>
+                <input type="date" id="specificDate" />
+                <button class="btn" onclick="generateForDate()" id="dateBtn">
+                    Generate Content
+                </button>
+            </div>
+            
+            <div class="date-input-group">
+                <h3>📆 Quick Actions</h3>
+                <button class="btn" onclick="generateToday()">Generate Today's Content</button>
+                <button class="btn" onclick="generateThisWeek()">Generate This Week</button>
+                <button class="btn" onclick="generateNextWeek()">Generate Next Week</button>
+                <button class="btn" onclick="viewExistingContent()" style="background: #6f42c1;">View Existing Content</button>
+            </div>
+        </div>
+        
+        <div id="holidayInfo" class="warning" style="display: none;">
+            <strong>🎉 Holiday Detection:</strong> <span id="holidayText"></span>
+        </div>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="results-grid" id="resultsGrid" style="display: none;">
+        <div class="content-summary">
+            <h3>📊 Content Summary</h3>
+            <div id="summaryContent"></div>
+        </div>
+        
+        <div class="content-preview">
+            <h3>👁️ Content Preview</h3>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+    
+    <!-- Modal for content preview -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('specificDate');
+            if (dateInput) {
+                dateInput.valueAsDate = new Date();
+                checkForHolidays(dateInput.value);
+            }
+        });
+        
+        // Check for holidays on date change
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('specificDate');
+            if (dateInput) {
+                dateInput.addEventListener('change', function() {
+                    checkForHolidays(this.value);
+                });
+            }
+        });
+        
+        let generatedContent = [];
+        
+        function checkForHolidays(dateString) {
+            if (!dateString) return;
+            
+            const date = new Date(dateString);
+            const holidays = {
+                '01-01': 'New Year - Garden Planning & Resolutions',
                 '02-14': 'Valentine\'s Day - Flowering Plants & Love for Gardening',
                 '03-17': 'St. Patrick\'s Day - Green Plants & Irish Garden Traditions',
                 '03-20': 'Spring Equinox - Spring Awakening & Soil Preparation',
