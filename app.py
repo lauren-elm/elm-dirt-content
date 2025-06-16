@@ -335,12 +335,16 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-        # Initialize Claude client
-        if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
-            self.claude_client = anthropic.Client(api_key=self.config.CLAUDE_API_KEY)
-        else:
-            self.claude_client = None
-            logger.warning("Claude API key not configured - using fallback content generation")
+       # Initialize Claude client
+if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
+    try:
+        self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
+    except Exception as e:
+        logger.warning(f"Claude API initialization failed: {e}")
+        self.claude_client = None
+else:
+    self.claude_client = None
+    logger.warning("Claude API key not configured - using fallback content generation")
     
     def generate_weekly_content(self, week_start_date: datetime) -> Dict:
         """Generate a complete week of content with holiday awareness"""
@@ -509,15 +513,19 @@ class ContentGenerator:
             content_html = ""
             meta_description = ""
             
-            if self.claude_client:
-                response = self.claude_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=4000,
-                    temperature=0.7,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                
-                full_response = response.content[0].text
+           if self.claude_client:
+    try:
+        response = self.claude_client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            temperature=0.7,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        full_response = response.content[0].text
+    except Exception as e:
+        logger.error(f"Claude API call failed: {e}")
+        full_response = self._generate_fallback_blog(title, keywords, seasonal_focus, holiday_context)
                 
                 # Extract meta description if present
                 meta_match = re.search(r'<meta name="description" content="(.*?)"', full_response, re.IGNORECASE)
