@@ -326,34 +326,44 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-        # Initialize Claude client with proper error handling - COMPLETELY FIXED
+        # Initialize Claude client with bulletproof error handling
         self.claude_client = None
-        if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
-            try:
-                import anthropic
-                # Simple, clean initialization without any extra parameters
-                self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
-                logger.info("Claude API client initialized successfully")
-                # Test the connection
-                try:
-                    # Make a simple test call to verify the API works
-                    test_response = self.claude_client.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=10,
-                        messages=[{"role": "user", "content": "Hello"}]
-                    )
-                    logger.info("Claude API connection test successful")
-                except Exception as test_error:
-                    logger.error(f"Claude API test failed: {str(test_error)}")
-                    self.claude_client = None
-            except ImportError:
-                logger.error("Anthropic library not installed. Install with: pip install anthropic")
-                self.claude_client = None
-            except Exception as e:
-                logger.error(f"Failed to initialize Claude API: {str(e)}")
-                self.claude_client = None
-        else:
+        
+        # Check if API key is configured
+        api_key = self.config.CLAUDE_API_KEY
+        if not api_key or api_key == 'your_claude_api_key':
             logger.warning("Claude API key not configured - using fallback content generation")
+            return
+        
+        try:
+            # Import anthropic library
+            import anthropic
+            logger.info("Anthropic library imported successfully")
+            
+            # Initialize client with minimal parameters
+            self.claude_client = anthropic.Anthropic(api_key=api_key)
+            logger.info("Claude API client created")
+            
+            # Test the connection with a simple call
+            test_response = self.claude_client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "Test"}]
+            )
+            logger.info("Claude API connection test successful")
+            
+        except ImportError as e:
+            logger.error(f"Anthropic library not available: {str(e)}")
+            self.claude_client = None
+        except Exception as e:
+            logger.error(f"Claude API initialization failed: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            self.claude_client = None
+            
+        if self.claude_client:
+            logger.info("✅ Claude API ready")
+        else:
+            logger.info("⚠️ Using fallback content generation")
     
     def generate_content_for_date(self, target_date: datetime) -> Dict:
         """Generate content for a specific date"""
@@ -1620,16 +1630,29 @@ def home():
     
     <script>
         // Set today's date as default
-        document.getElementById('specificDate').valueAsDate = new Date();
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('specificDate');
+            if (dateInput) {
+                dateInput.valueAsDate = new Date();
+                checkForHolidays(dateInput.value);
+            }
+        });
         
         // Check for holidays on date change
-        document.getElementById('specificDate').addEventListener('change', function() {
-            checkForHolidays(this.value);
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('specificDate');
+            if (dateInput) {
+                dateInput.addEventListener('change', function() {
+                    checkForHolidays(this.value);
+                });
+            }
         });
         
         let generatedContent = [];
         
         function checkForHolidays(dateString) {
+            if (!dateString) return;
+            
             const date = new Date(dateString);
             const holidays = {
                 '01-01': 'New Year - Garden Planning & Resolutions',
@@ -1655,28 +1678,32 @@ def home():
             const holidayInfo = document.getElementById('holidayInfo');
             const holidayText = document.getElementById('holidayText');
             
-            if (holidays[monthDay]) {
+            if (holidays[monthDay] && holidayInfo && holidayText) {
                 holidayText.textContent = holidays[monthDay];
                 holidayInfo.style.display = 'block';
-            } else {
+            } else if (holidayInfo) {
                 holidayInfo.style.display = 'none';
             }
         }
         
-        // Check for holidays on page load
-        checkForHolidays(document.getElementById('specificDate').value);
-        
         async function generateForDate() {
+            console.log('generateForDate called');
             const dateInput = document.getElementById('specificDate');
+            if (!dateInput || !dateInput.value) {
+                alert('Please select a date first');
+                return;
+            }
             const date = new Date(dateInput.value);
             await generateContentForDate(date);
         }
         
         async function generateToday() {
+            console.log('generateToday called');
             await generateContentForDate(new Date());
         }
         
         async function generateThisWeek() {
+            console.log('generateThisWeek called');
             const today = new Date();
             const monday = new Date(today);
             monday.setDate(today.getDate() - today.getDay() + 1);
@@ -1684,6 +1711,7 @@ def home():
         }
         
         async function generateNextWeek() {
+            console.log('generateNextWeek called');
             const today = new Date();
             const nextMonday = new Date(today);
             nextMonday.setDate(today.getDate() - today.getDay() + 8);
@@ -1691,57 +1719,81 @@ def home():
         }
         
         async function generateContentForDate(date) {
+            console.log('generateContentForDate called with:', date);
+            
             const status = document.getElementById('status');
             const resultsGrid = document.getElementById('resultsGrid');
             const dateBtn = document.getElementById('dateBtn');
             
+            if (!status) {
+                console.error('Status element not found');
+                return;
+            }
+            
             // Disable button and show loading
-            dateBtn.disabled = true;
-            dateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            if (dateBtn) {
+                dateBtn.disabled = true;
+                dateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            }
             
             status.innerHTML = '<div class="info">🤖 Generating content... This may take a few minutes.</div>';
-            resultsGrid.style.display = 'none';
+            if (resultsGrid) {
+                resultsGrid.style.display = 'none';
+            }
             
             try {
+                console.log('Making API call...');
                 const response = await fetch('/api/generate-content-for-date', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ target_date: date.toISOString() })
                 });
                 
+                console.log('Response status:', response.status);
                 const data = await response.json();
+                console.log('Response data:', data);
                 
                 if (data.success) {
                     generatedContent = data.content || [];
                     displayResults(data);
                     status.innerHTML = '<div class="success">✅ Content generated successfully!</div>';
                 } else {
-                    status.innerHTML = `<div class="error">❌ Error: ${data.error}</div>`;
+                    status.innerHTML = `<div class="error">❌ Error: ${data.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
+                console.error('Network error:', error);
                 status.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
             } finally {
                 // Re-enable button
-                dateBtn.disabled = false;
-                dateBtn.innerHTML = 'Generate Content';
+                if (dateBtn) {
+                    dateBtn.disabled = false;
+                    dateBtn.innerHTML = 'Generate Content';
+                }
             }
         }
         
         function displayResults(data) {
+            console.log('displayResults called with:', data);
+            
             const resultsGrid = document.getElementById('resultsGrid');
             const summaryContent = document.getElementById('summaryContent');
             const previewContent = document.getElementById('previewContent');
             
+            if (!resultsGrid || !summaryContent || !previewContent) {
+                console.error('Required elements not found for displaying results');
+                return;
+            }
+            
             // Summary
             summaryContent.innerHTML = `
                 <p><strong>📅 Date/Week:</strong> ${data.week_start_date ? new Date(data.week_start_date).toLocaleDateString() : new Date(data.date).toLocaleDateString()}</p>
-                <p><strong>🎭 Theme:</strong> ${data.theme}</p>
-                <p><strong>🌸 Season:</strong> ${data.season}</p>
-                <p><strong>📝 Content Pieces:</strong> ${data.content_pieces}</p>
-                <p><strong>🤖 AI Provider:</strong> ${data.ai_provider}</p>
+                <p><strong>🎭 Theme:</strong> ${data.theme || 'N/A'}</p>
+                <p><strong>🌸 Season:</strong> ${data.season || 'N/A'}</p>
+                <p><strong>📝 Content Pieces:</strong> ${data.content_pieces || 0}</p>
+                <p><strong>🤖 AI Provider:</strong> ${data.ai_provider || 'fallback'}</p>
                 <h4>Content Breakdown:</h4>
                 <ul>
-                    ${Object.entries(data.content_breakdown).map(([platform, count]) => 
+                    ${Object.entries(data.content_breakdown || {}).map(([platform, count]) => 
                         `<li>${platform}: ${count} pieces</li>`
                     ).join('')}
                 </ul>
@@ -1756,27 +1808,33 @@ def home():
             `;
             
             // Preview
-            previewContent.innerHTML = data.content.map(content => `
-                <div class="content-item">
-                    <h4>${content.platform.toUpperCase()}: ${content.title}</h4>
-                    <p><strong>Type:</strong> ${content.content_type}</p>
-                    <p><strong>Scheduled:</strong> ${content.scheduled_time ? new Date(content.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
-                    ${content.seo_score ? `<p><strong>SEO Score:</strong> ${content.seo_score}/100</p>` : ''}
-                    <button class="preview-btn" onclick="previewContent('${content.id}')">
-                        👁️ Preview
-                    </button>
-                    ${content.platform === 'blog' ? `
-                        <button class="preview-btn" onclick="publishContent('${content.id}')" style="background: #28a745;">
-                            🚀 Publish to Shopify
+            if (data.content && data.content.length > 0) {
+                previewContent.innerHTML = data.content.map(content => `
+                    <div class="content-item">
+                        <h4>${content.platform.toUpperCase()}: ${content.title}</h4>
+                        <p><strong>Type:</strong> ${content.content_type}</p>
+                        <p><strong>Scheduled:</strong> ${content.scheduled_time ? new Date(content.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                        ${content.seo_score ? `<p><strong>SEO Score:</strong> ${content.seo_score}/100</p>` : ''}
+                        <button class="preview-btn" onclick="previewContent('${content.id}')">
+                            👁️ Preview
                         </button>
-                    ` : ''}
-                </div>
-            `).join('');
+                        ${content.platform === 'blog' ? `
+                            <button class="preview-btn" onclick="publishContent('${content.id}')" style="background: #28a745;">
+                                🚀 Publish to Shopify
+                            </button>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } else {
+                previewContent.innerHTML = '<p>No content generated</p>';
+            }
             
             resultsGrid.style.display = 'grid';
         }
         
         async function previewContent(contentId) {
+            console.log('previewContent called with:', contentId);
+            
             try {
                 const response = await fetch(`/api/content/${contentId}`);
                 const content = await response.json();
@@ -1788,6 +1846,11 @@ def home():
                 
                 const modal = document.getElementById('contentModal');
                 const modalContent = document.getElementById('modalContent');
+                
+                if (!modal || !modalContent) {
+                    console.error('Modal elements not found');
+                    return;
+                }
                 
                 modalContent.innerHTML = `
                     <h2>${content.title}</h2>
@@ -1836,11 +1899,14 @@ def home():
                 
                 modal.style.display = 'block';
             } catch (error) {
+                console.error('Error loading content:', error);
                 alert('Error loading content: ' + error.message);
             }
         }
         
         async function publishContent(contentId) {
+            console.log('publishContent called with:', contentId);
+            
             if (!confirm('Are you sure you want to publish this content to Shopify?')) {
                 return;
             }
@@ -1857,12 +1923,16 @@ def home():
                     alert('❌ Error publishing content: ' + result.error);
                 }
             } catch (error) {
+                console.error('Error publishing content:', error);
                 alert('❌ Network error: ' + error.message);
             }
         }
         
         function closeModal() {
-            document.getElementById('contentModal').style.display = 'none';
+            const modal = document.getElementById('contentModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
         }
         
         // Close modal when clicking outside
@@ -1874,6 +1944,8 @@ def home():
         }
         
         async function viewExistingContent() {
+            console.log('viewExistingContent called');
+            
             const startDate = prompt('Enter start date (YYYY-MM-DD):');
             const endDate = prompt('Enter end date (YYYY-MM-DD):');
             
@@ -1890,28 +1962,349 @@ def home():
                 
                 // Display existing content
                 const previewContent = document.getElementById('previewContent');
-                previewContent.innerHTML = content.map(item => `
-                    <div class="content-item">
-                        <h4>${item.platform.toUpperCase()}: ${item.title}</h4>
-                        <p><strong>Type:</strong> ${item.content_type}</p>
-                        <p><strong>Status:</strong> ${item.status}</p>
-                        <p><strong>Scheduled:</strong> ${item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
-                        <button class="preview-btn" onclick="previewContent('${item.id}')">
-                            👁️ Preview
-                        </button>
-                    </div>
-                `).join('');
+                const summaryContent = document.getElementById('summaryContent');
+                const resultsGrid = document.getElementById('resultsGrid');
                 
-                document.getElementById('resultsGrid').style.display = 'grid';
-                document.getElementById('summaryContent').innerHTML = `
-                    <h4>Found ${content.length} pieces of content</h4>
-                    <p>Date range: ${startDate} to ${endDate}</p>
-                `;
+                if (previewContent && summaryContent && resultsGrid) {
+                    previewContent.innerHTML = content.map(item => `
+                        <div class="content-item">
+                            <h4>${item.platform.toUpperCase()}: ${item.title}</h4>
+                            <p><strong>Type:</strong> ${item.content_type}</p>
+                            <p><strong>Status:</strong> ${item.status}</p>
+                            <p><strong>Scheduled:</strong> ${item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                            <button class="preview-btn" onclick="previewContent('${item.id}')">
+                                👁️ Preview
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    summaryContent.innerHTML = `
+                        <h4>Found ${content.length} pieces of content</h4>
+                        <p>Date range: ${startDate} to ${endDate}</p>
+                    `;
+                    
+                    resultsGrid.style.display = 'grid';
+                }
             } catch (error) {
+                console.error('Error loading content:', error);
                 alert('Error loading content: ' + error.message);
             }
         }
+        
+        // Test function to check if JavaScript is working
+        console.log('JavaScript loaded successfully');
+    </script>                `;
+                
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        async function publishContent(contentId) {
+            console.log('publishContent called with:', contentId);
+            
+            if (!confirm('Are you sure you want to publish this content to Shopify?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/publish/${contentId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Content published successfully to Shopify!');
+                } else {
+                    alert('❌ Error publishing content: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error publishing content:', error);
+                alert('❌ Network error: ' + error.message);
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('contentModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('contentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        async function viewExistingContent() {
+            console.log('viewExistingContent called');
+            
+            const startDate = prompt('Enter start date (YYYY-MM-DD):');
+            const endDate = prompt('Enter end date (YYYY-MM-DD):');
+            
+            if (!startDate || !endDate) return;
+            
+            try {
+                const response = await fetch(`/api/content-by-date-range?start=${startDate}&end=${endDate}`);
+                const content = await response.json();
+                
+                if (content.length === 0) {
+                    alert('No content found for the specified date range.');
+                    return;
+                }
+                
+                // Display existing content
+                const previewContent = document.getElementById('previewContent');
+                const summaryContent = document.getElementById('summaryContent');
+                const resultsGrid = document.getElementById('resultsGrid');
+                
+                if (previewContent && summaryContent && resultsGrid) {
+                    previewContent.innerHTML = content.map(item => `
+                        <div class="content-item">
+                            <h4>${item.platform.toUpperCase()}: ${item.title}</h4>
+                            <p><strong>Type:</strong> ${item.content_type}</p>
+                            <p><strong>Status:</strong> ${item.status}</p>
+                            <p><strong>Scheduled:</strong> ${item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                            <button class="preview-btn" onclick="previewContent('${item.id}')">
+                                👁️ Preview
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    summaryContent.innerHTML = `
+                        <h4>Found ${content.length} pieces of content</h4>
+                        <p>Date range: ${startDate} to ${endDate}</p>
+                    `;
+                    
+                    resultsGrid.style.display = 'grid';
+                }
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        // Test function to check if JavaScript is working
+        console.log('JavaScript loaded successfully');
+        
+        // Test button functionality on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, testing button functionality...');
+            
+            // Test that all buttons exist
+            const buttons = ['dateBtn', 'specificDate'];
+            buttons.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    console.log(`✅ ${id} button found`);
+                } else {
+                    console.error(`❌ ${id} button NOT found`);
+                }
+            });
+        });
     </script>
+</body>
+</html>
+    ''')
+
+@app.route('/api/test', methods=['GET'])
+def test_endpoint():
+    """Simple test endpoint to verify API is working"""
+    return jsonify({
+        'status': 'API is working',
+        'timestamp': datetime.now().isoformat(),
+        'claude_available': content_generator.claude_client is not None
+    })
+
+@app.route('/api/generate-content-for-date', methods=['POST'])
+def api_generate_content_for_date():
+    """API endpoint to generate content for a specific date"""
+    try:
+        logger.info("API endpoint called: generate-content-for-date")
+        
+        # Get request data
+        data = request.json
+        if not data:
+            logger.error("No JSON data received")
+            return jsonify({'success': False, 'error': 'No data provided'})
+        
+        target_date_str = data.get('target_date')
+        logger.info(f"Target date received: {target_date_str}")
+        
+        if not target_date_str:
+            return jsonify({'success': False, 'error': 'target_date is required'})
+        
+        # Parse date
+        try:
+            target_date = datetime.fromisoformat(target_date_str.replace('Z', '+00:00'))
+            logger.info(f"Parsed date: {target_date}")
+        except Exception as date_error:
+            logger.error(f"Date parsing error: {str(date_error)}")
+            return jsonify({'success': False, 'error': f'Invalid date format: {str(date_error)}'})
+        
+        # Generate content
+        logger.info("Starting content generation...")
+        result = content_generator.generate_content_for_date(target_date)
+        logger.info(f"Content generation completed. Success: {result.get('success', False)}")
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in API endpoint: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/content/<content_id>')
+def api_get_content(content_id):
+    """Get specific content piece with full details"""
+    try:
+        logger.info(f"Getting content piece: {content_id}")
+        content = db_manager.get_content_piece(content_id)
+        if content:
+            # Return full content details for preview
+            return jsonify({
+                'id': content.id,
+                'title': content.title,
+                'content': content.content,  # Full content
+                'platform': content.platform,
+                'content_type': content.content_type,
+                'status': content.status.value,
+                'scheduled_time': content.scheduled_time.isoformat() if content.scheduled_time else None,
+                'keywords': content.keywords,
+                'hashtags': content.hashtags,
+                'image_suggestions': content.image_suggestions,
+                'ai_provider': content.ai_provider,
+                'holiday_context': content.holiday_context,
+                'meta_description': content.meta_description,
+                'seo_score': content.seo_score
+            })
+        else:
+            return jsonify({'error': 'Content not found'}), 404
+    except Exception as e:
+        logger.error(f"Error getting content: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/content-by-date-range')
+def api_get_content_by_date_range():
+    """Get content within a date range"""
+    try:
+        start_date_str = request.args.get('start')
+        end_date_str = request.args.get('end')
+        
+        if not start_date_str or not end_date_str:
+            return jsonify({'error': 'start and end dates are required'}), 400
+        
+        start_date = datetime.fromisoformat(start_date_str)
+        end_date = datetime.fromisoformat(end_date_str + 'T23:59:59')
+        
+        content_list = db_manager.get_content_by_date_range(start_date, end_date)
+        return jsonify([content_generator._content_piece_to_dict(cp) for cp in content_list])
+        
+    except Exception as e:
+        logger.error(f"Error getting content by date range: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/weekly-content/<week_id>')
+def api_get_weekly_content(week_id):
+    """Get all content for a specific week"""
+    try:
+        content_list = db_manager.get_weekly_content(week_id)
+        return jsonify([content_generator._content_piece_to_dict(cp) for cp in content_list])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/publish/<content_id>', methods=['POST'])
+def api_publish_content(content_id):
+    """Publish content to appropriate platform"""
+    try:
+        content = db_manager.get_content_piece(content_id)
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
+        
+        if content.platform == 'blog':
+            result = shopify_manager.publish_blog_post(content)
+            if result['success']:
+                content.status = ContentStatus.PUBLISHED
+                db_manager.save_content_piece(content)
+            return jsonify(result)
+        else:
+            return jsonify({'error': f'Publishing to {content.platform} not yet implemented'}), 501
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/update-content-status/<content_id>', methods=['POST'])
+def api_update_content_status(content_id):
+    """Update content status (draft, preview, approved, etc.)"""
+    try:
+        data = request.json
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'error': 'status is required'}), 400
+        
+        content = db_manager.get_content_piece(content_id)
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
+        
+        content.status = ContentStatus(new_status)
+        content.updated_at = datetime.now()
+        
+        success = db_manager.save_content_piece(content)
+        if success:
+            return jsonify({'success': True, 'new_status': new_status})
+        else:
+            return jsonify({'error': 'Failed to update status'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/health')
+def health_check():
+    """Enhanced health check endpoint with detailed status"""
+    claude_status = "disconnected"
+    claude_error = None
+    
+    if content_generator.claude_client:
+        try:
+            # Test Claude API with a simple call
+            test_response = content_generator.claude_client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "Hi"}]
+            )
+            claude_status = "connected"
+        except Exception as e:
+            claude_status = "error"
+            claude_error = str(e)
+    
+    return jsonify({
+        'status': 'healthy',
+        'claude_api': {
+            'status': claude_status,
+            'error': claude_error,
+            'key_configured': bool(Config.CLAUDE_API_KEY and Config.CLAUDE_API_KEY != 'your_claude_api_key')
+        },
+        'database_connected': os.path.exists(db_manager.db_path),
+        'fallback_available': True,  # Fallback content generation is always available
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.1.1'
+    })
+
+if __name__ == '__main__':
+    logger.info("🚀 Starting Elm Dirt Content Automation Platform...")
+    logger.info(f"Claude API configured: {bool(Config.CLAUDE_API_KEY and Config.CLAUDE_API_KEY != 'your_claude_api_key')}")
+    logger.info(f"Database path: {Config.DB_PATH}")
+    
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
 </body>
 </html>
     ''')
