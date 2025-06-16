@@ -1,5 +1,5 @@
 # Enhanced Elm Dirt Content Automation Platform
-# 6 blog posts per week + Claude API integration
+# 6 blog posts per week + Claude API integration + Preview System
 
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import re
 import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 import uuid
 import random
@@ -25,7 +25,7 @@ CORS(app)
 
 # Configuration
 class Config:
-    # Claude API (Primary) - Now properly configured for real use
+    # Claude API (Primary) - Fixed initialization
     CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', 'your_claude_api_key')
     
     # Shopify API
@@ -33,9 +33,6 @@ class Config:
     SHOPIFY_PASSWORD = os.getenv('SHOPIFY_PASSWORD', 'your_shopify_password')
     SHOPIFY_STORE_URL = os.getenv('SHOPIFY_STORE_URL', 'elmdirt.myshopify.com')
     SHOPIFY_BLOG_ID = os.getenv('SHOPIFY_BLOG_ID', 'your_blog_id')
-    
-    # Metricool API
-    METRICOOL_API_KEY = os.getenv('METRICOOL_API_KEY', 'your_metricool_api_key')
     
     # Database
     DB_PATH = os.getenv('DB_PATH', 'content_automation.db')
@@ -50,6 +47,7 @@ class Config:
     
     # US Gardening Holidays and Special Dates
     GARDENING_HOLIDAYS = {
+        (1, 1): ('New Year', 'garden planning and resolutions', 'New Year Garden Resolutions'),
         (2, 14): ('Valentine\'s Day', 'flowering plants and love for gardening', 'Show Your Garden Some Love'),
         (3, 17): ('St. Patrick\'s Day', 'green plants and Irish garden traditions', 'Going Green in the Garden'),
         (3, 20): ('Spring Equinox', 'spring awakening and soil preparation', 'Spring Awakening'),
@@ -64,7 +62,8 @@ class Config:
         (10, 31): ('Halloween', 'fall garden cleanup and decorative plants', 'Halloween Garden Magic'),
         (11, 11): ('Veterans Day', 'remembrance gardens and hardy plants', 'Honoring Through Gardens'),
         (11, 24): ('Thanksgiving Week', 'gratitude for harvest and garden reflection', 'Thanksgiving Garden Gratitude'),
-        (12, 21): ('Winter Solstice', 'garden planning and indoor plant care', 'Winter Garden Dreams')
+        (12, 21): ('Winter Solstice', 'garden planning and indoor plant care', 'Winter Garden Dreams'),
+        (12, 25): ('Christmas', 'holiday plants and winter care', 'Christmas Garden Magic')
     }
 
 class ContentStatus(Enum):
@@ -86,13 +85,14 @@ class ContentPiece:
     scheduled_time: Optional[datetime]
     keywords: List[str]
     hashtags: List[str]
-    image_suggestion: str
+    image_suggestions: List[str]
     ai_provider: str
     created_at: datetime
     updated_at: datetime
     week_id: Optional[str] = None
     holiday_context: Optional[str] = None
     meta_description: Optional[str] = None
+    seo_score: Optional[int] = None
 
 class DatabaseManager:
     def __init__(self, db_path: str):
@@ -115,13 +115,14 @@ class DatabaseManager:
                 scheduled_time TIMESTAMP,
                 keywords TEXT,
                 hashtags TEXT,
-                image_suggestion TEXT,
+                image_suggestions TEXT,
                 ai_provider TEXT,
                 created_at TIMESTAMP NOT NULL,
                 updated_at TIMESTAMP NOT NULL,
                 week_id TEXT,
                 holiday_context TEXT,
-                meta_description TEXT
+                meta_description TEXT,
+                seo_score INTEGER
             )
         ''')
         
@@ -152,17 +153,18 @@ class DatabaseManager:
             cursor.execute('''
                 INSERT OR REPLACE INTO content_pieces 
                 (id, title, content, platform, content_type, status, scheduled_time, 
-                 keywords, hashtags, image_suggestion, ai_provider, created_at, 
-                 updated_at, week_id, holiday_context, meta_description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 keywords, hashtags, image_suggestions, ai_provider, created_at, 
+                 updated_at, week_id, holiday_context, meta_description, seo_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 content.id, content.title, content.content, content.platform,
                 content.content_type, content.status.value, 
                 content.scheduled_time.isoformat() if content.scheduled_time else None,
                 json.dumps(content.keywords), json.dumps(content.hashtags),
-                content.image_suggestion, content.ai_provider, 
+                json.dumps(content.image_suggestions), content.ai_provider, 
                 content.created_at.isoformat(), content.updated_at.isoformat(),
-                content.week_id, content.holiday_context, content.meta_description
+                content.week_id, content.holiday_context, content.meta_description,
+                content.seo_score
             ))
             
             conn.commit()
@@ -204,6 +206,26 @@ class DatabaseManager:
             logger.error(f"Error retrieving weekly content: {str(e)}")
             return []
     
+    def get_content_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ContentPiece]:
+        """Get content within a date range"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT * FROM content_pieces 
+                WHERE scheduled_time BETWEEN ? AND ? 
+                ORDER BY scheduled_time
+            ''', (start_date.isoformat(), end_date.isoformat()))
+            
+            rows = cursor.fetchall()
+            conn.close()
+            
+            return [self._row_to_content_piece(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error retrieving content by date range: {str(e)}")
+            return []
+    
     def _row_to_content_piece(self, row) -> ContentPiece:
         """Convert database row to ContentPiece object"""
         return ContentPiece(
@@ -216,13 +238,14 @@ class DatabaseManager:
             scheduled_time=datetime.fromisoformat(row[6]) if row[6] else None,
             keywords=json.loads(row[7]) if row[7] else [],
             hashtags=json.loads(row[8]) if row[8] else [],
-            image_suggestion=row[9] or "",
+            image_suggestions=json.loads(row[9]) if row[9] else [],
             ai_provider=row[10] or "fallback",
             created_at=datetime.fromisoformat(row[11]),
             updated_at=datetime.fromisoformat(row[12]),
             week_id=row[13],
             holiday_context=row[14],
-            meta_description=row[15] if len(row) > 15 else None
+            meta_description=row[15] if len(row) > 15 else None,
+            seo_score=row[16] if len(row) > 16 else None
         )
 
 class HolidayManager:
@@ -269,7 +292,7 @@ class HolidayManager:
             seasonal_themes = {
                 'spring': [
                     'Spring Garden Awakening',
-                    'Soil Preparation and Testing',
+                    'Soil Preparation and Testing', 
                     'Early Planting Success',
                     'Spring Growth Boost'
                 ],
@@ -303,13 +326,15 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-        # Initialize Claude client with proper error handling
+        # Initialize Claude client with proper error handling - FIXED
         self.claude_client = None
         if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
             try:
-                # Try to import and initialize Claude
                 import anthropic
-                self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
+                # Fixed: Remove invalid 'proxies' parameter
+                self.claude_client = anthropic.Anthropic(
+                    api_key=self.config.CLAUDE_API_KEY
+                )
                 logger.info("Claude API client initialized successfully")
             except ImportError:
                 logger.error("Anthropic library not installed. Install with: pip install anthropic")
@@ -318,8 +343,65 @@ class ContentGenerator:
         else:
             logger.warning("Claude API key not configured - using fallback content generation")
     
+    def generate_content_for_date(self, target_date: datetime) -> Dict:
+        """Generate content for a specific date"""
+        try:
+            # Get Monday of the week containing target_date
+            week_start_date = target_date - timedelta(days=target_date.weekday())
+            
+            # Check if it's a specific day request or week request
+            if target_date.weekday() == 0:  # Monday - generate whole week
+                return self.generate_weekly_content(week_start_date)
+            else:  # Specific day - generate just that day
+                return self.generate_daily_content_only(target_date, week_start_date)
+        
+        except Exception as e:
+            logger.error(f"Error generating content for date: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
+    def generate_daily_content_only(self, target_date: datetime, week_start_date: datetime) -> Dict:
+        """Generate content for just one specific day"""
+        try:
+            week_id = f"week_{week_start_date.strftime('%Y_%m_%d')}"
+            season = self.holiday_manager.get_seasonal_focus(target_date)
+            holidays = self.holiday_manager.get_week_holidays(week_start_date)
+            theme = self.holiday_manager.get_week_theme(week_start_date)
+            
+            day_name = target_date.strftime('%A')
+            day_number = target_date.weekday() + 1
+            
+            logger.info(f"Generating content for {day_name}, {target_date.strftime('%Y-%m-%d')}")
+            
+            # Generate daily content package
+            daily_content = self._generate_daily_content_package(
+                date=target_date,
+                day_name=day_name,
+                season=season,
+                theme=theme,
+                holidays=holidays,
+                week_id=week_id,
+                day_number=day_number
+            )
+            
+            return {
+                'success': True,
+                'date': target_date.isoformat(),
+                'day_name': day_name,
+                'season': season,
+                'theme': theme,
+                'holidays': [(h[0].isoformat(), h[1], h[2], h[3]) for h in holidays],
+                'content_pieces': len(daily_content),
+                'content_breakdown': self._get_content_breakdown(daily_content),
+                'ai_provider': 'claude' if self.claude_client else 'fallback',
+                'content': [self._content_piece_to_dict(cp) for cp in daily_content]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating daily content: {str(e)}")
+            return {'success': False, 'error': str(e)}
+    
     def generate_weekly_content(self, week_start_date: datetime) -> Dict:
-        """Generate a complete week of content - NOW WITH 6 BLOG POSTS!"""
+        """Generate a complete week of content - 6 BLOG POSTS!"""
         try:
             week_id = f"week_{week_start_date.strftime('%Y_%m_%d')}"
             season = self.holiday_manager.get_seasonal_focus(week_start_date)
@@ -341,7 +423,6 @@ class ContentGenerator:
             weekly_content.append(youtube_outline)
             
             # Generate daily content for 6 days (Monday-Saturday)
-            # NOW INCLUDING 1 BLOG POST PER DAY!
             for day_offset in range(6):  # 0=Monday, 1=Tuesday, ..., 5=Saturday
                 current_date = week_start_date + timedelta(days=day_offset)
                 day_name = current_date.strftime('%A')
@@ -376,10 +457,7 @@ class ContentGenerator:
             
         except Exception as e:
             logger.error(f"Error generating weekly content: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {'success': False, 'error': str(e)}
     
     def _generate_daily_content_package(self, date: datetime, day_name: str, season: str, 
                                        theme: str, holidays: List, week_id: str, day_number: int) -> List[ContentPiece]:
@@ -408,7 +486,7 @@ class ContentGenerator:
         if not holiday_context:
             holiday_context = f"{season} gardening - {daily_theme}"
         
-        # **NEW: Generate 1 blog post per day (6 total per week)**
+        # Generate 1 blog post per day (6 total per week)
         daily_blog_post = self._generate_daily_blog_post(
             date=date,
             day_name=day_name,
@@ -526,15 +604,18 @@ class ContentGenerator:
         )
         
         # Override with holiday title if applicable
-        if 'Holiday' in holiday_context or any(holiday_date.date() == date.date() for holiday_date, _, _, _ in self.holiday_manager.get_week_holidays(date)):
-            title = f"{day_name} {holiday_context}: {blog_config['focus']} Guide"
+        if any(holiday_date.date() == date.date() for holiday_date, _, _, _ in self.holiday_manager.get_week_holidays(date)):
+            for holiday_date, holiday_name, gardening_focus, content_theme in self.holiday_manager.get_week_holidays(date):
+                if holiday_date.date() == date.date():
+                    title = f"{holiday_name} {season.title()} Garden Guide: {blog_config['focus']}"
+                    break
         
         # Generate keywords specific to daily focus
         keywords = self._get_daily_keywords(day_name, season, blog_config['focus'])
         
         # Use Claude API if available, otherwise fallback
         if self.claude_client:
-            content_html = self._generate_claude_blog_post(
+            blog_data = self._generate_claude_blog_post(
                 title=title,
                 keywords=keywords,
                 season=season,
@@ -546,29 +627,27 @@ class ContentGenerator:
             )
             ai_provider = "claude"
         else:
-            content_html = self._generate_fallback_blog(title, keywords, season, holiday_context)
+            blog_data = self._generate_fallback_blog(title, keywords, season, holiday_context)
             ai_provider = "fallback"
-        
-        # Extract meta description
-        meta_description = self._extract_meta_description(content_html, season, daily_theme)
         
         content_piece = ContentPiece(
             id=str(uuid.uuid4()),
             title=title,
-            content=content_html,
+            content=blog_data['html_content'],
             platform="blog",
             content_type="blog_post",
             status=ContentStatus.DRAFT,
             scheduled_time=date.replace(hour=9, minute=0, second=0),
             keywords=keywords,
             hashtags=[],
-            image_suggestion=f"{season.title()} garden photo showcasing {blog_config['focus'].lower()}",
+            image_suggestions=blog_data['image_suggestions'],
             ai_provider=ai_provider,
             created_at=datetime.now(),
             updated_at=datetime.now(),
             week_id=week_id,
             holiday_context=holiday_context,
-            meta_description=meta_description
+            meta_description=blog_data['meta_description'],
+            seo_score=blog_data.get('seo_score', 85)
         )
         
         self.db_manager.save_content_piece(content_piece)
@@ -576,7 +655,7 @@ class ContentGenerator:
     
     def _generate_claude_blog_post(self, title: str, keywords: List[str], season: str,
                                   day_name: str, daily_theme: str, holiday_context: str,
-                                  blog_angle: str, date: datetime) -> str:
+                                  blog_angle: str, date: datetime) -> Dict:
         """Generate blog post using Claude API"""
         
         prompt = f"""Generate an SEO-optimized blog article for Elm Dirt's organic gardening ecommerce store.
@@ -626,8 +705,23 @@ SEO REQUIREMENTS:
 - Write a compelling meta description (150-160 characters)
 - Use proper heading hierarchy
 
-OUTPUT: Clean HTML with proper heading tags, ready for Shopify blog.
-Include a meta description tag at the top of the content."""
+IMAGE SUGGESTIONS NEEDED:
+Please suggest 3-5 specific images that would complement this article:
+1. Featured image for the blog post header
+2. Supporting images for each main section
+3. Product images where Elm Dirt products are mentioned
+4. Seasonal/action images showing the techniques described
+
+OUTPUT FORMAT:
+Return a JSON response with:
+{{
+  "html_content": "Complete HTML with proper tags, ready for Shopify",
+  "meta_description": "SEO meta description 150-160 chars",
+  "image_suggestions": ["List of 3-5 specific image descriptions"],
+  "seo_score": 85-100 (estimated SEO score based on optimization)
+}}
+
+Make the HTML visually appealing with proper formatting, but clean enough for Shopify blog."""
 
         try:
             response = self.claude_client.messages.create(
@@ -637,11 +731,69 @@ Include a meta description tag at the top of the content."""
                 messages=[{"role": "user", "content": prompt}]
             )
             
-            return response.content[0].text
+            # Try to parse JSON response
+            response_text = response.content[0].text
+            
+            # Look for JSON in the response
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            
+            if json_match:
+                try:
+                    blog_data = json.loads(json_match.group())
+                    return blog_data
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fallback: Parse manually if JSON parsing fails
+            return self._parse_claude_response_manually(response_text, title, keywords, season, holiday_context)
             
         except Exception as e:
             logger.error(f"Claude API error: {str(e)}")
             return self._generate_fallback_blog(title, keywords, season, holiday_context)
+    
+    def _parse_claude_response_manually(self, response_text: str, title: str, keywords: List[str], season: str, holiday_context: str) -> Dict:
+        """Manually parse Claude response if JSON parsing fails"""
+        
+        # Extract meta description
+        meta_match = re.search(r'"meta_description":\s*"([^"]*)"', response_text)
+        meta_description = meta_match.group(1) if meta_match else f"Expert {season} gardening advice from Elm Dirt."[:160]
+        
+        # Extract image suggestions
+        image_matches = re.findall(r'"([^"]*image[^"]*)"', response_text, re.IGNORECASE)
+        image_suggestions = image_matches[:5] if image_matches else [
+            f"{season} garden showing healthy plants",
+            f"Elm Dirt products in use during {season}",
+            f"Before and after garden transformation in {season}",
+            f"Close-up of healthy soil with organic matter"
+        ]
+        
+        # Use the response as HTML content if it contains HTML tags
+        if '<h1>' in response_text or '<h2>' in response_text:
+            html_content = response_text
+        else:
+            # Create basic HTML structure
+            html_content = f"""<h1>{title}</h1>
+
+<p>{response_text[:500]}...</p>
+
+<h2>{season.title()} Garden Essentials</h2>
+
+<p>During {season}, successful gardeners focus on key practices that ensure healthy plant growth. Our organic approach emphasizes building soil health naturally.</p>
+
+<h2>Elm Dirt Solutions for {season.title()}</h2>
+
+<p>Our Ancient Soil and Plant Juice products are specifically designed to support your garden during {season}. These organic solutions work with nature to create thriving growing conditions.</p>
+
+<h2>Take Action This Week</h2>
+
+<p>Ready to transform your {season} garden? Visit our website to explore our complete line of organic gardening solutions.</p>"""
+        
+        return {
+            'html_content': html_content,
+            'meta_description': meta_description,
+            'image_suggestions': image_suggestions,
+            'seo_score': 85
+        }
     
     def _get_daily_keywords(self, day_name: str, season: str, focus: str) -> List[str]:
         """Get keywords specific to the day and focus"""
@@ -658,16 +810,62 @@ Include a meta description tag at the top of the content."""
         
         return daily_keywords.get(day_name, base_keywords + [f'{season} gardening', focus.lower()])
     
-    def _extract_meta_description(self, content: str, season: str, daily_theme: str) -> str:
-        """Extract or create meta description from content"""
-        # Try to find existing meta description
-        match = re.search(r'<meta name="description" content="(.*?)"', content, re.IGNORECASE)
-        if match:
-            return match.group(1)
+    def _generate_fallback_blog(self, title: str, keywords: List[str], season: str, holiday_context: str) -> Dict:
+        """Generate fallback blog content when Claude API is unavailable"""
         
-        # Fallback: create based on content
-        return f"Expert {season} gardening advice from Elm Dirt. Learn {daily_theme.lower()} techniques for successful organic gardening."[:160]
+        keyword_text = keywords[0] if keywords else "organic gardening"
+        
+        html_content = f"""<h1>{title}</h1>
+
+<p>Welcome to another week of {season} gardening excellence! As we continue our journey toward healthier, more productive gardens, it's important to focus on the fundamentals that make the biggest difference in our plants' success.</p>
+
+<h2>Why {season.title()} {keyword_text.title()} Matters</h2>
+
+<p>During {season}, your garden needs specific attention to thrive. The right approach to {keyword_text} can make the difference between a struggling garden and one that flourishes. Our organic methods focus on building soil health naturally, creating an environment where plants can reach their full potential.</p>
+
+<p>Context: {holiday_context}</p>
+
+<h2>Essential {season.title()} Garden Tasks</h2>
+
+<p>Here's what successful gardeners are doing this week:</p>
+
+<ul>
+<li>Testing and improving soil health with organic amendments</li>
+<li>Applying beneficial microbes to boost plant nutrition</li>
+<li>Monitoring plant health and adjusting care routines</li>
+<li>Planning ahead for optimal growing conditions</li>
+</ul>
+
+<h2>Elm Dirt's Organic Solutions</h2>
+
+<p>Our {keyword_text} products are designed specifically for {season} gardening success. Ancient Soil provides the foundation your plants need, while Plant Juice delivers essential nutrients and beneficial microbes that support healthy growth naturally.</p>
+
+<p>Whether you're working with container plants, raised beds, or traditional garden plots, our organic approach builds lasting soil health that benefits your garden season after season.</p>
+
+<h2>Take Action This Week</h2>
+
+<p>Ready to transform your {season} garden? Visit our website to explore our complete line of organic gardening solutions. Your plants will thank you for choosing natural nutrition that works with nature, not against it.</p>
+
+<p>Remember, successful gardening is about consistency and patience. Small, regular improvements lead to remarkable results over time.</p>"""
+
+        meta_description = f"Expert {season} gardening advice from Elm Dirt. Learn essential {keyword_text} techniques for successful organic gardening this season."[:160]
+        
+        image_suggestions = [
+            f"{season.title()} garden showing healthy plants and soil",
+            f"Elm Dirt Ancient Soil being applied to garden beds",
+            f"Before and after comparison of plants using organic fertilizer",
+            f"Gardener working with plants during {season} season",
+            f"Close-up of healthy plant roots in rich organic soil"
+        ]
+        
+        return {
+            'html_content': html_content,
+            'meta_description': meta_description,
+            'image_suggestions': image_suggestions,
+            'seo_score': 75
+        }
     
+    # Continue with all the other methods...
     def _generate_platform_posts(self, platform: str, count: int, date: datetime, day_name: str,
                                 daily_theme: str, season: str, holiday_context: str, 
                                 week_id: str, blog_post: ContentPiece) -> List[ContentPiece]:
@@ -710,8 +908,8 @@ Include a meta description tag at the top of the content."""
                 scheduled_time=post_time,
                 keywords=blog_post.keywords[:3],
                 hashtags=post_content['hashtags'],
-                image_suggestion=post_content['image_suggestion'],
-                ai_provider="fallback",
+                image_suggestions=[post_content['image_suggestion']],
+                ai_provider="template",
                 created_at=datetime.now(),
                 updated_at=datetime.now(),
                 week_id=week_id,
@@ -746,8 +944,8 @@ Include a meta description tag at the top of the content."""
             scheduled_time=date.replace(hour=15, minute=0, second=0),
             keywords=blog_post.keywords[:3],
             hashtags=tiktok_content['hashtags'],
-            image_suggestion=tiktok_content['video_concept'],
-            ai_provider="fallback",
+            image_suggestions=[tiktok_content['video_concept']],
+            ai_provider="template",
             created_at=datetime.now(),
             updated_at=datetime.now(),
             week_id=week_id,
@@ -780,8 +978,8 @@ Include a meta description tag at the top of the content."""
             scheduled_time=date.replace(hour=11, minute=0, second=0),
             keywords=blog_post.keywords[:3],
             hashtags=linkedin_content['hashtags'],
-            image_suggestion=linkedin_content['image_suggestion'],
-            ai_provider="fallback",
+            image_suggestions=[linkedin_content['image_suggestion']],
+            ai_provider="template",
             created_at=datetime.now(),
             updated_at=datetime.now(),
             week_id=week_id,
@@ -820,8 +1018,8 @@ Include a meta description tag at the top of the content."""
             scheduled_time=week_start_date.replace(hour=10, minute=0, second=0),
             keywords=self.config.TARGET_KEYWORDS[:5],
             hashtags=youtube_content['hashtags'],
-            image_suggestion=youtube_content['thumbnail_suggestion'],
-            ai_provider="fallback",
+            image_suggestions=[youtube_content['thumbnail_suggestion']],
+            ai_provider="template",
             created_at=datetime.now(),
             updated_at=datetime.now(),
             week_id=week_id,
@@ -838,23 +1036,23 @@ Include a meta description tag at the top of the content."""
         
         post_templates = {
             'educational_tip': {
-                'instagram': f"🌱 {day_name} Garden Tip!\n\n{daily_theme} focus: Did you know that {season} is perfect for improving your soil health? Here's what seasoned gardeners do:\n\n✅ Test soil pH weekly\n✅ Add organic matter regularly\n✅ Feed beneficial microbes\n\nTry our Ancient Soil for healthier plants! 🪴\n\n{holiday_context}",
+                'instagram': f"{day_name} Garden Tip!\n\n{daily_theme} focus: Did you know that {season} is perfect for improving your soil health? Here's what seasoned gardeners do:\n\n✅ Test soil pH weekly\n✅ Add organic matter regularly\n✅ Feed beneficial microbes\n\nTry our Ancient Soil for healthier plants! 🪴\n\n{holiday_context}",
                 'facebook': f"{day_name} Gardening Wisdom 🌿\n\nAs we embrace {daily_theme} this {season}, here's a pro tip that will transform your garden:\n\n{season.title()} soil preparation is crucial for plant success. Our organic approach focuses on building living soil that feeds your plants naturally.\n\nWhat's your biggest {season} garden challenge? Share below! 👇\n\n{holiday_context}"
             },
             'product_spotlight': {
-                'instagram': f"✨ Product Spotlight: {day_name} Edition\n\n{daily_theme} calls for the right nutrition! Our Plant Juice contains over 250 beneficial microbes that:\n\n🌱 Boost root development\n💪 Strengthen plant immunity\n🌿 Improve nutrient uptake\n\nPerfect for {season} growing! Link in bio 🔗\n\n{holiday_context}",
+                'instagram': f" Product Spotlight: {day_name} Edition\n\n{daily_theme} calls for the right nutrition! Our Plant Juice contains over 250 beneficial microbes that:\n\n🌱 Boost root development\n💪 Strengthen plant immunity\n🌿 Improve nutrient uptake\n\nPerfect for {season} growing! Link in bio 🔗\n\n{holiday_context}",
                 'facebook': f"{day_name} Feature: Why Our Customers Love Plant Juice 💚\n\n\"{daily_theme} has never been easier since I started using Elm Dirt products. My {season} garden is thriving!\" - Sarah from Texas\n\nOur Plant Juice works because it feeds the soil, not just the plant. The result? Healthier, more resilient gardens.\n\nReady to transform your {season} garden? 🌻\n\n{holiday_context}"
             },
             'community_question': {
-                'instagram': f"💬 {day_name} Garden Chat!\n\nIt's {daily_theme} time! We want to know:\n\nWhat's your go-to {season} garden ritual? 🤔\n\nA) Morning soil check ☀️\nB) Evening watering 🌙\nC) Weekend plant food application 🥄\nD) Daily harvest walk 🥕\n\nTell us in comments! 👇\n\n{holiday_context}",
+                'instagram': f" {day_name} Garden Chat!\n\nIt's {daily_theme} time! We want to know:\n\nWhat's your go-to {season} garden ritual? 🤔\n\nA) Morning soil check ☀️\nB) Evening watering 🌙\nC) Weekend plant food application 🥄\nD) Daily harvest walk 🥕\n\nTell us in comments! 👇\n\n{holiday_context}",
                 'facebook': f"{day_name} Community Question 🤝\n\nGardening friends, as we focus on {daily_theme} this {season}, we're curious:\n\nWhat's the ONE {season} gardening lesson you wish you'd learned sooner?\n\nShare your wisdom in the comments! Your experience could help a fellow gardener avoid common pitfalls.\n\n{holiday_context}"
             },
             'seasonal_advice': {
-                'instagram': f"🗓️ {day_name} {season.title()} Reminder\n\n{daily_theme} Alert! This week is perfect for:\n\n🌱 Checking soil moisture\n🌿 Feeding with organic nutrients\n🌻 Planning next month's plantings\n\n{season.title()} success starts with timing! ⏰\n\n{holiday_context}",
+                'instagram': f" {day_name} {season.title()} Reminder\n\n{daily_theme} Alert! This week is perfect for:\n\n🌱 Checking soil moisture\n🌿 Feeding with organic nutrients\n🌻 Planning next month's plantings\n\n{season.title()} success starts with timing! ⏰\n\n{holiday_context}",
                 'facebook': f"{season.title()} {day_name} Check-In 📅\n\nAs we embrace {daily_theme}, here's what successful gardeners are doing this week:\n\n• Monitoring plant health daily\n• Adjusting watering schedules for {season} weather\n• Preparing soil for upcoming plantings\n• Building beneficial microbe populations\n\nStay on track for {season} success! 🎯\n\n{holiday_context}"
             },
             'behind_scenes': {
-                'instagram': f"🎬 Behind the Scenes: {day_name}\n\n{daily_theme} prep happening at Elm Dirt HQ! Our team is:\n\n🧪 Testing new organic blends\n📦 Packing your orders with care\n🌱 Growing trial plants with our products\n\nYour {season} garden success is our mission! 💚\n\n{holiday_context}",
+                'instagram': f" Behind the Scenes: {day_name}\n\n{daily_theme} prep happening at Elm Dirt HQ! Our team is:\n\n🧪 Testing new organic blends\n📦 Packing your orders with care\n🌱 Growing trial plants with our products\n\nYour {season} garden success is our mission! 💚\n\n{holiday_context}",
                 'facebook': f"From Our Garden to Yours 🏡\n\n{day_name} update from the Elm Dirt family!\n\nThis week's {daily_theme} focus has our team excited about helping you achieve {season} garden success. We're constantly testing our products in real garden conditions because your results matter to us.\n\nWhat questions can we answer about {season} gardening? 🤔\n\n{holiday_context}"
             }
         }
@@ -1010,48 +1208,6 @@ THUMBNAIL CONCEPT: Split screen showing garden transformation with Elm Dirt prod
             'thumbnail_suggestion': thumbnail_suggestion
         }
     
-    def _generate_fallback_blog(self, title: str, keywords: List[str], season: str, holiday_context: str) -> str:
-        """Generate fallback blog content when Claude API is unavailable"""
-        
-        keyword_text = keywords[0] if keywords else "organic gardening"
-        
-        content = f"""<meta name="description" content="Expert {season} gardening advice from Elm Dirt. Learn essential techniques for successful organic gardening this season.">
-
-<h1>{title}</h1>
-
-<p>Welcome to another week of {season} gardening excellence! As we continue our journey toward healthier, more productive gardens, it's important to focus on the fundamentals that make the biggest difference in our plants' success.</p>
-
-<h2>Why {season.title()} {keyword_text.title()} Matters</h2>
-
-<p>During {season}, your garden needs specific attention to thrive. The right approach to {keyword_text} can make the difference between a struggling garden and one that flourishes. Our organic methods focus on building soil health naturally, creating an environment where plants can reach their full potential.</p>
-
-<p>Context: {holiday_context}</p>
-
-<h2>Essential {season.title()} Garden Tasks</h2>
-
-<p>Here's what successful gardeners are doing this week:</p>
-
-<ul>
-<li>Testing and improving soil health with organic amendments</li>
-<li>Applying beneficial microbes to boost plant nutrition</li>
-<li>Monitoring plant health and adjusting care routines</li>
-<li>Planning ahead for optimal growing conditions</li>
-</ul>
-
-<h2>Elm Dirt's Organic Solutions</h2>
-
-<p>Our {keyword_text} products are designed specifically for {season} gardening success. Ancient Soil provides the foundation your plants need, while Plant Juice delivers essential nutrients and beneficial microbes that support healthy growth naturally.</p>
-
-<p>Whether you're working with container plants, raised beds, or traditional garden plots, our organic approach builds lasting soil health that benefits your garden season after season.</p>
-
-<h2>Take Action This Week</h2>
-
-<p>Ready to transform your {season} garden? Visit our website to explore our complete line of organic gardening solutions. Your plants will thank you for choosing natural nutrition that works with nature, not against it.</p>
-
-<p>Remember, successful gardening is about consistency and patience. Small, regular improvements lead to remarkable results over time.</p>"""
-
-        return content
-    
     def _save_weekly_package(self, week_id: str, week_start_date: datetime, 
                             season: str, holidays: List, theme: str) -> bool:
         """Save weekly package information"""
@@ -1101,10 +1257,11 @@ THUMBNAIL CONCEPT: Split screen showing garden transformation with Elm Dirt prod
             'scheduled_time': content.scheduled_time.isoformat() if content.scheduled_time else None,
             'keywords': content.keywords,
             'hashtags': content.hashtags,
-            'image_suggestion': content.image_suggestion,
+            'image_suggestions': content.image_suggestions,
             'ai_provider': content.ai_provider,
             'holiday_context': content.holiday_context,
-            'meta_description': content.meta_description
+            'meta_description': content.meta_description,
+            'seo_score': content.seo_score
         }
 
 class ShopifyManager:
@@ -1149,112 +1306,551 @@ shopify_manager = ShopifyManager()
 # Flask Routes
 @app.route('/')
 def home():
-    """Home page with simple interface"""
+    """Enhanced home page with date selection and preview functionality"""
     return render_template_string('''
 <!DOCTYPE html>
 <html>
 <head>
     <title>Elm Dirt Content Automation</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .btn { background: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 10px; }
-        .btn:hover { background: #45a049; }
-        .status { margin: 20px 0; padding: 10px; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        .info { background: #d1ecf1; color: #0c5460; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .control-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .date-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .date-input-group {
+            background: #f1f3f4;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .date-input-group h3 {
+            margin-top: 0;
+            color: #2E7D32;
+        }
+        input[type="date"], input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .btn { 
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            margin: 5px; 
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover { 
+            background: linear-gradient(135deg, #45a049, #388e3c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border-radius: 10px; 
+            font-weight: 500;
+        }
+        .success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
+        .warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .content-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .content-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .content-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        .content-item h4 {
+            margin: 0 0 10px 0;
+            color: #2E7D32;
+        }
+        .preview-btn {
+            background: #17a2b8;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .preview-btn:hover {
+            background: #138496;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
     </style>
 </head>
 <body>
-    <h1>🌱 Elm Dirt Content Automation Platform</h1>
-    <p>Generate weekly content packages including 6 daily blog posts, social media content, and video scripts.</p>
+    <div class="header">
+        <h1>🌱 Elm Dirt Content Automation Platform</h1>
+        <p>Generate seasonal content with 6 daily blog posts, social media content, and video scripts</p>
+    </div>
     
-    <div>
-        <h3>Quick Actions</h3>
-        <button class="btn" onclick="generateThisWeek()">Generate This Week's Content</button>
-        <button class="btn" onclick="generateNextWeek()">Generate Next Week's Content</button>
-        <button class="btn" onclick="viewContent()">View Generated Content</button>
+    <div class="control-panel">
+        <h2>Content Generation</h2>
+        
+        <div class="date-section">
+            <div class="date-input-group">
+                <h3>📅 Generate for Specific Date</h3>
+                <p>Select any date to generate content for that specific day, or select a Monday to generate content for the entire week.</p>
+                <input type="date" id="specificDate" />
+                <button class="btn" onclick="generateForDate()" id="dateBtn">
+                    Generate Content
+                </button>
+            </div>
+            
+            <div class="date-input-group">
+                <h3>📆 Quick Actions</h3>
+                <button class="btn" onclick="generateToday()">Generate Today's Content</button>
+                <button class="btn" onclick="generateThisWeek()">Generate This Week</button>
+                <button class="btn" onclick="generateNextWeek()">Generate Next Week</button>
+                <button class="btn" onclick="viewExistingContent()" style="background: #6f42c1;">View Existing Content</button>
+            </div>
+        </div>
+        
+        <div id="holidayInfo" class="warning" style="display: none;">
+            <strong>🎉 Holiday Detection:</strong> <span id="holidayText"></span>
+        </div>
     </div>
     
     <div id="status"></div>
-    <div id="results"></div>
+    
+    <div class="results-grid" id="resultsGrid" style="display: none;">
+        <div class="content-summary">
+            <h3>📊 Content Summary</h3>
+            <div id="summaryContent"></div>
+        </div>
+        
+        <div class="content-preview">
+            <h3>👁️ Content Preview</h3>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+    
+    <!-- Modal for content preview -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
     
     <script>
+        // Set today's date as default
+        document.getElementById('specificDate').valueAsDate = new Date();
+        
+        // Check for holidays on date change
+        document.getElementById('specificDate').addEventListener('change', function() {
+            checkForHolidays(this.value);
+        });
+        
+        let generatedContent = [];
+        
+        function checkForHolidays(dateString) {
+            const date = new Date(dateString);
+            const holidays = {
+                '01-01': 'New Year - Garden Planning & Resolutions',
+                '02-14': 'Valentine\'s Day - Flowering Plants & Love for Gardening',
+                '03-17': 'St. Patrick\'s Day - Green Plants & Irish Garden Traditions',
+                '03-20': 'Spring Equinox - Spring Awakening & Soil Preparation',
+                '04-22': 'Earth Day - Sustainable Gardening & Environmental Stewardship',
+                '05-01': 'May Day - Spring Planting & Garden Celebrations',
+                '05-08': 'Mother\'s Day Week - Garden Gifts & Family Gardening',
+                '05-30': 'Memorial Day - Summer Garden Prep & Remembrance Gardens',
+                '06-21': 'Summer Solstice - Peak Growing Season & Plant Care',
+                '07-04': 'Independence Day - Summer Garden Maintenance & Patriotic Plants',
+                '08-15': 'National Relaxation Day - Peaceful Garden Spaces',
+                '09-22': 'Fall Equinox - Harvest Time & Winter Preparation',
+                '10-31': 'Halloween - Fall Garden Cleanup & Decorative Plants',
+                '11-11': 'Veterans Day - Remembrance Gardens & Hardy Plants',
+                '11-24': 'Thanksgiving Week - Gratitude for Harvest & Garden Reflection',
+                '12-21': 'Winter Solstice - Garden Planning & Indoor Plant Care',
+                '12-25': 'Christmas - Holiday Plants & Winter Care'
+            };
+            
+            const monthDay = String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+            const holidayInfo = document.getElementById('holidayInfo');
+            const holidayText = document.getElementById('holidayText');
+            
+            if (holidays[monthDay]) {
+                holidayText.textContent = holidays[monthDay];
+                holidayInfo.style.display = 'block';
+            } else {
+                holidayInfo.style.display = 'none';
+            }
+        }
+        
+        // Check for holidays on page load
+        checkForHolidays(document.getElementById('specificDate').value);
+        
+        async function generateForDate() {
+            const dateInput = document.getElementById('specificDate');
+            const date = new Date(dateInput.value);
+            await generateContentForDate(date);
+        }
+        
+        async function generateToday() {
+            await generateContentForDate(new Date());
+        }
+        
         async function generateThisWeek() {
-            await generateWeeklyContent(new Date());
+            const today = new Date();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - today.getDay() + 1);
+            await generateContentForDate(monday);
         }
         
         async function generateNextWeek() {
-            const nextWeek = new Date();
-            nextWeek.setDate(nextWeek.getDate() + 7);
-            await generateWeeklyContent(nextWeek);
+            const today = new Date();
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() - today.getDay() + 8);
+            await generateContentForDate(nextMonday);
         }
         
-        async function generateWeeklyContent(date) {
+        async function generateContentForDate(date) {
             const status = document.getElementById('status');
-            const results = document.getElementById('results');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const dateBtn = document.getElementById('dateBtn');
             
-            status.innerHTML = '<div class="info">Generating weekly content... This may take a few minutes.</div>';
-            results.innerHTML = '';
+            // Disable button and show loading
+            dateBtn.disabled = true;
+            dateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            
+            status.innerHTML = '<div class="info">🤖 Generating content... This may take a few minutes.</div>';
+            resultsGrid.style.display = 'none';
             
             try {
-                const response = await fetch('/api/generate-weekly-content', {
+                const response = await fetch('/api/generate-content-for-date', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ week_start_date: date.toISOString() })
+                    body: JSON.stringify({ target_date: date.toISOString() })
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    status.innerHTML = '<div class="success">✅ Weekly content generated successfully!</div>';
-                    results.innerHTML = `
-                        <h3>Generated Content Summary</h3>
-                        <p><strong>Week:</strong> ${data.week_start_date}</p>
-                        <p><strong>Theme:</strong> ${data.theme}</p>
-                        <p><strong>Season:</strong> ${data.season}</p>
-                        <p><strong>Content Pieces:</strong> ${data.content_pieces}</p>
-                        <p><strong>AI Provider:</strong> ${data.ai_provider}</p>
-                        <h4>Content Breakdown:</h4>
-                        <ul>
-                            ${Object.entries(data.content_breakdown).map(([platform, count]) => 
-                                `<li>${platform}: ${count} pieces</li>`
-                            ).join('')}
-                        </ul>
-                    `;
+                    generatedContent = data.content || [];
+                    displayResults(data);
+                    status.innerHTML = '<div class="success">✅ Content generated successfully!</div>';
                 } else {
                     status.innerHTML = `<div class="error">❌ Error: ${data.error}</div>`;
                 }
             } catch (error) {
                 status.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+            } finally {
+                // Re-enable button
+                dateBtn.disabled = false;
+                dateBtn.innerHTML = 'Generate Content';
             }
         }
         
-        async function viewContent() {
-            const results = document.getElementById('results');
-            results.innerHTML = '<p>Content viewing feature coming soon...</p>';
+        function displayResults(data) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            const summaryContent = document.getElementById('summaryContent');
+            const previewContent = document.getElementById('previewContent');
+            
+            // Summary
+            summaryContent.innerHTML = `
+                <p><strong>📅 Date/Week:</strong> ${data.week_start_date ? new Date(data.week_start_date).toLocaleDateString() : new Date(data.date).toLocaleDateString()}</p>
+                <p><strong>🎭 Theme:</strong> ${data.theme}</p>
+                <p><strong>🌸 Season:</strong> ${data.season}</p>
+                <p><strong>📝 Content Pieces:</strong> ${data.content_pieces}</p>
+                <p><strong>🤖 AI Provider:</strong> ${data.ai_provider}</p>
+                <h4>Content Breakdown:</h4>
+                <ul>
+                    ${Object.entries(data.content_breakdown).map(([platform, count]) => 
+                        `<li>${platform}: ${count} pieces</li>`
+                    ).join('')}
+                </ul>
+                ${data.holidays && data.holidays.length > 0 ? `
+                    <h4>🎉 Holidays This Week:</h4>
+                    <ul>
+                        ${data.holidays.map(([date, name, focus, theme]) => 
+                            `<li><strong>${name}</strong> - ${focus}</li>`
+                        ).join('')}
+                    </ul>
+                ` : ''}
+            `;
+            
+            // Preview
+            previewContent.innerHTML = data.content.map(content => `
+                <div class="content-item">
+                    <h4>${content.platform.toUpperCase()}: ${content.title}</h4>
+                    <p><strong>Type:</strong> ${content.content_type}</p>
+                    <p><strong>Scheduled:</strong> ${content.scheduled_time ? new Date(content.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                    ${content.seo_score ? `<p><strong>SEO Score:</strong> ${content.seo_score}/100</p>` : ''}
+                    <button class="preview-btn" onclick="previewContent('${content.id}')">
+                        👁️ Preview
+                    </button>
+                    ${content.platform === 'blog' ? `
+                        <button class="preview-btn" onclick="publishContent('${content.id}')" style="background: #28a745;">
+                            🚀 Publish to Shopify
+                        </button>
+                    ` : ''}
+                </div>
+            `).join('');
+            
+            resultsGrid.style.display = 'grid';
+        }
+        
+        async function previewContent(contentId) {
+            try {
+                const response = await fetch(`/api/content/${contentId}`);
+                const content = await response.json();
+                
+                if (content.error) {
+                    alert('Error loading content: ' + content.error);
+                    return;
+                }
+                
+                const modal = document.getElementById('contentModal');
+                const modalContent = document.getElementById('modalContent');
+                
+                modalContent.innerHTML = `
+                    <h2>${content.title}</h2>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                        <strong>Platform:</strong> ${content.platform} | 
+                        <strong>Type:</strong> ${content.content_type} | 
+                        <strong>Status:</strong> ${content.status}
+                        ${content.seo_score ? ` | <strong>SEO Score:</strong> ${content.seo_score}/100` : ''}
+                    </div>
+                    
+                    ${content.meta_description ? `
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Meta Description:</strong> ${content.meta_description}
+                        </div>
+                    ` : ''}
+                    
+                    ${content.keywords && content.keywords.length > 0 ? `
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Keywords:</strong> ${content.keywords.join(', ')}
+                        </div>
+                    ` : ''}
+                    
+                    ${content.image_suggestions && content.image_suggestions.length > 0 ? `
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Suggested Images:</strong>
+                            <ul>
+                                ${content.image_suggestions.map(img => `<li>${img}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0;">
+                        <h3>Content:</h3>
+                        ${content.platform === 'blog' ? 
+                            content.content : 
+                            `<pre style="white-space: pre-wrap; font-family: inherit;">${content.content}</pre>`
+                        }
+                    </div>
+                    
+                    ${content.hashtags && content.hashtags.length > 0 ? `
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Hashtags:</strong> ${content.hashtags.join(' ')}
+                        </div>
+                    ` : ''}
+                `;
+                
+                modal.style.display = 'block';
+            } catch (error) {
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        async function publishContent(contentId) {
+            if (!confirm('Are you sure you want to publish this content to Shopify?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/publish/${contentId}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Content published successfully to Shopify!');
+                } else {
+                    alert('❌ Error publishing content: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Network error: ' + error.message);
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('contentModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('contentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        async function viewExistingContent() {
+            const startDate = prompt('Enter start date (YYYY-MM-DD):');
+            const endDate = prompt('Enter end date (YYYY-MM-DD):');
+            
+            if (!startDate || !endDate) return;
+            
+            try {
+                const response = await fetch(`/api/content-by-date-range?start=${startDate}&end=${endDate}`);
+                const content = await response.json();
+                
+                if (content.length === 0) {
+                    alert('No content found for the specified date range.');
+                    return;
+                }
+                
+                // Display existing content
+                const previewContent = document.getElementById('previewContent');
+                previewContent.innerHTML = content.map(item => `
+                    <div class="content-item">
+                        <h4>${item.platform.toUpperCase()}: ${item.title}</h4>
+                        <p><strong>Type:</strong> ${item.content_type}</p>
+                        <p><strong>Status:</strong> ${item.status}</p>
+                        <p><strong>Scheduled:</strong> ${item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled'}</p>
+                        <button class="preview-btn" onclick="previewContent('${item.id}')">
+                            👁️ Preview
+                        </button>
+                    </div>
+                `).join('');
+                
+                document.getElementById('resultsGrid').style.display = 'grid';
+                document.getElementById('summaryContent').innerHTML = `
+                    <h4>Found ${content.length} pieces of content</h4>
+                    <p>Date range: ${startDate} to ${endDate}</p>
+                `;
+            } catch (error) {
+                alert('Error loading content: ' + error.message);
+            }
         }
     </script>
 </body>
 </html>
     ''')
 
-@app.route('/api/generate-weekly-content', methods=['POST'])
-def api_generate_weekly_content():
-    """API endpoint to generate weekly content"""
+@app.route('/api/generate-content-for-date', methods=['POST'])
+def api_generate_content_for_date():
+    """API endpoint to generate content for a specific date"""
     try:
         data = request.json
-        week_start_date_str = data.get('week_start_date')
+        target_date_str = data.get('target_date')
         
-        if not week_start_date_str:
-            return jsonify({'success': False, 'error': 'week_start_date is required'})
+        if not target_date_str:
+            return jsonify({'success': False, 'error': 'target_date is required'})
         
-        # Parse date and get Monday of that week
-        date = datetime.fromisoformat(week_start_date_str.replace('Z', '+00:00'))
-        week_start_date = date - timedelta(days=date.weekday())  # Get Monday
+        # Parse date
+        target_date = datetime.fromisoformat(target_date_str.replace('Z', '+00:00'))
         
         # Generate content
-        result = content_generator.generate_weekly_content(week_start_date)
+        result = content_generator.generate_content_for_date(target_date)
         
         return jsonify(result)
         
@@ -1264,13 +1860,48 @@ def api_generate_weekly_content():
 
 @app.route('/api/content/<content_id>')
 def api_get_content(content_id):
-    """Get specific content piece"""
+    """Get specific content piece with full details"""
     try:
         content = db_manager.get_content_piece(content_id)
         if content:
-            return jsonify(content_generator._content_piece_to_dict(content))
+            # Return full content details for preview
+            return jsonify({
+                'id': content.id,
+                'title': content.title,
+                'content': content.content,  # Full content
+                'platform': content.platform,
+                'content_type': content.content_type,
+                'status': content.status.value,
+                'scheduled_time': content.scheduled_time.isoformat() if content.scheduled_time else None,
+                'keywords': content.keywords,
+                'hashtags': content.hashtags,
+                'image_suggestions': content.image_suggestions,
+                'ai_provider': content.ai_provider,
+                'holiday_context': content.holiday_context,
+                'meta_description': content.meta_description,
+                'seo_score': content.seo_score
+            })
         else:
             return jsonify({'error': 'Content not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/content-by-date-range')
+def api_get_content_by_date_range():
+    """Get content within a date range"""
+    try:
+        start_date_str = request.args.get('start')
+        end_date_str = request.args.get('end')
+        
+        if not start_date_str or not end_date_str:
+            return jsonify({'error': 'start and end dates are required'}), 400
+        
+        start_date = datetime.fromisoformat(start_date_str)
+        end_date = datetime.fromisoformat(end_date_str + 'T23:59:59')
+        
+        content_list = db_manager.get_content_by_date_range(start_date, end_date)
+        return jsonify([content_generator._content_piece_to_dict(cp) for cp in content_list])
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1303,6 +1934,32 @@ def api_publish_content(content_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/update-content-status/<content_id>', methods=['POST'])
+def api_update_content_status(content_id):
+    """Update content status (draft, preview, approved, etc.)"""
+    try:
+        data = request.json
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'error': 'status is required'}), 400
+        
+        content = db_manager.get_content_piece(content_id)
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
+        
+        content.status = ContentStatus(new_status)
+        content.updated_at = datetime.now()
+        
+        success = db_manager.save_content_piece(content)
+        if success:
+            return jsonify({'success': True, 'new_status': new_status})
+        else:
+            return jsonify({'error': 'Failed to update status'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
@@ -1310,7 +1967,8 @@ def health_check():
         'status': 'healthy',
         'claude_available': content_generator.claude_client is not None,
         'database_connected': os.path.exists(db_manager.db_path),
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'version': '2.0.0'
     })
 
 if __name__ == '__main__':
