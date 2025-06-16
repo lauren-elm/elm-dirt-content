@@ -1,4 +1,4 @@
-# Enhanced Elm Dirt Content Automation Platform
+# Use Claude API if available, otherwise fallback# Enhanced Elm Dirt Content Automation Platform
 # 6 blog posts per week + Claude API integration + Preview System
 
 from flask import Flask, request, jsonify, render_template_string
