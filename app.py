@@ -1394,118 +1394,175 @@ CALENDAR_INTERFACE = """
             dateInput.value = monday.toISOString().split('T')[0];
         }
         
-        async function generateWeeklyContent() {
-            const dateInput = document.getElementById('week-date');
-            const generateBtn = document.getElementById('generate-btn');
-            const weekInfo = document.getElementById('week-info');
-            const contentPreview = document.getElementById('content-preview');
-            const contentGrid = document.getElementById('content-grid');
-            
-            if (!dateInput.value) {
-                alert('Please select a date');
-                return;
-            }
-            
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating...';
-            
-            contentGrid.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Generating weekly content package...</p>
-                    <p>This may take 2-3 minutes</p>
-                </div>
+        // Also update the generateWeeklyContent function to handle the new breakdown
+async function generateWeeklyContent() {
+    const dateInput = document.getElementById('week-date');
+    const generateBtn = document.getElementById('generate-btn');
+    const weekInfo = document.getElementById('week-info');
+    const contentPreview = document.getElementById('content-preview');
+    const contentGrid = document.getElementById('content-grid');
+    
+    if (!dateInput.value) {
+        alert('Please select a date');
+        return;
+    }
+    
+    generateBtn.disabled = true;
+    generateBtn.textContent = 'Generating 50 Pieces...';
+    
+    contentGrid.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Generating complete weekly content package...</p>
+            <p>Creating 50 pieces of content across all platforms</p>
+            <p>This may take 3-5 minutes</p>
+        </div>
+    `;
+    contentPreview.style.display = 'block';
+    
+    try {
+        const response = await fetch('/api/generate-weekly-content', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                week_start_date: dateInput.value
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const weekDetails = document.getElementById('week-details');
+            weekDetails.innerHTML = `
+                <p><strong>Season:</strong> ${result.season}</p>
+                <p><strong>Theme:</strong> ${result.theme}</p>
+                <p><strong>Content Pieces:</strong> ${result.content_pieces}</p>
+                ${result.holidays.length > 0 ? `
+                    <p><strong>Holidays:</strong></p>
+                    ${result.holidays.map(h => `<span class="holiday-badge">${h[1]}</span>`).join('')}
+                ` : ''}
             `;
-            contentPreview.style.display = 'block';
+            weekInfo.style.display = 'block';
             
-            try {
-                const response = await fetch('/api/generate-weekly-content', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        week_start_date: dateInput.value
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    const weekDetails = document.getElementById('week-details');
-                    weekDetails.innerHTML = `
-                        <p><strong>Season:</strong> ${result.season}</p>
-                        <p><strong>Theme:</strong> ${result.theme}</p>
-                        <p><strong>Content Pieces:</strong> ${result.content_pieces}</p>
-                        ${result.holidays.length > 0 ? `
-                            <p><strong>Holidays:</strong></p>
-                            ${result.holidays.map(h => `<span class="holiday-badge">${h[1]}</span>`).join('')}
-                        ` : ''}
-                    `;
-                    weekInfo.style.display = 'block';
-                    
-                    displayContent(result.content);
-                    
-                    contentGrid.insertAdjacentHTML('afterbegin', `
-                        <div class="success-message">
-                            ✅ Successfully generated ${result.content_pieces} pieces of content for the week of ${new Date(result.week_start_date).toLocaleDateString()}
-                        </div>
-                    `);
-                    
-                } else {
-                    throw new Error(result.error || 'Failed to generate content');
-                }
-                
-            } catch (error) {
-                console.error('Error:', error);
-                contentGrid.innerHTML = `
-                    <div class="error-message">
-                        ❌ Error generating content: ${error.message}
-                        <br><br>
-                        Please check your configuration and try again.
-                    </div>
-                `;
-            } finally {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Weekly Content';
-            }
+            displayContent(result.content, result.content_breakdown);
+            
+            contentGrid.insertAdjacentHTML('afterbegin', `
+                <div class="success-message">
+                    ✅ Successfully generated ${result.content_pieces} pieces of content for the week of ${new Date(result.week_start_date).toLocaleDateString()}!
+                    <br><strong>Ready for:</strong> Blog publishing, social media scheduling, and video production.
+                </div>
+            `);
+            
+        } else {
+            throw new Error(result.error || 'Failed to generate content');
         }
         
-        function displayContent(contentPieces) {
-            const contentGrid = document.getElementById('content-grid');
+    } catch (error) {
+        console.error('Error:', error);
+        contentGrid.innerHTML = `
+            <div class="error-message">
+                ❌ Error generating content: ${error.message}
+                <br><br>
+                Please check your configuration and try again.
+            </div>
+        `;
+    } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate Weekly Content';
+    }
+}
+        
+        function displayContent(contentPieces, contentBreakdown) {
+    const contentGrid = document.getElementById('content-grid');
+    
+    const successMessage = contentGrid.querySelector('.success-message');
+    contentGrid.innerHTML = '';
+    if (successMessage) {
+        contentGrid.appendChild(successMessage);
+    }
+    
+    // Add content breakdown summary
+    const breakdownSummary = document.createElement('div');
+    breakdownSummary.className = 'content-breakdown';
+    breakdownSummary.innerHTML = `
+        <div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+            <h3 style="color: #114817; margin-bottom: 0.5rem;">📊 Weekly Content Breakdown</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                ${Object.entries(contentBreakdown || {}).map(([platform, count]) => `
+                    <div style="text-align: center; padding: 0.5rem; background: white; border-radius: 8px;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #4eb155;">${count}</div>
+                        <div style="font-size: 0.9rem; color: #666; text-transform: capitalize;">${platform} ${count === 1 ? 'post' : 'posts'}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border-radius: 4px; font-size: 0.9rem; color: #856404;">
+                <strong>🎯 Your Schedule:</strong> 50 pieces of content per week across all platforms!
+            </div>
+        </div>
+    `;
+    contentGrid.appendChild(breakdownSummary);
+    
+    // Group content by platform for better organization
+    const contentByPlatform = {};
+    contentPieces.forEach(piece => {
+        if (!contentByPlatform[piece.platform]) {
+            contentByPlatform[piece.platform] = [];
+        }
+        contentByPlatform[piece.platform].push(piece);
+    });
+    
+    // Display content organized by platform
+    Object.entries(contentByPlatform).forEach(([platform, pieces]) => {
+        // Platform header
+        const platformHeader = document.createElement('div');
+        platformHeader.className = 'platform-section';
+        platformHeader.innerHTML = `
+            <h3 style="color: #114817; margin: 2rem 0 1rem 0; padding: 0.5rem; background: #f8f9fa; border-left: 4px solid #4eb155; text-transform: capitalize;">
+                📱 ${platform} Content (${pieces.length} pieces)
+            </h3>
+        `;
+        contentGrid.appendChild(platformHeader);
+        
+        // Platform content
+        pieces.forEach(piece => {
+            const contentCard = document.createElement('div');
+            contentCard.className = 'content-card';
             
-            const successMessage = contentGrid.querySelector('.success-message');
-            contentGrid.innerHTML = '';
-            if (successMessage) {
-                contentGrid.appendChild(successMessage);
-            }
+            const preview = piece.content.length > 200 ? 
+                piece.content.substring(0, 200) + '...' : 
+                piece.content;
             
-            contentPieces.forEach(piece => {
-                const contentCard = document.createElement('div');
-                contentCard.className = 'content-card';
-                
-                const preview = piece.content.length > 200 ? 
-                    piece.content.substring(0, 200) + '...' : 
-                    piece.content;
-                
-                contentCard.innerHTML = `
+            // Special formatting for different content types
+            let typeIcon = '📝';
+            if (piece.content_type.includes('video')) typeIcon = '🎬';
+            if (piece.platform === 'instagram') typeIcon = '📸';
+            if (piece.platform === 'facebook') typeIcon = '👥';
+            if (piece.platform === 'linkedin') typeIcon = '💼';
+            if (piece.platform === 'tiktok') typeIcon = '🎵';
+            if (piece.platform === 'youtube') typeIcon = '📺';
+            
+            contentCard.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 1.5rem; margin-right: 0.5rem;">${typeIcon}</span>
                     <span class="platform-badge">${piece.platform}</span>
-                    <h4>${piece.title}</h4>
-                    <div class="content-preview-text">${preview}</div>
+                    ${piece.content_type.includes('video') ? '<span style="background: #fec962; color: #3a2313; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">VIDEO</span>' : ''}
+                </div>
+                <h4>${piece.title}</h4>
+                <div class="content-preview-text">${preview}</div>
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9rem; color: #666;">
                     <p><strong>Keywords:</strong> ${piece.keywords.join(', ')}</p>
                     <p><strong>Scheduled:</strong> ${new Date(piece.scheduled_time).toLocaleString()}</p>
                     <p><strong>Status:</strong> ${piece.status}</p>
-                `;
-                
-                contentGrid.appendChild(contentCard);
-            });
-        }
-        
-        setDefaultDate();
-    </script>
-</body>
-</html>
-"""
+                    ${piece.hashtags.length > 0 ? `<p><strong>Hashtags:</strong> ${piece.hashtags.slice(0, 5).map(tag => '#' + tag).join(' ')}</p>` : ''}
+                </div>
+            `;
+            
+            contentGrid.appendChild(contentCard);
+        });
+    });
+}
 
 # API Routes
 @app.route('/')
