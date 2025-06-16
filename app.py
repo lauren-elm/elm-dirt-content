@@ -337,7 +337,7 @@ class ContentGenerator:
         
         # Initialize Claude client
         if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
-            self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
+            self.claude_client = anthropic.Client(api_key=self.config.CLAUDE_API_KEY)
         else:
             self.claude_client = None
             logger.warning("Claude API key not configured - using fallback content generation")
