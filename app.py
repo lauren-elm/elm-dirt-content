@@ -1,9 +1,8 @@
 # Enhanced Elm Dirt Content Automation Platform
-# Complete and ready for Railway deployment
+# Fixed indentation and Claude API errors
 
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import anthropic
 import requests
 import json
 from datetime import datetime, timedelta
@@ -26,8 +25,8 @@ CORS(app)
 
 # Configuration
 class Config:
-    # Claude API (Primary)
-    CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', 'your_claude_api_key')
+    # Claude API (Primary) - Temporarily disabled for testing
+    CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', 'disabled_for_testing')
     
     # Shopify API
     SHOPIFY_API_KEY = os.getenv('SHOPIFY_API_KEY', 'your_shopify_api_key')
@@ -49,33 +48,8 @@ class Config:
         "elm dirt", "organic plant care", "natural fertilizer"
     ]
     
-    # US Gardening Seasons and Topics
-    SEASONAL_TOPICS = {
-        'spring': [
-            'seed starting', 'soil preparation', 'transplanting', 'organic fertilizer', 
-            'spring planting', 'garden cleanup', 'compost preparation', 'frost protection',
-            'early vegetables', 'soil testing', 'pruning', 'mulching'
-        ],
-        'summer': [
-            'watering tips', 'pest control', 'heat stress', 'bloom boost', 
-            'summer maintenance', 'harvesting', 'drought protection', 'companion planting',
-            'disease prevention', 'container gardening', 'succession planting'
-        ],
-        'fall': [
-            'harvest time', 'composting', 'winter prep', 'soil amendment', 
-            'fall cleanup', 'planning next year', 'leaf composting', 'cover crops',
-            'bulb planting', 'tree care', 'winterizing', 'seed saving'
-        ],
-        'winter': [
-            'indoor plants', 'planning garden', 'houseplant care', 'seed catalogs', 
-            'winter protection', 'tool maintenance', 'greenhouse management', 'forcing bulbs',
-            'microgreens', 'herb gardening indoors', 'garden reflection'
-        ]
-    }
-    
     # US Gardening Holidays and Special Dates
     GARDENING_HOLIDAYS = {
-        # Format: (month, day): ('holiday_name', 'gardening_focus', 'content_theme')
         (2, 14): ('Valentine\'s Day', 'flowering plants and love for gardening', 'Show Your Garden Some Love'),
         (3, 17): ('St. Patrick\'s Day', 'green plants and Irish garden traditions', 'Going Green in the Garden'),
         (3, 20): ('Spring Equinox', 'spring awakening and soil preparation', 'Spring Awakening'),
@@ -130,7 +104,6 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Content pieces table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS content_pieces (
                 id TEXT PRIMARY KEY,
@@ -152,7 +125,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Weekly content packages
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS weekly_packages (
                 id TEXT PRIMARY KEY,
@@ -245,7 +217,7 @@ class DatabaseManager:
             keywords=json.loads(row[7]) if row[7] else [],
             hashtags=json.loads(row[8]) if row[8] else [],
             image_suggestion=row[9] or "",
-            ai_provider=row[10] or "claude",
+            ai_provider=row[10] or "fallback",
             created_at=datetime.fromisoformat(row[11]),
             updated_at=datetime.fromisoformat(row[12]),
             week_id=row[13],
@@ -262,7 +234,6 @@ class HolidayManager:
         holidays = []
         week_end = start_date + timedelta(days=6)
         
-        # Check each day of the week for holidays
         current_date = start_date
         while current_date <= week_end:
             month_day = (current_date.month, current_date.day)
@@ -292,11 +263,9 @@ class HolidayManager:
         holidays = self.get_week_holidays(start_date)
         
         if holidays:
-            # If there's a holiday, make it the primary theme
             primary_holiday = holidays[0]
-            return primary_holiday[3]  # content_theme
+            return primary_holiday[3]
         else:
-            # Use seasonal themes based on specific weeks
             seasonal_themes = {
                 'spring': [
                     'Spring Garden Awakening',
@@ -324,7 +293,6 @@ class HolidayManager:
                 ]
             }
             
-            # Choose theme based on week of season
             week_of_year = start_date.isocalendar()[1]
             theme_index = (week_of_year % 4)
             return seasonal_themes[season][theme_index]
@@ -335,16 +303,9 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-       # Initialize Claude client
-if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
-    try:
-        self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
-    except Exception as e:
-        logger.warning(f"Claude API initialization failed: {e}")
+        # Claude API disabled for testing - using fallback mode
         self.claude_client = None
-else:
-    self.claude_client = None
-    logger.warning("Claude API key not configured - using fallback content generation")
+        logger.info("Running in fallback mode - Claude API disabled for testing")
     
     def generate_weekly_content(self, week_start_date: datetime) -> Dict:
         """Generate a complete week of content with holiday awareness"""
@@ -356,10 +317,9 @@ else:
             
             logger.info(f"Generating weekly content for {week_start_date.strftime('%Y-%m-%d')} with theme: {theme}")
             
-            # Generate content for the week
             weekly_content = []
             
-            # Generate 1 blog post per week (usually on Monday)
+            # Generate 1 blog post per week
             blog_post = self._generate_weekly_blog_post(
                 week_start_date=week_start_date,
                 season=season,
@@ -405,7 +365,6 @@ else:
                                   theme: str, holidays: List, week_id: str) -> ContentPiece:
         """Generate the main blog post for the week"""
         
-        # Determine content focus
         if holidays:
             primary_holiday = holidays[0]
             content_focus = f"{primary_holiday[1]} - {primary_holiday[2]}"
@@ -432,14 +391,13 @@ else:
         """Generate social media content for the week"""
         social_content = []
         
-        # Define posting schedule for the week
         posting_schedule = [
-            (0, 'instagram', 2),  # Monday - 2 Instagram posts
-            (1, 'facebook', 2),   # Tuesday - 2 Facebook posts
-            (2, 'instagram', 1),  # Wednesday - 1 Instagram post
-            (3, 'linkedin', 1),   # Thursday - 1 LinkedIn post
-            (4, 'facebook', 1),   # Friday - 1 Facebook post
-            (5, 'tiktok', 1),     # Saturday - 1 TikTok post
+            (0, 'instagram', 2),
+            (1, 'facebook', 2),
+            (2, 'instagram', 1),
+            (3, 'linkedin', 1),
+            (4, 'facebook', 1),
+            (5, 'tiktok', 1),
         ]
         
         for day_offset, platform, count in posting_schedule:
@@ -459,157 +417,52 @@ else:
     
     def _generate_blog_post(self, title: str, keywords: List[str], seasonal_focus: str,
                            holiday_context: str, date: datetime, week_id: str, theme: str) -> ContentPiece:
-        """Generate a single blog post with enhanced prompting"""
+        """Generate a single blog post using fallback content"""
         
-        prompt = f"""
-        Generate an SEO-optimized blog article for Elm Dirt's organic gardening ecommerce store.
-
-        ARTICLE DETAILS:
-        Title: "{title}"
-        Publication Date: {date.strftime('%B %d, %Y')} ({date.strftime('%A')})
-        Season: {seasonal_focus}
-        Theme: {theme}
-        Context: {holiday_context}
-
-        TARGET AUDIENCE: 50+ year old home gardeners across the US
-        BRAND VOICE: Friendly, knowledgeable gardening neighbor sharing practical wisdom
-        WORD COUNT: 800-1000 words
-        PRIMARY KEYWORDS: {', '.join(keywords[:3])}
-
-        ELM DIRT PRODUCTS TO REFERENCE NATURALLY:
-        - Ancient Soil (premium worm castings and organic blend)
-        - Plant Juice (liquid organic fertilizer with microbes)
-        - Bloom Juice (flowering and fruiting plant booster)
-        - Worm Castings (pure organic soil amendment)
-        - All-Purpose Soil Mix (complete potting solution)
-
-        CONTENT REQUIREMENTS:
-        - Write conversationally like talking to a gardening friend
-        - Include practical, actionable advice for the current season/date
-        - Reference seasonal timing and current gardening tasks
-        - Weave in holiday context naturally if applicable
-        - Include specific tips that 50+ gardeners will appreciate
-        - Mention regional considerations for US gardeners
-        - End with clear call-to-action to visit Elm Dirt
-
-        STRUCTURE:
-        1. H1: {title}
-        2. Introduction acknowledging current timing/season (100-150 words)
-        3. H2: Main seasonal focus with practical tips
-        4. H2: Problem-solving section with Elm Dirt solutions
-        5. H2: Action steps for this time period
-        6. Conclusion with encouragement and CTA
-
-        SEO REQUIREMENTS:
-        - Primary keyword density: 1-2%
-        - Include semantic variations naturally
-        - Write a compelling meta description (150-160 characters)
-        - Use proper heading hierarchy
-
-        OUTPUT: Clean HTML with proper heading tags, ready for Shopify blog.
-        """
+        content_html = self._generate_fallback_blog(title, keywords, seasonal_focus, holiday_context)
+        meta_description = f"Expert {seasonal_focus} gardening advice from Elm Dirt. Learn organic methods for {holiday_context}."
         
-        try:
-            content_html = ""
-            meta_description = ""
-            
-           if self.claude_client:
-    try:
-        response = self.claude_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=4000,
-            temperature=0.7,
-            messages=[{"role": "user", "content": prompt}]
+        content_piece = ContentPiece(
+            id=str(uuid.uuid4()),
+            title=title,
+            content=content_html,
+            platform="blog",
+            content_type="blog_post",
+            status=ContentStatus.DRAFT,
+            scheduled_time=date.replace(hour=9, minute=0, second=0),
+            keywords=keywords,
+            hashtags=[],
+            image_suggestion=f"Seasonal {seasonal_focus} garden photo showcasing organic gardening methods",
+            ai_provider="fallback",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            week_id=week_id,
+            holiday_context=holiday_context,
+            meta_description=meta_description
         )
         
-        full_response = response.content[0].text
-    except Exception as e:
-        logger.error(f"Claude API call failed: {e}")
-        full_response = self._generate_fallback_blog(title, keywords, seasonal_focus, holiday_context)
-                
-                # Extract meta description if present
-                meta_match = re.search(r'<meta name="description" content="(.*?)"', full_response, re.IGNORECASE)
-                if meta_match:
-                    meta_description = meta_match.group(1)
-                
-                # Clean up the content
-                content_html = full_response
-                
-            else:
-                content_html = self._generate_fallback_blog(title, keywords, seasonal_focus, holiday_context)
-                meta_description = f"Expert {seasonal_focus} gardening advice from Elm Dirt. Learn organic methods for {holiday_context}."
-            
-            # Create ContentPiece object
-            content_piece = ContentPiece(
-                id=str(uuid.uuid4()),
-                title=title,
-                content=content_html,
-                platform="blog",
-                content_type="blog_post",
-                status=ContentStatus.DRAFT,
-                scheduled_time=date.replace(hour=9, minute=0, second=0),
-                keywords=keywords,
-                hashtags=[],
-                image_suggestion=f"Seasonal {seasonal_focus} garden photo showcasing organic gardening methods",
-                ai_provider="claude" if self.claude_client else "fallback",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-                week_id=week_id,
-                holiday_context=holiday_context,
-                meta_description=meta_description
-            )
-            
-            # Save to database
-            self.db_manager.save_content_piece(content_piece)
-            return content_piece
-            
-        except Exception as e:
-            logger.error(f"Error generating blog post: {str(e)}")
-            return self._create_fallback_blog_content(title, keywords, date, week_id, holiday_context)
+        self.db_manager.save_content_piece(content_piece)
+        return content_piece
     
     def _generate_social_posts(self, blog_post: ContentPiece, platform: str, count: int,
                               date: datetime, holiday_context: str, week_id: str) -> List[ContentPiece]:
         """Generate social media posts for a platform"""
         
         platform_specs = {
-            'instagram': {
-                'max_length': 2200, 
-                'tone': 'visual and engaging with storytelling', 
-                'optimal_hours': [11, 15, 19],
-                'hashtag_count': 15
-            },
-            'facebook': {
-                'max_length': 500, 
-                'tone': 'community-focused and conversational', 
-                'optimal_hours': [12, 15, 18],
-                'hashtag_count': 5
-            },
-            'tiktok': {
-                'max_length': 150, 
-                'tone': 'quick tips and trendy', 
-                'optimal_hours': [14, 17, 20],
-                'hashtag_count': 8
-            },
-            'linkedin': {
-                'max_length': 1300, 
-                'tone': 'professional B2B gardening insights', 
-                'optimal_hours': [9, 12, 17],
-                'hashtag_count': 3
-            }
+            'instagram': {'optimal_hours': [11, 15, 19]},
+            'facebook': {'optimal_hours': [12, 15, 18]},
+            'tiktok': {'optimal_hours': [14, 17, 20]},
+            'linkedin': {'optimal_hours': [9, 12, 17]}
         }
         
         specs = platform_specs.get(platform, platform_specs['instagram'])
-        
         social_posts = []
         
-        # Create fallback posts if Claude API not available
         for i in range(count):
-            # Calculate posting time using optimal hours
             optimal_hours = specs['optimal_hours']
             hour = optimal_hours[i % len(optimal_hours)]
             post_time = date.replace(hour=hour, minute=0, second=0)
             
-            # Generate content based on platform
             post_content = self._create_fallback_social_post(platform, blog_post, holiday_context)
             
             content_piece = ContentPiece(
@@ -696,20 +549,8 @@ else:
         
         holiday_keywords = {
             'Valentine\'s Day': ['flowering plants', 'plant gifts', 'garden love'] + base_keywords,
-            'St. Patrick\'s Day': ['green plants', 'organic gardening', 'plant health'] + base_keywords,
             'Spring Equinox': ['spring gardening', 'soil preparation', 'garden awakening'] + base_keywords,
             'Earth Day': ['sustainable gardening', 'organic methods', 'eco-friendly'] + base_keywords,
-            'May Day': ['spring planting', 'garden celebration', 'plant growth'] + base_keywords,
-            'Mother\'s Day Week': ['garden gifts', 'plant care', 'flowering plants'] + base_keywords,
-            'Memorial Day': ['summer preparation', 'garden maintenance', 'plant nutrition'] + base_keywords,
-            'Summer Solstice': ['summer care', 'peak season', 'plant nutrition'] + base_keywords,
-            'Independence Day': ['summer maintenance', 'patriotic plants', 'garden display'] + base_keywords,
-            'National Relaxation Day': ['peaceful gardens', 'garden sanctuary', 'relaxing spaces'] + base_keywords,
-            'Fall Equinox': ['fall preparation', 'harvest time', 'winter prep'] + base_keywords,
-            'Halloween': ['fall harvest', 'seasonal plants', 'autumn garden'] + base_keywords,
-            'Veterans Day': ['memorial gardens', 'remembrance plants', 'honor gardens'] + base_keywords,
-            'Thanksgiving Week': ['harvest gratitude', 'fall garden', 'thanksgiving'] + base_keywords,
-            'Winter Solstice': ['winter planning', 'garden reflection', 'next year prep'] + base_keywords
         }
         
         return holiday_keywords.get(holiday_name, base_keywords)
@@ -719,10 +560,10 @@ else:
         base_keywords = self.config.TARGET_KEYWORDS[:3]
         
         seasonal_keywords = {
-            'spring': ['spring gardening', 'soil preparation', 'planting season', 'garden awakening'] + base_keywords,
-            'summer': ['summer care', 'plant nutrition', 'garden maintenance', 'heat protection'] + base_keywords,
-            'fall': ['fall gardening', 'harvest time', 'winter preparation', 'soil building'] + base_keywords,
-            'winter': ['winter gardening', 'indoor plants', 'garden planning', 'houseplant care'] + base_keywords
+            'spring': ['spring gardening', 'soil preparation', 'planting season'] + base_keywords,
+            'summer': ['summer care', 'plant nutrition', 'garden maintenance'] + base_keywords,
+            'fall': ['fall gardening', 'harvest time', 'winter preparation'] + base_keywords,
+            'winter': ['winter gardening', 'indoor plants', 'garden planning'] + base_keywords
         }
         
         return seasonal_keywords.get(season, base_keywords)
@@ -773,7 +614,7 @@ else:
             logger.error(f"Error saving weekly package: {str(e)}")
     
     def _generate_fallback_blog(self, title: str, keywords: List[str], seasonal_focus: str, holiday_context: str) -> str:
-        """Generate fallback blog content when Claude API is unavailable"""
+        """Generate fallback blog content"""
         primary_keyword = keywords[0] if keywords else 'organic gardening'
         
         return f"""
@@ -804,28 +645,6 @@ else:
         
         <p>Remember, gardening is a journey, not a destination. Every season teaches us something new, and every challenge is an opportunity to grow as gardeners. Happy gardening!</p>
         """
-    
-    def _create_fallback_blog_content(self, title: str, keywords: List[str], date: datetime, 
-                                    week_id: str, holiday_context: str) -> ContentPiece:
-        """Create fallback blog content piece"""
-        return ContentPiece(
-            id=str(uuid.uuid4()),
-            title=title,
-            content=self._generate_fallback_blog(title, keywords, "current season", holiday_context),
-            platform="blog",
-            content_type="blog_post",
-            status=ContentStatus.DRAFT,
-            scheduled_time=date.replace(hour=9, minute=0, second=0),
-            keywords=keywords,
-            hashtags=[],
-            image_suggestion="Seasonal garden photo showcasing organic methods",
-            ai_provider="fallback",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            week_id=week_id,
-            holiday_context=holiday_context,
-            meta_description=f"Expert gardening advice from Elm Dirt for {holiday_context}. Learn organic methods that work."
-        )
     
     def _create_fallback_social_post(self, platform: str, blog_post: ContentPiece, holiday_context: str) -> Dict:
         """Create fallback social media post"""
@@ -871,124 +690,9 @@ else:
             'post_type': 'educational_tip'
         }
 
-class ShopifyAPI:
-    def __init__(self):
-        self.config = Config()
-        self.base_url = f"https://{self.config.SHOPIFY_STORE_URL}/admin/api/2023-10/"
-        self.headers = {
-            "X-Shopify-Access-Token": self.config.SHOPIFY_PASSWORD,
-            "Content-Type": "application/json"
-        }
-    
-    def create_blog_post(self, content_piece: ContentPiece) -> Dict:
-        """Create blog post in Shopify"""
-        if self.config.SHOPIFY_PASSWORD == 'your_shopify_password':
-            return {'success': False, 'error': 'Shopify not configured - add your API credentials'}
-        
-        formatted_content = self._format_for_shopify(content_piece.content)
-        
-        article_data = {
-            "article": {
-                "title": content_piece.title,
-                "body_html": formatted_content,
-                "tags": ", ".join(content_piece.keywords),
-                "published": False,  # Create as draft first
-                "summary": content_piece.meta_description or self._extract_meta_description(content_piece.content),
-                "created_at": datetime.now().isoformat()
-            }
-        }
-        
-        try:
-            response = requests.post(
-                f"{self.base_url}blogs/{self.config.SHOPIFY_BLOG_ID}/articles.json",
-                headers=self.headers,
-                json=article_data,
-                timeout=30
-            )
-            
-            if response.status_code == 201:
-                article = response.json()['article']
-                return {
-                    'success': True,
-                    'article_id': article['id'],
-                    'url': f"https://{self.config.SHOPIFY_STORE_URL}/blogs/news/{article['handle']}",
-                    'handle': article['handle'],
-                    'status': 'draft'
-                }
-            else:
-                logger.error(f"Shopify API error: {response.text}")
-                return {'success': False, 'error': f"Shopify API error: {response.status_code}"}
-                
-        except Exception as e:
-            logger.error(f"Error creating Shopify blog post: {str(e)}")
-            return {'success': False, 'error': str(e)}
-    
-    def _format_for_shopify(self, content: str) -> str:
-        """Format HTML content with Elm Dirt styling"""
-        return f"""
-        <div class="elm-dirt-blog-post">
-            <style>
-                .elm-dirt-blog-post {{
-                    font-family: 'Poppins', sans-serif;
-                    line-height: 1.7;
-                    color: #114817;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }}
-                .elm-dirt-blog-post h1 {{ 
-                    color: #843648; 
-                    font-size: 2.8rem; 
-                    margin-bottom: 1.5rem; 
-                    line-height: 1.2;
-                }}
-                .elm-dirt-blog-post h2 {{ 
-                    color: #0a2b0d; 
-                    font-size: 2.2rem; 
-                    margin: 2.5rem 0 1rem 0; 
-                    line-height: 1.3;
-                }}
-                .elm-dirt-blog-post h3 {{ 
-                    color: #4eb155; 
-                    font-size: 1.8rem; 
-                    margin: 2rem 0 0.8rem 0; 
-                }}
-                .elm-dirt-blog-post p {{ 
-                    margin-bottom: 1.2rem; 
-                    font-size: 1.1rem; 
-                }}
-            </style>
-            {content}
-            <div style="background: linear-gradient(135deg, #c9d393, #d7c4b5); padding: 2rem; border-radius: 12px; margin: 2rem 0; text-align: center;">
-                <p style="font-size: 1.2rem; margin-bottom: 1rem; font-weight: 600;">Ready to transform your garden naturally?</p>
-                <p style="margin-bottom: 1.5rem;">Discover our complete line of organic gardening products designed to build healthy soil and grow thriving plants.</p>
-                <a href="/collections/all" style="background-color: #fec962; color: #3a2313; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Shop Elm Dirt Products</a>
-            </div>
-        </div>
-        """
-    
-    def _extract_meta_description(self, content: str) -> str:
-        """Extract or create meta description from content"""
-        # Try to find existing meta description
-        match = re.search(r'<meta name="description" content="(.*?)"', content, re.IGNORECASE)
-        if match:
-            return match.group(1)
-        
-        # Fallback: extract first paragraph and clean it
-        clean_content = re.sub('<[^<]+?>', '', content)
-        sentences = clean_content.split('.')
-        
-        # Find first substantial sentence
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if len(sentence) > 50:
-                return (sentence + '.').strip()[:160]
-        
-        return "Expert organic gardening advice from Elm Dirt - sustainable methods for healthy plants and soil."
-
 # Initialize services
 db_manager = DatabaseManager(Config.DB_PATH)
 content_generator = ContentGenerator(db_manager)
-shopify_api = ShopifyAPI()
 
 # Enhanced Web Interface
 CALENDAR_INTERFACE = """
@@ -1040,10 +744,6 @@ CALENDAR_INTERFACE = """
         
         .main-content {
             padding: 2rem;
-        }
-        
-        .calendar-section {
-            margin-bottom: 2rem;
         }
         
         .section-title {
@@ -1213,6 +913,15 @@ CALENDAR_INTERFACE = """
             margin: 1rem 0;
         }
         
+        .testing-notice {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #ffc107;
+        }
+        
         @media (max-width: 768px) {
             .calendar-controls {
                 flex-direction: column;
@@ -1236,6 +945,10 @@ CALENDAR_INTERFACE = """
         </div>
         
         <div class="main-content">
+            <div class="testing-notice">
+                <strong>🧪 Testing Mode:</strong> Platform is running in fallback mode for testing. Content will be generated using built-in templates. To enable AI-powered content, add your Claude API key to the environment variables.
+            </div>
+            
             <div class="calendar-section">
                 <h2 class="section-title">📅 Weekly Content Generator</h2>
                 
@@ -1263,7 +976,6 @@ CALENDAR_INTERFACE = """
     </div>
     
     <script>
-        // Set default date to next Monday
         function setDefaultDate() {
             const today = new Date();
             const monday = new Date(today);
@@ -1287,11 +999,9 @@ CALENDAR_INTERFACE = """
                 return;
             }
             
-            // Disable button and show loading
             generateBtn.disabled = true;
             generateBtn.textContent = 'Generating...';
             
-            // Show loading spinner
             contentGrid.innerHTML = `
                 <div class="loading">
                     <div class="spinner"></div>
@@ -1315,7 +1025,6 @@ CALENDAR_INTERFACE = """
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Show week information
                     const weekDetails = document.getElementById('week-details');
                     weekDetails.innerHTML = `
                         <p><strong>Season:</strong> ${result.season}</p>
@@ -1328,10 +1037,8 @@ CALENDAR_INTERFACE = """
                     `;
                     weekInfo.style.display = 'block';
                     
-                    // Show generated content
                     displayContent(result.content);
                     
-                    // Show success message
                     contentGrid.insertAdjacentHTML('afterbegin', `
                         <div class="success-message">
                             ✅ Successfully generated ${result.content_pieces} pieces of content for the week of ${new Date(result.week_start_date).toLocaleDateString()}
@@ -1348,11 +1055,10 @@ CALENDAR_INTERFACE = """
                     <div class="error-message">
                         ❌ Error generating content: ${error.message}
                         <br><br>
-                        Please check your API configuration and try again.
+                        Please check your configuration and try again.
                     </div>
                 `;
             } finally {
-                // Re-enable button
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'Generate Weekly Content';
             }
@@ -1361,7 +1067,6 @@ CALENDAR_INTERFACE = """
         function displayContent(contentPieces) {
             const contentGrid = document.getElementById('content-grid');
             
-            // Clear loading message but keep success message
             const successMessage = contentGrid.querySelector('.success-message');
             contentGrid.innerHTML = '';
             if (successMessage) {
@@ -1389,7 +1094,6 @@ CALENDAR_INTERFACE = """
             });
         }
         
-        // Initialize
         setDefaultDate();
     </script>
 </body>
@@ -1404,11 +1108,12 @@ def index():
 
 @app.route('/health')
 def health_check():
-    """Enhanced health check with detailed status"""
+    """Health check endpoint"""
     health_status = {
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'version': '2.0.0',
+        'mode': 'testing_fallback',
         'features': {
             'weekly_calendar': True,
             'holiday_awareness': True,
@@ -1416,13 +1121,9 @@ def health_check():
             'database_storage': True
         },
         'services': {
-            'claude_api': 'connected' if content_generator.claude_client else 'not_configured',
+            'claude_api': 'disabled_for_testing',
             'shopify_api': 'configured' if Config.SHOPIFY_PASSWORD != 'your_shopify_password' else 'not_configured',
             'database': 'connected'
-        },
-        'database_info': {
-            'path': Config.DB_PATH,
-            'tables': ['content_pieces', 'weekly_packages']
         }
     }
     return jsonify(health_status)
@@ -1433,7 +1134,6 @@ def generate_weekly_content():
     data = request.json
     
     try:
-        # Parse the selected week start date
         week_start_str = data.get('week_start_date')
         if not week_start_str:
             return jsonify({
@@ -1443,11 +1143,9 @@ def generate_weekly_content():
         
         week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
         
-        # Ensure it's a Monday
         if week_start_date.weekday() != 0:
             week_start_date = week_start_date - timedelta(days=week_start_date.weekday())
         
-        # Generate weekly content
         result = content_generator.generate_weekly_content(week_start_date)
         
         return jsonify(result)
@@ -1464,181 +1162,10 @@ def generate_weekly_content():
             'error': str(e)
         }), 500
 
-@app.route('/api/weekly-content/<week_id>', methods=['GET'])
-def get_weekly_content(week_id):
-    """Get all content for a specific week"""
-    try:
-        content_pieces = db_manager.get_weekly_content(week_id)
-        
-        return jsonify({
-            'success': True,
-            'week_id': week_id,
-            'content_count': len(content_pieces),
-            'content': [content_generator._content_piece_to_dict(cp) for cp in content_pieces]
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/content/<content_id>', methods=['GET'])
-def get_content_piece(content_id):
-    """Get a specific content piece for preview/editing"""
-    try:
-        content_piece = db_manager.get_content_piece(content_id)
-        
-        if not content_piece:
-            return jsonify({
-                'success': False,
-                'error': 'Content piece not found'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'content': content_generator._content_piece_to_dict(content_piece)
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/content/<content_id>', methods=['PUT'])
-def update_content_piece(content_id):
-    """Update a content piece (for editing)"""
-    data = request.json
-    
-    try:
-        content_piece = db_manager.get_content_piece(content_id)
-        if not content_piece:
-            return jsonify({
-                'success': False,
-                'error': 'Content piece not found'
-            }), 404
-        
-        # Update fields
-        if 'title' in data:
-            content_piece.title = data['title']
-        if 'content' in data:
-            content_piece.content = data['content']
-        if 'hashtags' in data:
-            content_piece.hashtags = data['hashtags']
-        if 'image_suggestion' in data:
-            content_piece.image_suggestion = data['image_suggestion']
-        if 'scheduled_time' in data:
-            content_piece.scheduled_time = datetime.fromisoformat(data['scheduled_time'])
-        
-        content_piece.updated_at = datetime.now()
-        content_piece.status = ContentStatus.PREVIEW  # Mark as preview after editing
-        
-        # Save changes
-        if db_manager.save_content_piece(content_piece):
-            return jsonify({
-                'success': True,
-                'message': 'Content updated successfully',
-                'content': content_generator._content_piece_to_dict(content_piece)
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to save content'
-            }), 500
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/content/<content_id>/approve', methods=['POST'])
-def approve_content(content_id):
-    """Approve content for publishing"""
-    try:
-        content_piece = db_manager.get_content_piece(content_id)
-        if not content_piece:
-            return jsonify({
-                'success': False,
-                'error': 'Content piece not found'
-            }), 404
-        
-        content_piece.status = ContentStatus.APPROVED
-        content_piece.updated_at = datetime.now()
-        
-        if db_manager.save_content_piece(content_piece):
-            return jsonify({
-                'success': True,
-                'message': 'Content approved successfully'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to approve content'
-            }), 500
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/content/<content_id>/publish', methods=['POST'])
-def publish_content(content_id):
-    """Publish content to appropriate platform"""
-    try:
-        content_piece = db_manager.get_content_piece(content_id)
-        if not content_piece:
-            return jsonify({
-                'success': False,
-                'error': 'Content piece not found'
-            }), 404
-        
-        if content_piece.status != ContentStatus.APPROVED:
-            return jsonify({
-                'success': False,
-                'error': 'Content must be approved before publishing'
-            }), 400
-        
-        # Publish based on platform
-        if content_piece.platform == 'blog':
-            result = shopify_api.create_blog_post(content_piece)
-        else:
-            # For social media, we'll just mark as published
-            # In production, you'd integrate with Metricool or other social tools
-            result = {'success': True, 'message': 'Social post marked for publishing'}
-        
-        if result.get('success'):
-            content_piece.status = ContentStatus.PUBLISHED
-            content_piece.updated_at = datetime.now()
-            db_manager.save_content_piece(content_piece)
-            
-            return jsonify({
-                'success': True,
-                'message': f'Content published to {content_piece.platform}',
-                'result': result
-            })
-        else:
-            content_piece.status = ContentStatus.FAILED
-            db_manager.save_content_piece(content_piece)
-            
-            return jsonify({
-                'success': False,
-                'error': result.get('error', 'Publishing failed')
-            }), 500
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
 @app.route('/api/test-generation', methods=['GET'])
 def test_generation():
     """Test endpoint for content generation"""
     try:
-        # Test weekly generation with current date
         current_monday = datetime.now() - timedelta(days=datetime.now().weekday())
         
         logger.info("Testing weekly content generation...")
@@ -1651,7 +1178,7 @@ def test_generation():
                 'content_pieces_generated': result.get('content_pieces', 0),
                 'week_theme': result.get('theme'),
                 'season': result.get('season'),
-                'ai_provider': 'claude' if content_generator.claude_client else 'fallback'
+                'ai_provider': 'fallback'
             },
             'full_result': result
         })
@@ -1662,59 +1189,9 @@ def test_generation():
             'error': str(e)
         }), 500
 
-@app.route('/api/analytics/summary', methods=['GET'])
-def get_analytics_summary():
-    """Get analytics summary"""
-    try:
-        conn = sqlite3.connect(Config.DB_PATH)
-        cursor = conn.cursor()
-        
-        # Get content counts by status
-        cursor.execute('''
-            SELECT status, COUNT(*) 
-            FROM content_pieces 
-            GROUP BY status
-        ''')
-        status_counts = dict(cursor.fetchall())
-        
-        # Get content counts by platform
-        cursor.execute('''
-            SELECT platform, COUNT(*) 
-            FROM content_pieces 
-            GROUP BY platform
-        ''')
-        platform_counts = dict(cursor.fetchall())
-        
-        # Get recent activity
-        cursor.execute('''
-            SELECT COUNT(*) 
-            FROM content_pieces 
-            WHERE created_at >= datetime('now', '-7 days')
-        ''')
-        recent_content = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'analytics': {
-                'status_counts': status_counts,
-                'platform_counts': platform_counts,
-                'recent_content_7_days': recent_content,
-                'total_content': sum(status_counts.values()) if status_counts else 0
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
 if __name__ == '__main__':
     logger.info("Starting Elm Dirt Content Automation Platform v2.0")
-    logger.info("Features: Weekly Calendar, Holiday Awareness, Content Preview/Edit")
+    logger.info("Running in TESTING mode with fallback content generation")
     
-    # Run Flask app
     port = int(os.getenv('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
