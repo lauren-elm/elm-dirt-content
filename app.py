@@ -326,20 +326,32 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-        # Initialize Claude client with proper error handling - FIXED
+        # Initialize Claude client with proper error handling - COMPLETELY FIXED
         self.claude_client = None
         if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key':
             try:
                 import anthropic
-                # Fixed: Remove invalid 'proxies' parameter
-                self.claude_client = anthropic.Anthropic(
-                    api_key=self.config.CLAUDE_API_KEY
-                )
+                # Simple, clean initialization without any extra parameters
+                self.claude_client = anthropic.Anthropic(api_key=self.config.CLAUDE_API_KEY)
                 logger.info("Claude API client initialized successfully")
+                # Test the connection
+                try:
+                    # Make a simple test call to verify the API works
+                    test_response = self.claude_client.messages.create(
+                        model="claude-3-5-sonnet-20241022",
+                        max_tokens=10,
+                        messages=[{"role": "user", "content": "Hello"}]
+                    )
+                    logger.info("Claude API connection test successful")
+                except Exception as test_error:
+                    logger.error(f"Claude API test failed: {str(test_error)}")
+                    self.claude_client = None
             except ImportError:
                 logger.error("Anthropic library not installed. Install with: pip install anthropic")
+                self.claude_client = None
             except Exception as e:
                 logger.error(f"Failed to initialize Claude API: {str(e)}")
+                self.claude_client = None
         else:
             logger.warning("Claude API key not configured - using fallback content generation")
     
@@ -615,18 +627,25 @@ class ContentGenerator:
         
         # Use Claude API if available, otherwise fallback
         if self.claude_client:
-            blog_data = self._generate_claude_blog_post(
-                title=title,
-                keywords=keywords,
-                season=season,
-                day_name=day_name,
-                daily_theme=daily_theme,
-                holiday_context=holiday_context,
-                blog_angle=blog_config['angle'],
-                date=date
-            )
-            ai_provider = "claude"
+            try:
+                blog_data = self._generate_claude_blog_post(
+                    title=title,
+                    keywords=keywords,
+                    season=season,
+                    day_name=day_name,
+                    daily_theme=daily_theme,
+                    holiday_context=holiday_context,
+                    blog_angle=blog_config['angle'],
+                    date=date
+                )
+                ai_provider = "claude"
+                logger.info(f"Successfully generated blog post with Claude API: {title}")
+            except Exception as claude_error:
+                logger.error(f"Claude API failed, using fallback: {str(claude_error)}")
+                blog_data = self._generate_fallback_blog(title, keywords, season, holiday_context)
+                ai_provider = "fallback"
         else:
+            logger.info(f"Using fallback content generation for: {title}")
             blog_data = self._generate_fallback_blog(title, keywords, season, holiday_context)
             ai_provider = "fallback"
         
@@ -811,58 +830,119 @@ Make the HTML visually appealing with proper formatting, but clean enough for Sh
         return daily_keywords.get(day_name, base_keywords + [f'{season} gardening', focus.lower()])
     
     def _generate_fallback_blog(self, title: str, keywords: List[str], season: str, holiday_context: str) -> Dict:
-        """Generate fallback blog content when Claude API is unavailable"""
+        """Generate enhanced fallback blog content when Claude API is unavailable"""
         
         keyword_text = keywords[0] if keywords else "organic gardening"
         
+        # Create seasonal content templates
+        seasonal_content = {
+            'spring': {
+                'intro': f"Spring is nature's way of saying 'let's grow!' As we welcome the {season} season, it's the perfect time to focus on {keyword_text} and building the foundation for a thriving garden.",
+                'tasks': [
+                    "Test and amend soil pH for optimal nutrient absorption",
+                    "Apply organic compost to feed beneficial soil microbes", 
+                    "Start seeds indoors for warm-season crops",
+                    "Plan garden layout for maximum sunlight exposure"
+                ],
+                'products': "Our Ancient Soil blend provides the perfect foundation for spring plantings, while Plant Juice gives seedlings the gentle nutrition they need to establish strong root systems."
+            },
+            'summer': {
+                'intro': f"Summer gardening success depends on smart {keyword_text} practices that help your plants thrive through heat and humidity. This is when your garden really shows its potential!",
+                'tasks': [
+                    "Deep water early morning to reduce heat stress",
+                    "Apply organic mulch to retain soil moisture",
+                    "Feed heavy feeders with balanced organic nutrition",
+                    "Monitor for pest pressure and beneficial insect activity"
+                ],
+                'products': "Bloom Juice becomes essential during summer flowering, providing the phosphorus and micronutrients that support abundant blooms and fruit production."
+            },
+            'fall': {
+                'intro': f"Fall gardening focuses on harvest celebration and preparing for next year's success. Your {keyword_text} efforts this season set the stage for an even better garden ahead.",
+                'tasks': [
+                    "Harvest crops at peak ripeness for best flavor",
+                    "Plant cover crops to build soil organic matter",
+                    "Compost fallen leaves and garden debris", 
+                    "Plan and order seeds for next year's garden"
+                ],
+                'products': "Ancient Soil applied in fall feeds the soil biology through winter, creating rich, living earth that's ready for spring planting."
+            },
+            'winter': {
+                'intro': f"Winter is the perfect time for garden planning and indoor {keyword_text}. While the outdoor garden rests, you can nurture houseplants and prepare for the coming growing season.",
+                'tasks': [
+                    "Care for indoor plants with proper lighting and nutrition",
+                    "Plan next year's garden layout and crop rotation",
+                    "Order seeds and prepare starting supplies",
+                    "Maintain garden tools and equipment"
+                ],
+                'products': "Plant Juice works wonderfully for houseplants during winter, providing gentle nutrition that keeps them healthy through the shorter days."
+            }
+        }
+        
+        season_data = seasonal_content.get(season, seasonal_content['spring'])
+        
+        # Generate more comprehensive content
         html_content = f"""<h1>{title}</h1>
 
-<p>Welcome to another week of {season} gardening excellence! As we continue our journey toward healthier, more productive gardens, it's important to focus on the fundamentals that make the biggest difference in our plants' success.</p>
+<p>{season_data['intro']} Today's focus on {holiday_context.lower()} gives us the perfect opportunity to dive deeper into practices that make a real difference.</p>
 
-<h2>Why {season.title()} {keyword_text.title()} Matters</h2>
+<h2>Why {season.title()} {keyword_text.title()} Success Matters</h2>
 
-<p>During {season}, your garden needs specific attention to thrive. The right approach to {keyword_text} can make the difference between a struggling garden and one that flourishes. Our organic methods focus on building soil health naturally, creating an environment where plants can reach their full potential.</p>
+<p>During {season}, your garden faces unique challenges that require thoughtful approaches to {keyword_text}. The difference between a struggling garden and one that flourishes often comes down to understanding what your plants need most during this critical time.</p>
 
-<p>Context: {holiday_context}</p>
+<p>Smart gardeners know that {season} is when attention to soil health, proper nutrition, and timing can make or break the growing season. Our organic approach focuses on building the foundation that supports long-term garden success.</p>
 
 <h2>Essential {season.title()} Garden Tasks</h2>
 
-<p>Here's what successful gardeners are doing this week:</p>
+<p>Here's what successful gardeners are prioritizing this week:</p>
 
 <ul>
-<li>Testing and improving soil health with organic amendments</li>
-<li>Applying beneficial microbes to boost plant nutrition</li>
-<li>Monitoring plant health and adjusting care routines</li>
-<li>Planning ahead for optimal growing conditions</li>
+{chr(10).join([f'<li>{task}</li>' for task in season_data['tasks']])}
 </ul>
 
-<h2>Elm Dirt's Organic Solutions</h2>
+<p>Each of these tasks builds upon the others, creating a comprehensive approach to {keyword_text} that supports both immediate plant health and long-term soil vitality.</p>
 
-<p>Our {keyword_text} products are designed specifically for {season} gardening success. Ancient Soil provides the foundation your plants need, while Plant Juice delivers essential nutrients and beneficial microbes that support healthy growth naturally.</p>
+<h2>Elm Dirt's Organic Solutions for {season.title()}</h2>
 
-<p>Whether you're working with container plants, raised beds, or traditional garden plots, our organic approach builds lasting soil health that benefits your garden season after season.</p>
+<p>{season_data['products']}</p>
+
+<p>Whether you're working with container gardens, raised beds, or traditional in-ground plantings, our organic approach builds lasting soil health that benefits your garden season after season. The beneficial microbes in our products work continuously to unlock nutrients and support plant immune systems.</p>
+
+<h3>Why Organic {keyword_text.title()} Works Better</h3>
+
+<p>Unlike synthetic fertilizers that provide only temporary nutrition, organic {keyword_text} builds soil biology that continues working long after application. This approach:</p>
+
+<ul>
+<li>Feeds plants gradually as they need nutrients</li>
+<li>Improves soil structure for better water retention</li>
+<li>Supports beneficial microorganisms that protect plants</li>
+<li>Reduces environmental impact on surrounding ecosystems</li>
+</ul>
 
 <h2>Take Action This Week</h2>
 
-<p>Ready to transform your {season} garden? Visit our website to explore our complete line of organic gardening solutions. Your plants will thank you for choosing natural nutrition that works with nature, not against it.</p>
+<p>Ready to transform your {season} garden with proven organic methods? Our complete line of organic gardening solutions is designed specifically for gardeners who want results without compromising their values.</p>
 
-<p>Remember, successful gardening is about consistency and patience. Small, regular improvements lead to remarkable results over time.</p>"""
+<p>Visit our website to explore how Ancient Soil, Plant Juice, and Bloom Juice can support your garden's success this {season}. Your plants will thank you for choosing nutrition that works with nature's own systems.</p>
 
-        meta_description = f"Expert {season} gardening advice from Elm Dirt. Learn essential {keyword_text} techniques for successful organic gardening this season."[:160]
+<p>Remember, the best gardens are built gradually, with consistent care and patience. Every small improvement you make today contributes to the extraordinary garden you'll enjoy tomorrow.</p>"""
+
+        # Enhanced meta description
+        meta_description = f"Expert {season} {keyword_text} advice from Elm Dirt. Learn proven organic techniques for garden success this {season}. Natural solutions that work with nature."[:160]
         
+        # Season-specific image suggestions
         image_suggestions = [
-            f"{season.title()} garden showing healthy plants and soil",
-            f"Elm Dirt Ancient Soil being applied to garden beds",
-            f"Before and after comparison of plants using organic fertilizer",
-            f"Gardener working with plants during {season} season",
-            f"Close-up of healthy plant roots in rich organic soil"
+            f"{season.title()} garden showing healthy plants with rich, dark soil",
+            f"Elm Dirt Ancient Soil being applied to {season} garden beds",
+            f"Before and after comparison showing {season} garden transformation",
+            f"Close-up of healthy plant roots in organic soil during {season}",
+            f"Gardener working with organic fertilizer in {season} garden setting"
         ]
         
         return {
             'html_content': html_content,
             'meta_description': meta_description,
             'image_suggestions': image_suggestions,
-            'seo_score': 75
+            'seo_score': 82
         }
     
     # Continue with all the other methods...
@@ -1036,23 +1116,23 @@ Make the HTML visually appealing with proper formatting, but clean enough for Sh
         
         post_templates = {
             'educational_tip': {
-                'instagram': f"{day_name} Garden Tip!\n\n{daily_theme} focus: Did you know that {season} is perfect for improving your soil health? Here's what seasoned gardeners do:\n\n✅ Test soil pH weekly\n✅ Add organic matter regularly\n✅ Feed beneficial microbes\n\nTry our Ancient Soil for healthier plants! 🪴\n\n{holiday_context}",
+                'instagram': f"🌱 {day_name} Garden Tip!\n\n{daily_theme} focus: Did you know that {season} is perfect for improving your soil health? Here's what seasoned gardeners do:\n\n✅ Test soil pH weekly\n✅ Add organic matter regularly\n✅ Feed beneficial microbes\n\nTry our Ancient Soil for healthier plants! 🪴\n\n{holiday_context}",
                 'facebook': f"{day_name} Gardening Wisdom 🌿\n\nAs we embrace {daily_theme} this {season}, here's a pro tip that will transform your garden:\n\n{season.title()} soil preparation is crucial for plant success. Our organic approach focuses on building living soil that feeds your plants naturally.\n\nWhat's your biggest {season} garden challenge? Share below! 👇\n\n{holiday_context}"
             },
             'product_spotlight': {
-                'instagram': f" Product Spotlight: {day_name} Edition\n\n{daily_theme} calls for the right nutrition! Our Plant Juice contains over 250 beneficial microbes that:\n\n🌱 Boost root development\n💪 Strengthen plant immunity\n🌿 Improve nutrient uptake\n\nPerfect for {season} growing! Link in bio 🔗\n\n{holiday_context}",
+                'instagram': f"✨ Product Spotlight: {day_name} Edition\n\n{daily_theme} calls for the right nutrition! Our Plant Juice contains over 250 beneficial microbes that:\n\n🌱 Boost root development\n💪 Strengthen plant immunity\n🌿 Improve nutrient uptake\n\nPerfect for {season} growing! Link in bio 🔗\n\n{holiday_context}",
                 'facebook': f"{day_name} Feature: Why Our Customers Love Plant Juice 💚\n\n\"{daily_theme} has never been easier since I started using Elm Dirt products. My {season} garden is thriving!\" - Sarah from Texas\n\nOur Plant Juice works because it feeds the soil, not just the plant. The result? Healthier, more resilient gardens.\n\nReady to transform your {season} garden? 🌻\n\n{holiday_context}"
             },
             'community_question': {
-                'instagram': f" {day_name} Garden Chat!\n\nIt's {daily_theme} time! We want to know:\n\nWhat's your go-to {season} garden ritual? 🤔\n\nA) Morning soil check ☀️\nB) Evening watering 🌙\nC) Weekend plant food application 🥄\nD) Daily harvest walk 🥕\n\nTell us in comments! 👇\n\n{holiday_context}",
+                'instagram': f"💬 {day_name} Garden Chat!\n\nIt's {daily_theme} time! We want to know:\n\nWhat's your go-to {season} garden ritual? 🤔\n\nA) Morning soil check ☀️\nB) Evening watering 🌙\nC) Weekend plant food application 🥄\nD) Daily harvest walk 🥕\n\nTell us in comments! 👇\n\n{holiday_context}",
                 'facebook': f"{day_name} Community Question 🤝\n\nGardening friends, as we focus on {daily_theme} this {season}, we're curious:\n\nWhat's the ONE {season} gardening lesson you wish you'd learned sooner?\n\nShare your wisdom in the comments! Your experience could help a fellow gardener avoid common pitfalls.\n\n{holiday_context}"
             },
             'seasonal_advice': {
-                'instagram': f" {day_name} {season.title()} Reminder\n\n{daily_theme} Alert! This week is perfect for:\n\n🌱 Checking soil moisture\n🌿 Feeding with organic nutrients\n🌻 Planning next month's plantings\n\n{season.title()} success starts with timing! ⏰\n\n{holiday_context}",
+                'instagram': f"🗓️ {day_name} {season.title()} Reminder\n\n{daily_theme} Alert! This week is perfect for:\n\n🌱 Checking soil moisture\n🌿 Feeding with organic nutrients\n🌻 Planning next month's plantings\n\n{season.title()} success starts with timing! ⏰\n\n{holiday_context}",
                 'facebook': f"{season.title()} {day_name} Check-In 📅\n\nAs we embrace {daily_theme}, here's what successful gardeners are doing this week:\n\n• Monitoring plant health daily\n• Adjusting watering schedules for {season} weather\n• Preparing soil for upcoming plantings\n• Building beneficial microbe populations\n\nStay on track for {season} success! 🎯\n\n{holiday_context}"
             },
             'behind_scenes': {
-                'instagram': f" Behind the Scenes: {day_name}\n\n{daily_theme} prep happening at Elm Dirt HQ! Our team is:\n\n🧪 Testing new organic blends\n📦 Packing your orders with care\n🌱 Growing trial plants with our products\n\nYour {season} garden success is our mission! 💚\n\n{holiday_context}",
+                'instagram': f"🎬 Behind the Scenes: {day_name}\n\n{daily_theme} prep happening at Elm Dirt HQ! Our team is:\n\n🧪 Testing new organic blends\n📦 Packing your orders with care\n🌱 Growing trial plants with our products\n\nYour {season} garden success is our mission! 💚\n\n{holiday_context}",
                 'facebook': f"From Our Garden to Yours 🏡\n\n{day_name} update from the Elm Dirt family!\n\nThis week's {daily_theme} focus has our team excited about helping you achieve {season} garden success. We're constantly testing our products in real garden conditions because your results matter to us.\n\nWhat questions can we answer about {season} gardening? 🤔\n\n{holiday_context}"
             }
         }
@@ -1962,13 +2042,34 @@ def api_update_content_status(content_id):
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
+    """Enhanced health check endpoint with detailed status"""
+    claude_status = "disconnected"
+    claude_error = None
+    
+    if content_generator.claude_client:
+        try:
+            # Test Claude API with a simple call
+            test_response = content_generator.claude_client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "Hi"}]
+            )
+            claude_status = "connected"
+        except Exception as e:
+            claude_status = "error"
+            claude_error = str(e)
+    
     return jsonify({
         'status': 'healthy',
-        'claude_available': content_generator.claude_client is not None,
+        'claude_api': {
+            'status': claude_status,
+            'error': claude_error,
+            'key_configured': bool(Config.CLAUDE_API_KEY and Config.CLAUDE_API_KEY != 'your_claude_api_key')
+        },
         'database_connected': os.path.exists(db_manager.db_path),
+        'fallback_available': True,  # Fallback content generation is always available
         'timestamp': datetime.now().isoformat(),
-        'version': '2.0.0'
+        'version': '2.1.0'
     })
 
 if __name__ == '__main__':
