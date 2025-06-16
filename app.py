@@ -297,6 +297,9 @@ class HolidayManager:
             theme_index = (week_of_year % 4)
             return seasonal_themes[season][theme_index]
 
+# Updated Content Generator with Your Exact Schedule
+# Replace the ContentGenerator class in your app.py
+
 class ContentGenerator:
     def __init__(self, db_manager: DatabaseManager):
         self.config = Config()
@@ -308,7 +311,7 @@ class ContentGenerator:
         logger.info("Running in fallback mode - Claude API disabled for testing")
     
     def generate_weekly_content(self, week_start_date: datetime) -> Dict:
-        """Generate a complete week of content with holiday awareness"""
+        """Generate a complete week of content with your exact schedule"""
         try:
             week_id = f"week_{week_start_date.strftime('%Y_%m_%d')}"
             season = self.holiday_manager.get_seasonal_focus(week_start_date)
@@ -319,7 +322,7 @@ class ContentGenerator:
             
             weekly_content = []
             
-            # Generate 1 blog post per week
+            # Generate 1 blog post for Monday
             blog_post = self._generate_weekly_blog_post(
                 week_start_date=week_start_date,
                 season=season,
@@ -329,16 +332,32 @@ class ContentGenerator:
             )
             weekly_content.append(blog_post)
             
-            # Generate social media content for the week
-            social_content = self._generate_weekly_social_content(
-                blog_post=blog_post,
+            # Generate 1 YouTube video outline for the week
+            youtube_outline = self._generate_youtube_outline(
                 week_start_date=week_start_date,
                 season=season,
                 theme=theme,
                 holidays=holidays,
                 week_id=week_id
             )
-            weekly_content.extend(social_content)
+            weekly_content.append(youtube_outline)
+            
+            # Generate daily content for 6 days (Monday-Saturday)
+            for day_offset in range(6):  # 0=Monday, 1=Tuesday, ..., 5=Saturday
+                current_date = week_start_date + timedelta(days=day_offset)
+                day_name = current_date.strftime('%A')
+                
+                # Generate daily content package
+                daily_content = self._generate_daily_content_package(
+                    date=current_date,
+                    day_name=day_name,
+                    season=season,
+                    theme=theme,
+                    holidays=holidays,
+                    week_id=week_id,
+                    blog_post=blog_post
+                )
+                weekly_content.extend(daily_content)
             
             # Save weekly package info
             self._save_weekly_package(week_id, week_start_date, season, holidays, theme)
@@ -351,6 +370,7 @@ class ContentGenerator:
                 'theme': theme,
                 'holidays': [(h[0].isoformat(), h[1], h[2], h[3]) for h in holidays],
                 'content_pieces': len(weekly_content),
+                'content_breakdown': self._get_content_breakdown(weekly_content),
                 'content': [self._content_piece_to_dict(cp) for cp in weekly_content]
             }
             
@@ -361,6 +381,466 @@ class ContentGenerator:
                 'error': str(e)
             }
     
+    def _generate_daily_content_package(self, date: datetime, day_name: str, season: str, 
+                                       theme: str, holidays: List, week_id: str, blog_post: ContentPiece) -> List[ContentPiece]:
+        """Generate all content for a single day"""
+        daily_content = []
+        
+        # Determine daily theme variations
+        daily_themes = {
+            'Monday': 'Week Kickoff & Planning',
+            'Tuesday': 'Tips & Techniques', 
+            'Wednesday': 'Wisdom Wednesday',
+            'Thursday': 'Transformation Thursday',
+            'Friday': 'Feature Friday',
+            'Saturday': 'Weekend Projects'
+        }
+        
+        daily_theme = daily_themes.get(day_name, 'Garden Inspiration')
+        
+        # Holiday context for the day
+        holiday_context = None
+        for holiday_date, holiday_name, gardening_focus, content_theme in holidays:
+            if holiday_date.date() == date.date():
+                holiday_context = f"{holiday_name} - {gardening_focus}"
+                break
+        
+        if not holiday_context:
+            holiday_context = f"{season} gardening - {daily_theme}"
+        
+        # Generate 3 Instagram posts per day
+        instagram_posts = self._generate_platform_posts(
+            platform='instagram',
+            count=3,
+            date=date,
+            day_name=day_name,
+            daily_theme=daily_theme,
+            season=season,
+            holiday_context=holiday_context,
+            week_id=week_id,
+            blog_post=blog_post
+        )
+        daily_content.extend(instagram_posts)
+        
+        # Generate 3 Facebook posts per day  
+        facebook_posts = self._generate_platform_posts(
+            platform='facebook',
+            count=3,
+            date=date,
+            day_name=day_name,
+            daily_theme=daily_theme,
+            season=season,
+            holiday_context=holiday_context,
+            week_id=week_id,
+            blog_post=blog_post
+        )
+        daily_content.extend(facebook_posts)
+        
+        # Generate 1 TikTok video script per day
+        tiktok_post = self._generate_tiktok_video_script(
+            date=date,
+            day_name=day_name,
+            daily_theme=daily_theme,
+            season=season,
+            holiday_context=holiday_context,
+            week_id=week_id,
+            blog_post=blog_post
+        )
+        daily_content.append(tiktok_post)
+        
+        # Generate 1 LinkedIn post per day
+        linkedin_post = self._generate_linkedin_post(
+            date=date,
+            day_name=day_name,
+            daily_theme=daily_theme,
+            season=season,
+            holiday_context=holiday_context,
+            week_id=week_id,
+            blog_post=blog_post
+        )
+        daily_content.append(linkedin_post)
+        
+        return daily_content
+    
+    def _generate_platform_posts(self, platform: str, count: int, date: datetime, day_name: str,
+                                daily_theme: str, season: str, holiday_context: str, 
+                                week_id: str, blog_post: ContentPiece) -> List[ContentPiece]:
+        """Generate multiple posts for a specific platform"""
+        posts = []
+        
+        # Platform-specific posting times
+        platform_times = {
+            'instagram': [9, 13, 17],  # 9am, 1pm, 5pm
+            'facebook': [10, 14, 18],  # 10am, 2pm, 6pm
+        }
+        
+        post_times = platform_times.get(platform, [9, 13, 17])
+        
+        for i in range(count):
+            post_time = date.replace(hour=post_times[i % len(post_times)], minute=0, second=0)
+            
+            # Generate different post types
+            post_types = ['educational_tip', 'product_spotlight', 'community_question', 'seasonal_advice', 'behind_scenes']
+            post_type = post_types[i % len(post_types)]
+            
+            post_content = self._create_platform_specific_post(
+                platform=platform,
+                post_type=post_type,
+                date=date,
+                day_name=day_name,
+                daily_theme=daily_theme,
+                season=season,
+                holiday_context=holiday_context,
+                blog_post=blog_post
+            )
+            
+            content_piece = ContentPiece(
+                id=str(uuid.uuid4()),
+                title=f"{day_name} {platform.title()} Post {i+1} - {post_type.replace('_', ' ').title()}",
+                content=post_content['content'],
+                platform=platform,
+                content_type=f"{platform}_post",
+                status=ContentStatus.DRAFT,
+                scheduled_time=post_time,
+                keywords=blog_post.keywords[:3],
+                hashtags=post_content['hashtags'],
+                image_suggestion=post_content['image_suggestion'],
+                ai_provider="fallback",
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                week_id=week_id,
+                holiday_context=holiday_context
+            )
+            
+            self.db_manager.save_content_piece(content_piece)
+            posts.append(content_piece)
+        
+        return posts
+    
+    def _generate_tiktok_video_script(self, date: datetime, day_name: str, daily_theme: str,
+                                     season: str, holiday_context: str, week_id: str, 
+                                     blog_post: ContentPiece) -> ContentPiece:
+        """Generate TikTok video script"""
+        
+        # TikTok video templates based on day
+        tiktok_templates = {
+            'Monday': {
+                'hook': "POV: You're starting your garden week right 🌱",
+                'content': "Here's your Monday garden motivation! This week we're focusing on {theme}. Quick tip: {tip}. Who's ready to grow something amazing?",
+                'cta': "Save this for your garden planning!"
+            },
+            'Tuesday': {
+                'hook': "The gardening tip that changed everything 🤯",
+                'content': "I wish someone told me this about {season} gardening sooner! {tip}. This simple trick will transform your {season} garden results.",
+                'cta': "Try this and tell me your results!"
+            },
+            'Wednesday': {
+                'hook': "Garden wisdom Wednesday: The secret pros know 🔥",
+                'content': "Here's what professional gardeners do during {season} that beginners miss: {tip}. This one change makes ALL the difference.",
+                'cta': "Which tip surprised you most?"
+            },
+            'Thursday': {
+                'hook': "Transformation Thursday: Garden glow-up time ✨",
+                'content': "Watch how we transform struggling plants with this {season} method! Before vs after results are incredible. {tip}",
+                'cta': "Show me your garden transformations!"
+            },
+            'Friday': {
+                'hook': "Friday feature: This product is a game-changer 🙌",
+                'content': "Why Elm Dirt's {product} is perfect for {season}! Here's exactly how to use it for amazing results. {tip}",
+                'cta': "Link in bio to try it yourself!"
+            },
+            'Saturday': {
+                'hook': "Weekend project that takes 10 minutes 🕐",
+                'content': "Perfect Saturday garden project for {season}! Super easy and your plants will thank you. {tip}",
+                'cta': "Who's trying this weekend?"
+            }
+        }
+        
+        template = tiktok_templates.get(day_name, tiktok_templates['Monday'])
+        
+        # Generate seasonal tips
+        seasonal_tips = {
+            'spring': "Start with healthy soil using Ancient Soil for better root development",
+            'summer': "Water deeply but less frequently, and use Plant Juice to help with heat stress",
+            'fall': "Build soil health now with compost and worm castings for next year's success",
+            'winter': "Focus on houseplants and use this time to plan your best garden yet"
+        }
+        
+        # Generate product mentions
+        products = ['Ancient Soil', 'Plant Juice', 'Bloom Juice', 'Worm Castings']
+        featured_product = random.choice(products)
+        
+        tip = seasonal_tips.get(season, "Focus on soil health as your foundation")
+        
+        script_content = f"""
+        TikTok Video Script - {day_name} {daily_theme}
+        
+        HOOK (0-3 seconds):
+        {template['hook']}
+        
+        CONTENT (3-45 seconds):
+        {template['content'].format(
+            theme=daily_theme,
+            season=season,
+            tip=tip,
+            product=featured_product
+        )}
+        
+        CALL TO ACTION (45-60 seconds):
+        {template['cta']}
+        
+        VISUAL NOTES:
+        - Start with close-up of garden/plants
+        - Show hands demonstrating technique
+        - Before/after shots if applicable
+        - End with product shot or garden result
+        
+        HASHTAGS: #gardentok #organicgardening #elmdirt #{season}gardening #planttok #gardeningtips #growyourown
+        """
+        
+        content_piece = ContentPiece(
+            id=str(uuid.uuid4()),
+            title=f"{day_name} TikTok Video Script - {daily_theme}",
+            content=script_content,
+            platform="tiktok",
+            content_type="video_script",
+            status=ContentStatus.DRAFT,
+            scheduled_time=date.replace(hour=15, minute=0, second=0),  # 3pm
+            keywords=blog_post.keywords[:3],
+            hashtags=['gardentok', 'organicgardening', 'elmdirt', f'{season}gardening', 'planttok', 'gardeningtips'],
+            image_suggestion=f"TikTok video showing {season} gardening technique with Elm Dirt products",
+            ai_provider="fallback",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            week_id=week_id,
+            holiday_context=holiday_context
+        )
+        
+        self.db_manager.save_content_piece(content_piece)
+        return content_piece
+    
+    def _generate_linkedin_post(self, date: datetime, day_name: str, daily_theme: str,
+                               season: str, holiday_context: str, week_id: str, 
+                               blog_post: ContentPiece) -> ContentPiece:
+        """Generate professional LinkedIn post"""
+        
+        linkedin_templates = {
+            'Monday': "Starting the week with insights on sustainable agriculture and organic growing methods that benefit both business and environment...",
+            'Tuesday': "Industry insight: The growing demand for organic gardening solutions reflects a broader shift toward sustainable practices...",
+            'Wednesday': "Mid-week reflection on how small-scale organic gardening principles scale to commercial agriculture...",
+            'Thursday': "The business case for organic growing methods: higher yields, lower long-term costs, and market demand...",
+            'Friday': "Week wrap-up: Key trends in sustainable agriculture and what they mean for growers at every scale...",
+            'Saturday': "Weekend perspective: How home gardening expertise translates to professional growing operations..."
+        }
+        
+        template = linkedin_templates.get(day_name, linkedin_templates['Monday'])
+        
+        # Professional content based on season
+        professional_content = {
+            'spring': "Spring soil preparation investments pay dividends throughout the growing season. Professional growers who focus on soil biology see 20-30% better yields.",
+            'summer': "Summer stress management in crops mirrors water-wise gardening principles. Efficient irrigation and soil health reduce input costs significantly.",
+            'fall': "Fall soil building sets the foundation for next year's success. Commercial operations investing in organic matter see compounding returns.",
+            'winter': "Winter planning season offers time to analyze data and optimize growing strategies. Indoor growing operations maintain year-round productivity."
+        }
+        
+        content = f"""
+        {template}
+        
+        {professional_content.get(season, "Sustainable growing practices benefit operations at every scale.")}
+        
+        Key takeaways from this {season} season:
+        • Soil biology drives long-term profitability
+        • Organic inputs reduce dependency on synthetic alternatives  
+        • Sustainable methods attract premium market pricing
+        • Customer demand for organic products continues growing
+        
+        What sustainable practices are you implementing in your operations this {season}?
+        
+        #SustainableAgriculture #OrganicGrowing #AgBusiness #SoilHealth #RegenerativeAgriculture
+        """
+        
+        content_piece = ContentPiece(
+            id=str(uuid.uuid4()),
+            title=f"{day_name} LinkedIn Post - {daily_theme}",
+            content=content,
+            platform="linkedin",
+            content_type="linkedin_post",
+            status=ContentStatus.DRAFT,
+            scheduled_time=date.replace(hour=11, minute=0, second=0),  # 11am
+            keywords=blog_post.keywords[:3],
+            hashtags=['SustainableAgriculture', 'OrganicGrowing', 'AgBusiness'],
+            image_suggestion=f"Professional image of {season} agricultural/gardening operation",
+            ai_provider="fallback",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            week_id=week_id,
+            holiday_context=holiday_context
+        )
+        
+        self.db_manager.save_content_piece(content_piece)
+        return content_piece
+    
+    def _generate_youtube_outline(self, week_start_date: datetime, season: str, theme: str,
+                                 holidays: List, week_id: str) -> ContentPiece:
+        """Generate 60-minute YouTube video outline"""
+        
+        # Determine video focus
+        if holidays:
+            primary_holiday = holidays[0]
+            video_focus = f"{primary_holiday[1]} - {primary_holiday[2]}"
+            video_title = f"{primary_holiday[1]} Garden Special: {theme} Complete Guide"
+        else:
+            video_focus = f"{season} gardening mastery"
+            video_title = f"Complete {season.title()} Garden Mastery: {theme} (60-Min Deep Dive)"
+        
+        # 60-minute video outline
+        outline_content = f"""
+        YouTube Video Outline - 60 Minutes
+        Title: {video_title}
+        
+        INTRO (0-3 minutes)
+        • Welcome and channel introduction
+        • What viewers will learn in this complete guide
+        • Why {season} gardening matters for {video_focus}
+        • Quick preview of Elm Dirt products we'll discuss
+        
+        SECTION 1: FOUNDATION KNOWLEDGE (3-15 minutes)
+        • Understanding {season} growing conditions
+        • Soil preparation essentials for {season}
+        • Common mistakes to avoid this {season}
+        • Why organic methods work better long-term
+        
+        SECTION 2: SOIL HEALTH DEEP DIVE (15-25 minutes)
+        • The science of living soil
+        • How Ancient Soil transforms your garden
+        • Worm castings: nature's perfect fertilizer
+        • Building soil biology for {season} success
+        • Demonstration: Testing and improving your soil
+        
+        SECTION 3: PLANT NUTRITION MASTERY (25-35 minutes)
+        • Plant Juice: liquid nutrition that works
+        • When and how to feed plants in {season}
+        • Bloom Juice for flowering and fruiting plants
+        • Organic feeding schedules that actually work
+        • Demonstration: Proper application techniques
+        
+        SECTION 4: SEASONAL STRATEGIES (35-45 minutes)
+        • {season.title()}-specific growing techniques
+        • Problem-solving common {season} challenges
+        • Water management for {season} conditions
+        • Pest and disease prevention naturally
+        • Regional considerations across the US
+        
+        SECTION 5: ADVANCED TECHNIQUES (45-55 minutes)
+        • Companion planting for {season}
+        • Succession planting strategies
+        • Container gardening optimization
+        • Greenhouse and indoor growing tips
+        • Scaling up: from hobby to market garden
+        
+        WRAP-UP & Q&A (55-60 minutes)
+        • Key takeaways for {season} success
+        • Viewer questions from comments
+        • Next week's topic preview
+        • Where to find Elm Dirt products
+        • Subscribe and notification bell reminder
+        
+        RESOURCES MENTIONED:
+        • Elm Dirt Ancient Soil
+        • Plant Juice liquid fertilizer
+        • Bloom Juice for flowering plants
+        • Worm Castings
+        • Seasonal planting calendar
+        • Soil testing guide
+        
+        KEYWORDS: {season} gardening, organic fertilizer, soil health, plant nutrition, garden success
+        
+        DESCRIPTION TEMPLATE:
+        "Master {season} gardening with this complete 60-minute guide! Learn professional techniques for soil health, plant nutrition, and seasonal strategies that guarantee better harvests. We'll cover everything from basic soil preparation to advanced growing techniques, featuring proven organic methods and Elm Dirt products that transform gardens naturally. Perfect for both beginners and experienced gardeners wanting to elevate their {season} growing game!"
+        """
+        
+        content_piece = ContentPiece(
+            id=str(uuid.uuid4()),
+            title=video_title,
+            content=outline_content,
+            platform="youtube",
+            content_type="video_outline",
+            status=ContentStatus.DRAFT,
+            scheduled_time=week_start_date.replace(hour=16, minute=0, second=0),  # Monday 4pm
+            keywords=self._get_seasonal_keywords(season)[:5],
+            hashtags=[f'{season}gardening', 'organicgardening', 'elmdirt', 'gardeningtips', 'soilhealth'],
+            image_suggestion=f"YouTube thumbnail showing {season} garden success with Elm Dirt products",
+            ai_provider="fallback",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            week_id=week_id,
+            holiday_context=video_focus
+        )
+        
+        self.db_manager.save_content_piece(content_piece)
+        return content_piece
+    
+    def _create_platform_specific_post(self, platform: str, post_type: str, date: datetime,
+                                      day_name: str, daily_theme: str, season: str, 
+                                      holiday_context: str, blog_post: ContentPiece) -> Dict:
+        """Create platform-specific post content"""
+        
+        # Instagram post templates
+        if platform == 'instagram':
+            if post_type == 'educational_tip':
+                content = f"🌱 {day_name} Garden Wisdom: Here's a {season} tip that transforms gardens! During {season}, focus on soil health first - everything else follows. Ancient Soil provides the foundation your plants crave. What's your biggest {season} gardening question? 💚"
+                
+            elif post_type == 'product_spotlight':
+                content = f"✨ Product Spotlight: Why Plant Juice is perfect for {season}! This liquid organic fertilizer delivers nutrients exactly when your plants need them. Perfect for {season} growing conditions. Results speak for themselves! 🌿"
+                
+            elif post_type == 'community_question':
+                content = f"🤔 {day_name} Question: What's your secret for {season} garden success? We love hearing from our community! Share your best {season} tip below - let's learn from each other. Growing together! 🌻"
+                
+            elif post_type == 'seasonal_advice':
+                content = f"🗓️ {season.title()} Reminder: This is the perfect time for {holiday_context}! Don't miss out on optimal growing conditions. Your future self (and your plants) will thank you! Who's taking action this week? 🚀"
+                
+            elif post_type == 'behind_scenes':
+                content = f"👀 Behind the scenes at Elm Dirt: Creating products that work naturally with {season} growing cycles. Quality ingredients make the difference. From our garden to yours! 💚"
+            
+            hashtags = ['organicgardening', 'elmdirt', 'plantcare', f'{season}gardening', 'gardenlife', 'growyourown', 'sustainablegardening', 'healthysoil', 'gardenlovers', 'plantparent']
+        
+        # Facebook post templates  
+        elif platform == 'facebook':
+            if post_type == 'educational_tip':
+                content = f"Fellow gardeners! {day_name} brings us another opportunity to improve our {season} gardens. Here's something I wish I'd known sooner about {season} gardening: soil health truly is everything. When you invest in quality organic amendments like Ancient Soil, you're setting up success for months to come. What's working best in your {season} garden?"
+                
+            elif post_type == 'product_spotlight':
+                content = f"Let's talk about Plant Juice and why it's become essential for {season} gardening success. This isn't just another fertilizer - it's a complete soil ecosystem in a bottle. The beneficial microbes help plants thrive naturally, especially during {season} growing conditions. Anyone else seeing amazing results?"
+                
+            elif post_type == 'community_question':
+                content = f"Good {day_name}, garden friends! I'd love to hear from our community: what's your biggest {season} gardening challenge this year? Whether it's soil prep, plant selection, or timing, let's help each other succeed. The best tips often come from fellow gardeners who've been there!"
+                
+            elif post_type == 'seasonal_advice':
+                content = f"Perfect timing for {holiday_context}! If you're planning your {season} garden activities, remember that small actions now create big results later. Organic methods might take a little more patience, but the long-term benefits for your soil and plants are incredible. Who's making moves this week?"
+                
+            elif post_type == 'behind_scenes':
+                content = f"A peek behind the curtain: developing Elm Dirt products means understanding exactly what plants need during {season}. Every ingredient is chosen for a reason, tested extensively, and proven to work with nature's timing. Quality isn't accidental - it's intentional."
+            
+            hashtags = ['organicgardening', 'elmdirt', 'sustainablegardening', 'gardenlife', f'{season}gardening']
+        
+        return {
+            'content': content,
+            'hashtags': hashtags,
+            'image_suggestion': f"{season.title()} garden photo featuring {post_type.replace('_', ' ')} for {platform}",
+            'post_type': post_type
+        }
+    
+    def _get_content_breakdown(self, content_pieces: List[ContentPiece]) -> Dict:
+        """Get breakdown of content by platform and type"""
+        breakdown = {}
+        for piece in content_pieces:
+            platform = piece.platform
+            if platform not in breakdown:
+                breakdown[platform] = 0
+            breakdown[platform] += 1
+        return breakdown
+    
+    # Keep all the existing helper methods from the original class
     def _generate_weekly_blog_post(self, week_start_date: datetime, season: str, 
                                   theme: str, holidays: List, week_id: str) -> ContentPiece:
         """Generate the main blog post for the week"""
@@ -384,36 +864,6 @@ class ContentGenerator:
             week_id=week_id,
             theme=theme
         )
-    
-    def _generate_weekly_social_content(self, blog_post: ContentPiece, 
-                                       week_start_date: datetime, season: str, 
-                                       theme: str, holidays: List, week_id: str) -> List[ContentPiece]:
-        """Generate social media content for the week"""
-        social_content = []
-        
-        posting_schedule = [
-            (0, 'instagram', 2),
-            (1, 'facebook', 2),
-            (2, 'instagram', 1),
-            (3, 'linkedin', 1),
-            (4, 'facebook', 1),
-            (5, 'tiktok', 1),
-        ]
-        
-        for day_offset, platform, count in posting_schedule:
-            post_date = week_start_date + timedelta(days=day_offset)
-            
-            social_posts = self._generate_social_posts(
-                blog_post=blog_post,
-                platform=platform,
-                count=count,
-                date=post_date,
-                holiday_context=blog_post.holiday_context or f"{season} gardening",
-                week_id=week_id
-            )
-            social_content.extend(social_posts)
-        
-        return social_content
     
     def _generate_blog_post(self, title: str, keywords: List[str], seasonal_focus: str,
                            holiday_context: str, date: datetime, week_id: str, theme: str) -> ContentPiece:
@@ -444,50 +894,7 @@ class ContentGenerator:
         self.db_manager.save_content_piece(content_piece)
         return content_piece
     
-    def _generate_social_posts(self, blog_post: ContentPiece, platform: str, count: int,
-                              date: datetime, holiday_context: str, week_id: str) -> List[ContentPiece]:
-        """Generate social media posts for a platform"""
-        
-        platform_specs = {
-            'instagram': {'optimal_hours': [11, 15, 19]},
-            'facebook': {'optimal_hours': [12, 15, 18]},
-            'tiktok': {'optimal_hours': [14, 17, 20]},
-            'linkedin': {'optimal_hours': [9, 12, 17]}
-        }
-        
-        specs = platform_specs.get(platform, platform_specs['instagram'])
-        social_posts = []
-        
-        for i in range(count):
-            optimal_hours = specs['optimal_hours']
-            hour = optimal_hours[i % len(optimal_hours)]
-            post_time = date.replace(hour=hour, minute=0, second=0)
-            
-            post_content = self._create_fallback_social_post(platform, blog_post, holiday_context)
-            
-            content_piece = ContentPiece(
-                id=str(uuid.uuid4()),
-                title=f"{platform.title()} Post {i+1} - {post_content['post_type']}",
-                content=post_content['content'],
-                platform=platform,
-                content_type=f"{platform}_post",
-                status=ContentStatus.DRAFT,
-                scheduled_time=post_time,
-                keywords=blog_post.keywords,
-                hashtags=post_content['hashtags'],
-                image_suggestion=post_content['image_suggestion'],
-                ai_provider="fallback",
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-                week_id=week_id,
-                holiday_context=holiday_context
-            )
-            
-            self.db_manager.save_content_piece(content_piece)
-            social_posts.append(content_piece)
-        
-        return social_posts
-    
+    # Include all the other existing helper methods...
     def _generate_holiday_title(self, holiday: Tuple, season: str, date: datetime) -> str:
         """Generate holiday-specific title"""
         holiday_date, holiday_name, gardening_focus, content_theme = holiday
