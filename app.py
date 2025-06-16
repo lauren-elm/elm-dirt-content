@@ -1397,7 +1397,7 @@ shopify_manager = ShopifyManager()
 @app.route('/')
 def home():
     """Enhanced home page with date selection and preview functionality"""
-    return render_template_string('''
+    return render_template_string("""
 <!DOCTYPE html>
 <html>
 <head>
@@ -1534,6 +1534,469 @@ def home():
             height: 20px;
             border: 3px solid #f3f3f3;
             border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌱 Elm Dirt Content Automation Platform</h1>
+        <p>Generate seasonal content with 6 daily blog posts, social media content, and video scripts</p>
+    </div>
+    
+    <div class="control-panel">
+        <h2>Content Generation</h2>
+        
+        <div class="date-section">
+            <div class="date-input-group">
+                <h3>📅 Generate for Specific Date</h3>
+                <p>Select any date to generate content for that specific day, or select a Monday to generate content for the entire week.</p>
+                <input type="date" id="specificDate" />
+                <button class="btn" onclick="generateForDate()" id="dateBtn">
+                    Generate Content
+                </button>
+            </div>
+            
+            <div class="date-input-group">
+                <h3>📆 Quick Actions</h3>
+                <button class="btn" onclick="generateToday()">Generate Today's Content</button>
+                <button class="btn" onclick="generateThisWeek()">Generate This Week</button>
+                <button class="btn" onclick="generateNextWeek()">Generate Next Week</button>
+                <button class="btn" onclick="viewExistingContent()" style="background: #6f42c1;">View Existing Content</button>
+            </div>
+        </div>
+        
+        <div id="holidayInfo" class="warning" style="display: none;">
+            <strong>🎉 Holiday Detection:</strong> <span id="holidayText"></span>
+        </div>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="results-grid" id="resultsGrid" style="display: none;">
+        <div class="content-summary">
+            <h3>📊 Content Summary</h3>
+            <div id="summaryContent"></div>
+        </div>
+        
+        <div class="content-preview">
+            <h3>👁️ Content Preview</h3>
+            <div id="previewContent"></div>
+        </div>
+    </div>
+    
+    <!-- Modal for content preview -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('specificDate');
+            if (dateInput) {
+                dateInput.valueAsDate = new Date();
+                checkForHolidays(dateInput.value);
+                
+                dateInput.addEventListener('change', function() {
+                    checkForHolidays(this.value);
+                });
+            }
+        });
+        
+        let generatedContent = [];
+        
+        function checkForHolidays(dateString) {
+            if (!dateString) return;
+            
+            const date = new Date(dateString);
+            const holidays = {
+                '01-01': 'New Year - Garden Planning & Resolutions',
+                '02-14': 'Valentine Day - Flowering Plants & Love for Gardening',
+                '03-17': 'St. Patrick Day - Green Plants & Irish Garden Traditions',
+                '03-20': 'Spring Equinox - Spring Awakening & Soil Preparation',
+                '04-22': 'Earth Day - Sustainable Gardening & Environmental Stewardship',
+                '05-01': 'May Day - Spring Planting & Garden Celebrations',
+                '05-08': 'Mother Day Week - Garden Gifts & Family Gardening',
+                '05-30': 'Memorial Day - Summer Garden Prep & Remembrance Gardens',
+                '06-21': 'Summer Solstice - Peak Growing Season & Plant Care',
+                '07-04': 'Independence Day - Summer Garden Maintenance & Patriotic Plants',
+                '08-15': 'National Relaxation Day - Peaceful Garden Spaces',
+                '09-22': 'Fall Equinox - Harvest Time & Winter Preparation',
+                '10-31': 'Halloween - Fall Garden Cleanup & Decorative Plants',
+                '11-11': 'Veterans Day - Remembrance Gardens & Hardy Plants',
+                '11-24': 'Thanksgiving Week - Gratitude for Harvest & Garden Reflection',
+                '12-21': 'Winter Solstice - Garden Planning & Indoor Plant Care',
+                '12-25': 'Christmas - Holiday Plants & Winter Care'
+            };
+            
+            const monthDay = String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+            const holidayInfo = document.getElementById('holidayInfo');
+            const holidayText = document.getElementById('holidayText');
+            
+            if (holidays[monthDay] && holidayInfo && holidayText) {
+                holidayText.textContent = holidays[monthDay];
+                holidayInfo.style.display = 'block';
+            } else if (holidayInfo) {
+                holidayInfo.style.display = 'none';
+            }
+        }
+        
+        async function generateForDate() {
+            console.log('generateForDate called');
+            const dateInput = document.getElementById('specificDate');
+            if (!dateInput || !dateInput.value) {
+                alert('Please select a date first');
+                return;
+            }
+            const date = new Date(dateInput.value);
+            await generateContentForDate(date);
+        }
+        
+        async function generateToday() {
+            console.log('generateToday called');
+            await generateContentForDate(new Date());
+        }
+        
+        async function generateThisWeek() {
+            console.log('generateThisWeek called');
+            const today = new Date();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - today.getDay() + 1);
+            await generateContentForDate(monday);
+        }
+        
+        async function generateNextWeek() {
+            console.log('generateNextWeek called');
+            const today = new Date();
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() - today.getDay() + 8);
+            await generateContentForDate(nextMonday);
+        }
+        
+        async function generateContentForDate(date) {
+            console.log('generateContentForDate called with:', date);
+            
+            const status = document.getElementById('status');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const dateBtn = document.getElementById('dateBtn');
+            
+            if (!status) {
+                console.error('Status element not found');
+                return;
+            }
+            
+            if (dateBtn) {
+                dateBtn.disabled = true;
+                dateBtn.innerHTML = '<span class="loading"></span> Generating...';
+            }
+            
+            status.innerHTML = '<div class="info">🤖 Generating content... This may take a few minutes.</div>';
+            if (resultsGrid) {
+                resultsGrid.style.display = 'none';
+            }
+            
+            try {
+                console.log('Making API call...');
+                const response = await fetch('/api/generate-content-for-date', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_date: date.toISOString() })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    generatedContent = data.content || [];
+                    displayResults(data);
+                    status.innerHTML = '<div class="success">✅ Content generated successfully!</div>';
+                } else {
+                    status.innerHTML = '<div class="error">❌ Error: ' + (data.error || 'Unknown error') + '</div>';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                status.innerHTML = '<div class="error">❌ Network error: ' + error.message + '</div>';
+            } finally {
+                if (dateBtn) {
+                    dateBtn.disabled = false;
+                    dateBtn.innerHTML = 'Generate Content';
+                }
+            }
+        }
+        
+        function displayResults(data) {
+            console.log('displayResults called with:', data);
+            
+            const resultsGrid = document.getElementById('resultsGrid');
+            const summaryContent = document.getElementById('summaryContent');
+            const previewContent = document.getElementById('previewContent');
+            
+            if (!resultsGrid || !summaryContent || !previewContent) {
+                console.error('Required elements not found for displaying results');
+                return;
+            }
+            
+            var summaryHtml = '<p><strong>📅 Date/Week:</strong> ' + (data.week_start_date ? new Date(data.week_start_date).toLocaleDateString() : new Date(data.date).toLocaleDateString()) + '</p>';
+            summaryHtml += '<p><strong>🎭 Theme:</strong> ' + (data.theme || 'N/A') + '</p>';
+            summaryHtml += '<p><strong>🌸 Season:</strong> ' + (data.season || 'N/A') + '</p>';
+            summaryHtml += '<p><strong>📝 Content Pieces:</strong> ' + (data.content_pieces || 0) + '</p>';
+            summaryHtml += '<p><strong>🤖 AI Provider:</strong> ' + (data.ai_provider || 'fallback') + '</p>';
+            summaryHtml += '<h4>Content Breakdown:</h4><ul>';
+            
+            if (data.content_breakdown) {
+                Object.entries(data.content_breakdown).forEach(function([platform, count]) {
+                    summaryHtml += '<li>' + platform + ': ' + count + ' pieces</li>';
+                });
+            }
+            summaryHtml += '</ul>';
+            
+            if (data.holidays && data.holidays.length > 0) {
+                summaryHtml += '<h4>🎉 Holidays This Week:</h4><ul>';
+                data.holidays.forEach(function([date, name, focus, theme]) {
+                    summaryHtml += '<li><strong>' + name + '</strong> - ' + focus + '</li>';
+                });
+                summaryHtml += '</ul>';
+            }
+            
+            summaryContent.innerHTML = summaryHtml;
+            
+            if (data.content && data.content.length > 0) {
+                var previewHtml = '';
+                data.content.forEach(function(content) {
+                    previewHtml += '<div class="content-item">';
+                    previewHtml += '<h4>' + content.platform.toUpperCase() + ': ' + content.title + '</h4>';
+                    previewHtml += '<p><strong>Type:</strong> ' + content.content_type + '</p>';
+                    previewHtml += '<p><strong>Scheduled:</strong> ' + (content.scheduled_time ? new Date(content.scheduled_time).toLocaleString() : 'Not scheduled') + '</p>';
+                    if (content.seo_score) {
+                        previewHtml += '<p><strong>SEO Score:</strong> ' + content.seo_score + '/100</p>';
+                    }
+                    previewHtml += '<button class="preview-btn" onclick="previewContent(\'' + content.id + '\')">👁️ Preview</button>';
+                    if (content.platform === 'blog') {
+                        previewHtml += '<button class="preview-btn" onclick="publishContent(\'' + content.id + '\')" style="background: #28a745;">🚀 Publish to Shopify</button>';
+                    }
+                    previewHtml += '</div>';
+                });
+                previewContent.innerHTML = previewHtml;
+            } else {
+                previewContent.innerHTML = '<p>No content generated</p>';
+            }
+            
+            resultsGrid.style.display = 'grid';
+        }
+        
+        async function previewContent(contentId) {
+            console.log('previewContent called with:', contentId);
+            
+            try {
+                const response = await fetch('/api/content/' + contentId);
+                const content = await response.json();
+                
+                if (content.error) {
+                    alert('Error loading content: ' + content.error);
+                    return;
+                }
+                
+                const modal = document.getElementById('contentModal');
+                const modalContent = document.getElementById('modalContent');
+                
+                if (!modal || !modalContent) {
+                    console.error('Modal elements not found');
+                    return;
+                }
+                
+                var modalHtml = '<h2>' + content.title + '</h2>';
+                modalHtml += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0;">';
+                modalHtml += '<strong>Platform:</strong> ' + content.platform + ' | ';
+                modalHtml += '<strong>Type:</strong> ' + content.content_type + ' | ';
+                modalHtml += '<strong>Status:</strong> ' + content.status;
+                if (content.seo_score) {
+                    modalHtml += ' | <strong>SEO Score:</strong> ' + content.seo_score + '/100';
+                }
+                modalHtml += '</div>';
+                
+                if (content.meta_description) {
+                    modalHtml += '<div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0;">';
+                    modalHtml += '<strong>Meta Description:</strong> ' + content.meta_description;
+                    modalHtml += '</div>';
+                }
+                
+                if (content.keywords && content.keywords.length > 0) {
+                    modalHtml += '<div style="background: #f3e5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">';
+                    modalHtml += '<strong>Keywords:</strong> ' + content.keywords.join(', ');
+                    modalHtml += '</div>';
+                }
+                
+                if (content.image_suggestions && content.image_suggestions.length > 0) {
+                    modalHtml += '<div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 10px 0;">';
+                    modalHtml += '<strong>Suggested Images:</strong><ul>';
+                    content.image_suggestions.forEach(function(img) {
+                        modalHtml += '<li>' + img + '</li>';
+                    });
+                    modalHtml += '</ul></div>';
+                }
+                
+                modalHtml += '<div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0;">';
+                modalHtml += '<h3>Content:</h3>';
+                if (content.platform === 'blog') {
+                    modalHtml += content.content;
+                } else {
+                    modalHtml += '<pre style="white-space: pre-wrap; font-family: inherit;">' + content.content + '</pre>';
+                }
+                modalHtml += '</div>';
+                
+                if (content.hashtags && content.hashtags.length > 0) {
+                    modalHtml += '<div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0;">';
+                    modalHtml += '<strong>Hashtags:</strong> ' + content.hashtags.join(' ');
+                    modalHtml += '</div>';
+                }
+                
+                modalContent.innerHTML = modalHtml;
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        async function publishContent(contentId) {
+            console.log('publishContent called with:', contentId);
+            
+            if (!confirm('Are you sure you want to publish this content to Shopify?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/publish/' + contentId, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Content published successfully to Shopify!');
+                } else {
+                    alert('❌ Error publishing content: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error publishing content:', error);
+                alert('❌ Network error: ' + error.message);
+            }
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('contentModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById('contentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        async function viewExistingContent() {
+            console.log('viewExistingContent called');
+            
+            const startDate = prompt('Enter start date (YYYY-MM-DD):');
+            const endDate = prompt('Enter end date (YYYY-MM-DD):');
+            
+            if (!startDate || !endDate) return;
+            
+            try {
+                const response = await fetch('/api/content-by-date-range?start=' + startDate + '&end=' + endDate);
+                const content = await response.json();
+                
+                if (content.length === 0) {
+                    alert('No content found for the specified date range.');
+                    return;
+                }
+                
+                const previewContent = document.getElementById('previewContent');
+                const summaryContent = document.getElementById('summaryContent');
+                const resultsGrid = document.getElementById('resultsGrid');
+                
+                if (previewContent && summaryContent && resultsGrid) {
+                    var previewHtml = '';
+                    content.forEach(function(item) {
+                        previewHtml += '<div class="content-item">';
+                        previewHtml += '<h4>' + item.platform.toUpperCase() + ': ' + item.title + '</h4>';
+                        previewHtml += '<p><strong>Type:</strong> ' + item.content_type + '</p>';
+                        previewHtml += '<p><strong>Status:</strong> ' + item.status + '</p>';
+                        previewHtml += '<p><strong>Scheduled:</strong> ' + (item.scheduled_time ? new Date(item.scheduled_time).toLocaleString() : 'Not scheduled') + '</p>';
+                        previewHtml += '<button class="preview-btn" onclick="previewContent(\'' + item.id + '\')">👁️ Preview</button>';
+                        previewHtml += '</div>';
+                    });
+                    previewContent.innerHTML = previewHtml;
+                    
+                    summaryContent.innerHTML = '<h4>Found ' + content.length + ' pieces of content</h4><p>Date range: ' + startDate + ' to ' + endDate + '</p>';
+                    resultsGrid.style.display = 'grid';
+                }
+            } catch (error) {
+                console.error('Error loading content:', error);
+                alert('Error loading content: ' + error.message);
+            }
+        }
+        
+        console.log('JavaScript loaded successfully');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, testing button functionality...');
+            
+            const buttons = ['dateBtn', 'specificDate'];
+            buttons.forEach(function(id) {
+                const element = document.getElementById(id);
+                if (element) {
+                    console.log('✅ ' + id + ' button found');
+                } else {
+                    console.error('❌ ' + id + ' button NOT found');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    """)-top: 3px solid #4CAF50;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -2679,8 +3142,6 @@ def test_endpoint():
         'timestamp': datetime.now().isoformat(),
         'claude_available': content_generator.claude_client is not None
     })
-
-@app.route('/api/generate-content-for-date', methods=['POST'])
 def api_generate_content_for_date():
     """API endpoint to generate content for a specific date"""
     try:
