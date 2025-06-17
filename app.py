@@ -3152,17 +3152,22 @@ def export_page():
             function exportContent() {
                 const dateInput = document.getElementById('exportDate');
                 const dateStr = dateInput.value;
-                const selectedDate = new Date(dateStr + 'T12:00:00'); // Fix timezone issue
+    
+                if (!dateStr) {
+                    showError('Please select a date first');
+                    return;
+                }
+    
+                const selectedDate = new Date(dateStr + 'T12:00:00');
                 const dayOfWeek = selectedDate.getDay();
     
                 showLoading(true);
                 hideError();
-                
-                // Determine if it's a weekly or daily export
-                const isWeekly = dayOfWeek === 1; // Monday = weekly
+    
+                const isWeekly = dayOfWeek === 1;
                 const exportType = isWeekly ? 'weekly' : 'daily';
     
-                console.log('Exporting:', {
+                console.log('Starting export:', {
                     date: dateStr,
                     dayOfWeek: dayOfWeek,
                     exportType: exportType
@@ -3170,47 +3175,95 @@ def export_page():
              
             
                 
-                 // Call your content generation API
-                fetch('/api/generate-content', {
-                   method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                    date: dateStr,
-                    type: exportType,
-                    day_of_week: dayOfWeek
-                })
-            })
-           .then(response => response.json())
-           .then(data => {
-                console.log('Content generation response:', data);
-                if (data.success) {
-                    // Content generated successfully, now open export interface
-                    return fetch('/api/export/copy-paste', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            content_pieces: data.content_pieces,
-                            week_id: data.week_id || dateStr,
-                            export_type: exportType
-                        })
-                    });
-                } else {
-                    throw new Error(data.error || 'Failed to generate content');
-                }
-            })
-            .then(response => response.text())
-            .then(html => {
-                showLoading(false);
-                const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
-                newWindow.document.write(html);
-                newWindow.document.close();
-            })
-            .catch(error => {
-                showLoading(false);
-                showError('Error generating content: ' + error.message);
-                console.error('Error:', error);
-            });
+                 // Call content generation API
+    fetch('/api/generate-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            date: dateStr,
+            type: exportType,
+            day_of_week: dayOfWeek
+        })
+    })
+    .then(response => {
+        console.log('Generate content response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Content generation response:', data);
+        
+        if (!data) {
+            throw new Error('No data received from server');
+        }
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Content generation failed');
+        }
+        
+        if (!data.content_pieces || !Array.isArray(data.content_pieces)) {
+            throw new Error('Invalid content pieces received');
+        }
+        
+        console.log(`Received ${data.content_pieces.length} content pieces`);
+
+        // Open copy-paste interface
+        return fetch('/api/export/copy-paste', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                content_pieces: data.content_pieces,
+                week_id: data.week_id || dateStr,
+                export_type: exportType
+            })
+        });
+    })
+    .then(response => {
+        console.log('Export interface response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Export interface error: HTTP ${response.status}`);
+        }
+        
+        return response.text();
+    })
+    .then(html => {
+        console.log('Received HTML response, opening window...');
+        showLoading(false);
+        
+        if (!html || html.trim().length === 0) {
+            throw new Error('Empty HTML response received');
+        }
+        
+        // Open the copy-paste interface
+        const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
+        
+        if (!newWindow) {
+            throw new Error('Failed to open new window - popup blocker may be active');
+        }
+        
+        newWindow.document.write(html);
+        newWindow.document.close();
+        
+        console.log('Successfully opened copy-paste interface');
+    })
+    .catch(error => {
+        console.error('Export error:', error);
+        showLoading(false);
+        showError('Error generating content: ' + error.message);
+        
+        // Additional debugging info
+        console.log('Full error details:', {
+            error: error,
+            stack: error.stack,
+            message: error.message
+        });
+    });
+}
             
             function testExportInterface() {
                 showLoading(true);
