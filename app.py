@@ -537,113 +537,535 @@ class ContentGenerator:
         day_themes = daily_blog_themes.get(day_name, daily_blog_themes['Monday'])
         return random.choice(day_themes)
     
-    def _generate_blog_with_claude(self, title: str, keywords: List[str], season: str, holiday_context: str) -> str:
-        """Generate blog post using Claude API"""
-        
-        prompt = f"""Generate an SEO-optimized blog article for the title '{title}' for my ecommerce Shopify store, aiming to boost organic search rankings and conversions.
-
-**Article Requirements:**
-- Write a 700-1000 word article following SEO best practices
-- Target audience: 50+ year old home gardeners across the US
-- Use colloquial tone that works for experienced gardeners
-- Include primary keyword '{keywords[0]}' at 1-2% density (5-7 times)
-- Integrate secondary keywords naturally: {', '.join(keywords[1:3])}
-- Include semantic variations and gardening terminology
-
-**Content Structure:**
-- H1 for title
-- H2 for 3-4 main sections
-- Introduction (100-150 words)
-- Body sections with practical advice
-- Conclusion with clear call-to-action
-
-**Brand Integration:**
-- Naturally mention Elm Dirt products (Ancient Soil, Plant Juice, Bloom Juice, Worm Castings)
-- Focus on organic, sustainable gardening methods
-- Emphasize soil health and microbe-rich growing
-- Include seasonal context for {season} and {holiday_context}
-
-**Technical Requirements:**
-- Output in clean HTML format suitable for Shopify blog
-- Use proper HTML tags (h1, h2, p, ul, li, strong, em)
-- Include natural keyword placement
-- Write for readability and engagement
-
-**Output Format:**
-Provide the complete HTML article ready for Shopify, starting with the H1 title tag."""
-
-        try:
-            response = self.claude_client.generate_content(prompt, max_tokens=4000)
-            if response:
-                return response
-            else:
-                logger.warning("Claude API returned empty response, using fallback")
-                return self._generate_fallback_blog_html(title, keywords, season, holiday_context)
-        except Exception as e:
-            logger.error(f"Error generating blog with Claude: {str(e)}")
-            return self._generate_fallback_blog_html(title, keywords, season, holiday_context)
+    def generate_blog_with_claude(blog_title, seasonal_context):
+    """Generate visually appealing blog post with schema and images"""
     
-    def _generate_fallback_blog_html(self, title: str, keywords: List[str], season: str, holiday_context: str) -> str:
-        """Generate fallback blog content in HTML format"""
-        primary_keyword = keywords[0] if keywords else 'organic gardening'
+    prompt = f"""Write a comprehensive, visually appealing blog article titled "{blog_title}"
+
+CONTEXT:
+- Season: {seasonal_context['season']}
+- Month: {seasonal_context['month']}
+- Company: Elm Dirt - Premium organic soil amendments
+- Target: Home gardeners aged 35-65
+
+CONTENT REQUIREMENTS:
+- 1200-1800 words minimum
+- Engaging, expert but approachable tone
+- Include practical, actionable advice
+- Naturally mention Elm Dirt products where relevant:
+  * Ancient Soil: Premium blend with worm castings, biochar, sea kelp
+  * Plant Juice: 250+ beneficial microorganisms
+  * Bloom Juice: Specialized for flowering plants
+
+HTML FORMATTING REQUIREMENTS:
+- Use proper HTML structure with semantic tags
+- Include engaging introduction (2-3 paragraphs)
+- 4-5 main sections with descriptive H2 headings
+- 2-3 subsections with H3 headings under each main section
+- Use bullet points (ul/li) for lists and tips
+- Include informative paragraphs with <p> tags
+- Add emphasis with <strong> and <em> tags where appropriate
+- Include a compelling conclusion with actionable next steps
+
+VISUAL ENHANCEMENT:
+- Write descriptive headings that are engaging and SEO-friendly
+- Include specific numbers, tips, and actionable advice
+- Use compelling subheadings that make readers want to continue
+- Add calls-to-action throughout the content
+- Include seasonal timing and specific recommendations
+
+SEO OPTIMIZATION:
+- Use the main keyword "{blog_title.lower()}" naturally throughout
+- Include related {seasonal_context['season']} gardening keywords
+- Write compelling meta descriptions within content
+- Use descriptive, keyword-rich headings
+
+FORMAT: Return only the HTML content with proper tags, starting with an H1 for the title."""
+
+    try:
+        print(f"Generating enhanced blog content for: {blog_title}")
         
-        return f"""<h1>{title}</h1>
+        # Call Claude API
+        blog_response = make_direct_claude_call(prompt)
+        
+        if blog_response and len(blog_response) > 1000:
+            # Claude worked and returned substantial content
+            parsed_blog = parse_enhanced_blog_response(blog_response, blog_title, seasonal_context)
+            print(f"Successfully generated enhanced blog ({len(blog_response)} chars)")
+            return parsed_blog
+        
+        # Fallback if Claude fails
+        print("Claude API failed, using enhanced fallback")
+        return get_enhanced_fallback_blog(blog_title, seasonal_context)
+        
+    except Exception as e:
+        print(f"Error in enhanced blog generation: {e}")
+        return get_enhanced_fallback_blog(blog_title, seasonal_context)
 
-<p>Welcome to another helpful guide from Elm Dirt! As experienced gardeners know, mastering <strong>{primary_keyword}</strong> during {season} is essential for long-term garden success. Today we're focusing on {holiday_context} and how organic methods can transform your garden experience.</p>
+def parse_enhanced_blog_response(claude_response, original_title, seasonal_context):
+    """Parse blog response and add schema + image suggestions"""
+    try:
+        # Clean and enhance the HTML content
+        content = claude_response.strip()
+        
+        # Ensure it starts with H1 if not already
+        if not content.startswith('<h1>'):
+            content = f"<h1>{original_title}</h1>\n{content}"
+        
+        # Generate image suggestions based on content
+        image_suggestions = generate_image_suggestions(original_title, content, seasonal_context)
+        
+        # Generate schema markup
+        schema_markup = generate_blog_schema(original_title, content, seasonal_context)
+        
+        # Generate meta description from content
+        meta_description = extract_meta_description(content, original_title, seasonal_context)
+        
+        # Generate keywords
+        keywords = extract_enhanced_keywords(original_title, content, seasonal_context)
+        
+        # Add enhanced content with image placeholders
+        enhanced_content = add_image_placeholders_to_content(content, image_suggestions)
+        
+        return {
+            'title': original_title,
+            'content': enhanced_content,
+            'meta_description': meta_description,
+            'keywords': keywords,
+            'schema_markup': schema_markup,
+            'image_suggestions': image_suggestions,
+            'word_count': len(content.split()),
+            'reading_time': f"{len(content.split()) // 200 + 1} min read"
+        }
+        
+    except Exception as e:
+        print(f"Error parsing enhanced blog response: {e}")
+        return get_enhanced_fallback_blog(original_title, seasonal_context)
 
-<h2>Understanding {primary_keyword.title()} for {season.title()} Success</h2>
+def generate_image_suggestions(title, content, seasonal_context):
+    """Generate specific image suggestions for the blog post"""
+    season = seasonal_context.get('season', 'spring')
+    
+    # Analyze content for image opportunities
+    image_suggestions = []
+    
+    # Hero image (always needed)
+    image_suggestions.append({
+        'position': 'hero',
+        'description': f"Hero image showcasing {title.lower()} - wide shot of a thriving {season} garden with healthy soil and vibrant plants",
+        'alt_text': f"{title} - {season} garden with healthy soil",
+        'style': 'landscape',
+        'priority': 'high'
+    })
+    
+    # Look for specific content that needs images
+    if 'soil' in content.lower():
+        image_suggestions.append({
+            'position': 'section_1',
+            'description': f"Close-up photo of rich, dark soil with visible organic matter and worm castings - hands holding healthy soil",
+            'alt_text': 'Healthy organic garden soil with rich texture',
+            'style': 'close-up',
+            'priority': 'high'
+        })
+    
+    if 'plant' in content.lower() or 'vegetable' in content.lower():
+        image_suggestions.append({
+            'position': 'section_2', 
+            'description': f"Vibrant {season} vegetables growing in garden beds - showing healthy plant growth and development",
+            'alt_text': f'{season.title()} vegetables growing in organic garden',
+            'style': 'medium shot',
+            'priority': 'medium'
+        })
+    
+    if 'compost' in content.lower() or 'organic matter' in content.lower():
+        image_suggestions.append({
+            'position': 'section_3',
+            'description': "Compost pile or bin showing decomposing organic matter, with finished compost in foreground",
+            'alt_text': 'Organic compost pile with finished compost',
+            'style': 'process shot',
+            'priority': 'medium'
+        })
+    
+    # Product images if mentioned
+    if 'ancient soil' in content.lower():
+        image_suggestions.append({
+            'position': 'product_mention',
+            'description': "Elm Dirt Ancient Soil product bag with soil spilling out, showing rich texture and quality",
+            'alt_text': 'Elm Dirt Ancient Soil organic amendment',
+            'style': 'product shot',
+            'priority': 'high'
+        })
+    
+    if 'plant juice' in content.lower():
+        image_suggestions.append({
+            'position': 'product_mention_2',
+            'description': "Elm Dirt Plant Juice bottle being used in garden - person applying to plants",
+            'alt_text': 'Elm Dirt Plant Juice organic fertilizer application',
+            'style': 'action shot',
+            'priority': 'medium'
+        })
+    
+    # Seasonal specific images
+    seasonal_images = {
+        'spring': {
+            'description': "Early spring garden preparation - raised beds being prepared with tools and soil amendments",
+            'alt_text': 'Spring garden preparation and soil amendment',
+            'style': 'wide shot'
+        },
+        'summer': {
+            'description': "Lush summer garden at peak growth with abundant vegetables and flowers",
+            'alt_text': 'Thriving summer organic garden with abundant growth',
+            'style': 'wide shot'
+        },
+        'fall': {
+            'description': "Fall garden harvest with baskets of vegetables and autumn colors",
+            'alt_text': 'Fall garden harvest with seasonal vegetables',
+            'style': 'harvest shot'
+        },
+        'winter': {
+            'description': "Winter garden protection with covered beds and cold frames",
+            'alt_text': 'Winter garden protection and season extension',
+            'style': 'protective shot'
+        }
+    }
+    
+    if season in seasonal_images:
+        image_suggestions.append({
+            'position': 'seasonal',
+            **seasonal_images[season],
+            'priority': 'medium'
+        })
+    
+    return image_suggestions
 
-<p>For home gardeners who've been working the soil for years, you know that {primary_keyword} isn't just about quick fixes—it's about building something that lasts. During {season}, your garden needs specific care that honors both the season's demands and nature's timing.</p>
+def generate_blog_schema(title, content, seasonal_context):
+    """Generate JSON-LD schema markup for SEO"""
+    from datetime import datetime
+    
+    # Extract first paragraph for description
+    description = extract_meta_description(content, title, seasonal_context)
+    
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": title,
+        "description": description,
+        "image": [
+            "https://elmdirt.com/images/blog/soil-health-hero.jpg",
+            "https://elmdirt.com/images/blog/organic-garden-wide.jpg",
+            "https://elmdirt.com/images/blog/healthy-plants-growing.jpg"
+        ],
+        "author": {
+            "@type": "Organization",
+            "name": "Elm Dirt",
+            "url": "https://elmdirt.com",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://elmdirt.com/images/elm-dirt-logo.png"
+            }
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Elm Dirt",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://elmdirt.com/images/elm-dirt-logo.png"
+            }
+        },
+        "datePublished": datetime.now().strftime('%Y-%m-%d'),
+        "dateModified": datetime.now().strftime('%Y-%m-%d'),
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": f"https://elmdirt.com/blogs/garden-tips/{title.lower().replace(' ', '-')}"
+        },
+        "articleSection": "Gardening Tips",
+        "keywords": extract_enhanced_keywords(title, content, seasonal_context),
+        "wordCount": len(content.split()),
+        "inLanguage": "en-US",
+        "isFamilyFriendly": True,
+        "audience": {
+            "@type": "Audience",
+            "audienceType": "Gardeners"
+        }
+    }
+    
+    return schema
 
-<p>The key is working with what you've got while improving it naturally. That's where <em>sustainable practices</em> really shine. Instead of fighting against your soil and plants, you're building them up from the ground up.</p>
+def add_image_placeholders_to_content(content, image_suggestions):
+    """Add image placeholders throughout the blog content"""
+    
+    # Add hero image after H1
+    if '<h1>' in content:
+        hero_img = next((img for img in image_suggestions if img['position'] == 'hero'), None)
+        if hero_img:
+            hero_html = f"""
+<div class="blog-image hero-image">
+    <img src="/images/placeholder-{hero_img['style']}.jpg" alt="{hero_img['alt_text']}" loading="lazy" />
+    <p class="image-caption">📸 Suggested: {hero_img['description']}</p>
+</div>
+"""
+            content = content.replace('</h1>', f"</h1>\n{hero_html}")
+    
+    # Add section images after H2 headings
+    h2_count = 0
+    for img in image_suggestions:
+        if img['position'].startswith('section_'):
+            section_num = int(img['position'].split('_')[1]) if '_' in img['position'] else 1
+            
+            # Find the Nth H2 tag
+            h2_positions = []
+            temp_content = content
+            pos = 0
+            while True:
+                h2_pos = temp_content.find('<h2>', pos)
+                if h2_pos == -1:
+                    break
+                h2_positions.append(h2_pos + pos)
+                pos = h2_pos + 4
+                temp_content = temp_content[h2_pos + 4:]
+            
+            if len(h2_positions) >= section_num:
+                # Find the end of this H2 section
+                h2_end = content.find('</h2>', h2_positions[section_num - 1])
+                next_h2 = content.find('<h2>', h2_end) if h2_end != -1 else len(content)
+                
+                # Add image after first paragraph of this section
+                section_content = content[h2_end:next_h2] if h2_end != -1 else content[h2_positions[section_num - 1]:]
+                first_p_end = section_content.find('</p>')
+                
+                if first_p_end != -1:
+                    image_html = f"""
+<div class="blog-image section-image">
+    <img src="/images/placeholder-{img['style']}.jpg" alt="{img['alt_text']}" loading="lazy" />
+    <p class="image-caption">📸 Suggested: {img['description']}</p>
+</div>
+"""
+                    insert_pos = h2_end + first_p_end + 4
+                    content = content[:insert_pos] + image_html + content[insert_pos:]
+    
+    return content
 
-<h3>The Elm Dirt Approach to {season.title()} Gardening</h3>
+def extract_meta_description(content, title, seasonal_context):
+    """Extract or generate compelling meta description"""
+    # Try to get first paragraph
+    first_p_start = content.find('<p>')
+    if first_p_start != -1:
+        first_p_end = content.find('</p>', first_p_start)
+        if first_p_end != -1:
+            first_paragraph = content[first_p_start + 3:first_p_end].strip()
+            # Clean up any HTML tags
+            import re
+            clean_text = re.sub(r'<[^>]+>', '', first_paragraph)
+            if len(clean_text) > 50:
+                return clean_text[:157] + "..." if len(clean_text) > 157 else clean_text
+    
+    # Fallback meta description
+    season = seasonal_context.get('season', 'spring')
+    return f"Expert guide to {title.lower()} with proven organic methods for {season} gardening success. Get actionable tips for healthy soil and thriving plants."
 
-<p>Our products like <strong>Ancient Soil</strong> and <strong>Plant Juice</strong> work because they respect what experienced gardeners already know—healthy soil creates healthy plants. These organic solutions provide the beneficial microbes and nutrients your plants need, especially important during {holiday_context}.</p>
+def extract_enhanced_keywords(title, content, seasonal_context):
+    """Extract comprehensive SEO keywords"""
+    import re
+    
+    season = seasonal_context.get('season', 'spring')
+    
+    # Base keywords
+    base_keywords = [
+        f"{season} gardening",
+        "organic gardening", 
+        "soil health",
+        "garden tips",
+        "plant care"
+    ]
+    
+    # Extract from title
+    title_words = re.findall(r'\b[a-zA-Z]{4,}\b', title.lower())
+    title_keywords = [word for word in title_words if word not in ['garden', 'gardening', 'guide', 'complete', 'best', 'ultimate']]
+    
+    # Content-based keywords
+    content_keywords = []
+    keyword_patterns = [
+        r'\b(compost|composting)\b',
+        r'\b(organic matter)\b',
+        r'\b(soil amendment|soil health)\b',
+        r'\b(beneficial microorganisms|microbes)\b',
+        r'\b(worm castings?)\b',
+        r'\b(natural fertilizer|organic fertilizer)\b'
+    ]
+    
+    for pattern in keyword_patterns:
+        matches = re.findall(pattern, content.lower())
+        content_keywords.extend(matches)
+    
+    # Combine all keywords
+    all_keywords = base_keywords + title_keywords[:3] + list(set(content_keywords))[:3]
+    return ', '.join(all_keywords[:8])
+
+def get_enhanced_fallback_blog(title, seasonal_context):
+    """Enhanced fallback blog with proper formatting and images"""
+    season = seasonal_context.get('season', 'spring')
+    
+    content = f"""<h1>{title}</h1>
+
+<div class="blog-image hero-image">
+    <img src="/images/placeholder-landscape.jpg" alt="{title} - {season} gardening guide" loading="lazy" />
+    <p class="image-caption">📸 Suggested: Wide shot of thriving {season} garden with healthy soil and vibrant plants</p>
+</div>
+
+<p>Welcome to the ultimate guide for <strong>{title.lower()}</strong>! As experienced gardeners know, success in {season} gardening comes from understanding both the science and art of working with nature's seasonal rhythms and soil biology.</p>
+
+<p>Whether you're a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem that produces abundant, nutritious harvests.</p>
+
+<h2>Understanding {season.title()} Garden Fundamentals</h2>
+
+<div class="blog-image section-image">
+    <img src="/images/placeholder-close-up.jpg" alt="Healthy organic garden soil with rich texture" loading="lazy" />
+    <p class="image-caption">📸 Suggested: Close-up of rich, dark soil showing organic matter and beneficial microorganisms</p>
+</div>
+
+<p>Every season presents unique opportunities and challenges for gardeners. During {season}, your plants have specific environmental needs that must be met for optimal growth, health, and productivity. <em>Understanding these requirements is the foundation of gardening success.</em></p>
+
+<p><strong>Key considerations for {season} gardening include:</strong></p>
 
 <ul>
-<li>Ancient Soil builds long-term soil health with worm castings and beneficial microbes</li>
-<li>Plant Juice delivers over 250 species of bacteria and fungi for plant support</li>
-<li>Bloom Juice provides targeted nutrition for flowering and fruiting plants</li>
-<li>Worm Castings offer gentle, sustained nutrition that plants actually use</li>
+<li><strong>Soil temperature and moisture management</strong> for optimal root development and nutrient uptake</li>
+<li><strong>Seasonal pest and disease prevention</strong> using integrated organic methods</li>
+<li><strong>Proper nutrition timing</strong> and organic fertilizer application schedules</li>
+<li><strong>Weather protection strategies</strong> and microclimate creation techniques</li>
+<li><strong>Harvest timing optimization</strong> for peak nutrition and flavor development</li>
 </ul>
 
-<h2>Essential {season.title()} Tasks That Make a Difference</h2>
+<h2>Building Living Soil: The Foundation of {season.title()} Success</h2>
 
-<p>After decades of gardening, you learn what actually moves the needle. Here's what works for {season} success:</p>
+<p>The secret to any thriving garden lies beneath the surface in the complex ecosystem of living soil. <strong>Healthy, biologically active soil provides the stable foundation</strong> that supports vigorous plant growth, natural pest resistance, improved nutrient density, and abundant harvests throughout the {season} growing season.</p>
 
-<p><strong>Start with your soil foundation.</strong> Good {primary_keyword} always begins below ground. Test your soil pH and organic matter levels. Most gardeners are surprised by what they find when they actually test instead of guessing.</p>
+<h3>Essential Components of Healthy Soil</h3>
 
-<p><strong>Feed consistently, not heavily.</strong> Plants prefer steady nutrition over feast-or-famine feeding. Small, regular applications of organic amendments work better than dumping a bunch of synthetic fertilizer once and hoping for the best.</p>
+<p>Creating truly healthy soil requires understanding and nurturing several key components that work together synergistically:</p>
 
-<p><strong>Watch your plants, not your calendar.</strong> Nature doesn't follow our schedules. Your plants will tell you what they need if you know how to look. Yellowing leaves, stunted growth, poor flowering—these are conversations your plants are trying to have with you.</p>
+<ul>
+<li><strong>Beneficial Microorganisms:</strong> Billions of bacteria, fungi, and other microbes that break down organic matter, cycle nutrients, and protect plant roots from harmful pathogens</li>
+<li><strong>Optimal pH Balance:</strong> Proper soil acidity/alkalinity (typically 6.0-7.0) that ensures maximum nutrient availability to plant roots</li>
+<li><strong>Soil Structure:</strong> Well-aggregated soil that provides proper drainage while retaining adequate moisture and allowing easy root penetration</li>
+<li><strong>Organic Matter Content:</strong> Decomposed plant and animal materials that feed soil life and dramatically improve water retention capacity</li>
+</ul>
 
-<h2>Solving Common {season.title()} Challenges the Organic Way</h2>
+<p>Our <strong>Ancient Soil blend</strong> addresses all these essential components by combining premium worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up.</p>
 
-<p>Every {season} brings its own set of problems. The good news? Most issues gardeners face come back to soil health and plant nutrition. When you build up your soil biology with products like our <strong>Ancient Soil</strong>, you're not just feeding this year's plants—you're investing in easier gardening for years to come.</p>
+<div class="blog-image section-image">
+    <img src="/images/placeholder-product-shot.jpg" alt="Elm Dirt Ancient Soil organic amendment" loading="lazy" />
+    <p class="image-caption">📸 Suggested: Ancient Soil product with rich soil texture visible, showing quality and organic composition</p>
+</div>
 
-<p>Problems like poor germination, weak plant growth, or disappointing harvests usually trace back to soil that's been depleted or imbalanced. Synthetic fertilizers might give you a quick green-up, but they don't build the soil ecosystem your plants need for long-term health.</p>
+<h2>Organic {season.title()} Management Strategies</h2>
 
-<p>That's why we developed <strong>Plant Juice</strong> with over 250 species of beneficial bacteria and fungi. These microorganisms help plants with everything from nutrient uptake to disease resistance. It's like giving your plants a complete support system instead of just a quick meal.</p>
+<p>Implementing proven organic gardening practices during {season} helps build long-term soil health while producing safe, nutritious food for your family. <em>These methods work with natural systems rather than against them</em>, creating sustainable abundance that improves year after year.</p>
 
-<h2>Your {season.title()} Action Plan</h2>
+<h3>Integrated Pest Management Approach</h3>
 
-<p>Ready to put this into practice? Here's your straightforward approach for {holiday_context}:</p>
+<p><strong>Prevention is always more effective and economical</strong> than treatment when dealing with garden pests. Healthy plants growing in nutrient-rich, biologically active soil naturally resist pest damage and disease pressure through stronger immune systems and improved cellular structure.</p>
 
-<ol>
-<li><strong>Assess your current soil condition</strong> - Test pH and look at organic matter content</li>
-<li><strong>Build soil biology</strong> - Add Ancient Soil and worm castings to establish beneficial microbes</li>
-<li><strong>Feed strategically</strong> - Use Plant Juice for overall plant health and Bloom Juice for flowering plants</li>
-<li><strong>Monitor and adjust</strong> - Watch plant response and adjust care based on what you see</li>
-</ol>
+<p>Effective organic pest prevention strategies include:</p>
 
-<h2>The Long Game: Building Garden Success</h2>
+<ul>
+<li>Encouraging beneficial insects through diverse plantings and habitat creation</li>
+<li>Using strategic companion planting to naturally repel harmful pests</li>
+<li>Maintaining proper plant spacing for optimal air circulation</li>
+<li>Regular monitoring and early intervention when issues first arise</li>
+<li>Building soil biology that supports plant immune function</li>
+</ul>
 
-<p>Good {primary_keyword} isn't about this year's harvest—though you'll definitely see improvements quickly. It's about creating a garden ecosystem that gets easier and more productive every year. When you focus on soil health and work with natural processes, you're setting yourself up for decades of successful gardening.</p>
+<h3>Seasonal Nutrition Management</h3>
 
-<p>Whether you're dealing with {holiday_context} or just want to improve your garden's performance, organic methods provide solutions that get better over time. Visit our store to learn more about how our products can help you succeed this {season} and beyond.</p>
+<p>Plants have varying nutritional requirements throughout their growth cycles, and <strong>understanding when and how to provide proper nutrition</strong> ensures optimal development without waste or environmental impact. Organic fertilizers release nutrients slowly and feed soil biology, creating sustainable fertility systems.</p>
 
-<p><strong>Ready to transform your garden this {season}?</strong> <a href="/collections/all">Shop our complete line of organic garden products</a> and start building the soil your plants deserve. Your future self will thank you for the investment you make today.</p>"""
+<p>Our <strong>Plant Juice</strong> provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available precisely when plants need them most. This biological approach to plant nutrition creates healthier, more resilient plants that produce superior yields.</p>
+
+<h2>Essential {season.title()} Maintenance Schedule</h2>
+
+<div class="blog-image section-image">
+    <img src="/images/placeholder-medium-shot.jpg" alt="{season.title()} garden maintenance and care" loading="lazy" />
+    <p class="image-caption">📸 Suggested: Gardener performing {season} maintenance tasks in well-organized garden space</p>
+</div>
+
+<p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential. <em>Success comes from systematic care rather than sporadic intensive efforts.</em></p>
+
+<p><strong>Weekly {season} garden tasks include:</strong></p>
+
+<ul>
+<li><strong>Soil Moisture Monitoring:</strong> Regular checking and adjustment of watering schedules based on weather conditions, plant growth stage, and soil moisture levels</li>
+<li><strong>Systematic Garden Inspection:</strong> Thorough examination of plants for early signs of pest activity, disease symptoms, or nutritional deficiencies</li>
+<li><strong>Optimal Harvesting Techniques:</strong> Timing harvests for peak nutrition and using methods that encourage continued production throughout the season</li>
+<li><strong>Continuous Soil Health Improvement:</strong> Regular additions of organic matter and beneficial microorganisms to build and maintain soil life</li>
+<li><strong>Strategic Season Extension Planning:</strong> Preparing for weather changes and implementing techniques to extend productive growing periods</li>
+</ul>
+
+<h2>Advanced Techniques for Maximum {season.title()} Results</h2>
+
+<p>Once you've mastered the fundamentals, these advanced techniques can significantly improve your {season} garden's productivity, resilience, and overall performance:</p>
+
+<h3>Succession Planting Strategy</h3>
+
+<p><strong>Staggering plantings every 2-3 weeks</strong> ensures continuous harvests throughout {season} rather than overwhelming abundance followed by gaps in production. This technique maximizes both space utilization and harvest consistency.</p>
+
+<h3>Strategic Companion Planting Systems</h3>
+
+<p>Thoughtfully planned plant combinations provide mutual benefits through natural pest deterrence, efficient nutrient sharing, improved pollination, and enhanced growing conditions for all plants in the system.</p>
+
+<h3>Soil Biology Enhancement Program</h3>
+
+<p>Regular applications of compost tea, beneficial microorganism inoculants, and targeted organic amendments that specifically feed and support soil life create an increasingly productive growing environment.</p>
+
+<h2>Your Path to {season.title()} Garden Success</h2>
+
+<p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, beneficial insects, and gardeners work together in harmonious partnership. By focusing on soil health first, implementing proven organic practices, and maintaining consistent care, you'll create a garden that not only produces abundantly this {season} but continues to improve and become more productive with each passing year.</p>
+
+<p><em>Remember that gardening is a continuous learning journey</em> where each season brings new insights, challenges, and opportunities for growth and improvement. Start with the fundamentals of healthy soil biology, embrace organic methods that work with natural systems, and enjoy the deeply satisfying process of growing your own food naturally and sustainably.</p>
+
+<p>The investment you make in building soil health and implementing these time-tested practices will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures, flourishes, and becomes increasingly productive and resilient.</p>
+
+<div class="blog-image section-image">
+    <img src="/images/placeholder-harvest-shot.jpg" alt="Successful {season} garden harvest" loading="lazy" />
+    <p class="image-caption">📸 Suggested: Abundant {season} harvest showing the results of healthy soil and organic gardening practices</p>
+</div>"""
+
+    # Generate enhanced fallback data
+    image_suggestions = [
+        {
+            'position': 'hero',
+            'description': f"Wide shot of thriving {season} garden with healthy soil and vibrant plants",
+            'alt_text': f"{title} - {season} gardening guide",
+            'style': 'landscape',
+            'priority': 'high'
+        },
+        {
+            'position': 'section_1',
+            'description': "Close-up of rich, dark soil showing organic matter and beneficial microorganisms",
+            'alt_text': 'Healthy organic garden soil with rich texture',
+            'style': 'close-up',
+            'priority': 'high'
+        },
+        {
+            'position': 'product_mention',
+            'description': "Ancient Soil product with rich soil texture visible, showing quality and organic composition",
+            'alt_text': 'Elm Dirt Ancient Soil organic amendment',
+            'style': 'product-shot',
+            'priority': 'high'
+        }
+    ]
+    
+    schema_markup = generate_blog_schema(title, content, seasonal_context)
+    
+    return {
+        'title': title,
+        'content': content,
+        'meta_description': f"Complete expert guide to {title.lower()} using proven organic methods and sustainable practices for successful {season} gardening.",
+        'keywords': f"{season} gardening, organic gardening, soil health, {title.lower()}, sustainable practices, garden management",
+        'schema_markup': schema_markup,
+        'image_suggestions': image_suggestions,
+        'word_count': len(content.split()),
+        'reading_time': f"{len(content.split()) // 200 + 1} min read"
+    }
     
     def _generate_blog_image_suggestions(self, title: str, season: str, holiday_context: str) -> str:
         """Generate detailed image suggestions for blog posts"""
