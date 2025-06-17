@@ -73,6 +73,9 @@ class CopyPasteGenerator:
                 .email-header {{ background: #34495e; }}
                 .pinterest-header {{ background: #BD081C; }}
                 .twitter-header {{ background: #1DA1F2; }}
+                .tiktok-header { background: #000000; }
+                .linkedin-header { background: #0077B5; }
+                .youtube-header { background: #FF0000; }
             
                 .content-item {{
                     padding: 2rem;
@@ -196,22 +199,32 @@ class CopyPasteGenerator:
                 <div class="stat-card">
                     <div class="stat-number">{len(blog_posts)}</div>
                     <div>Blog Posts</div>
-                  </div>
+                    <div style="font-size: 12px; color: #666;">Target: 6</div>
+                </div>
                 <div class="stat-card">
                     <div class="stat-number">{len(instagram_posts)}</div>
                     <div>Instagram Posts</div>
+                    <div style="font-size: 12px; color: #666;">Target: 18</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">{len(facebook_posts)}</div>
                     <div>Facebook Posts</div>
+                    <div style="font-size: 12px; color: #666;">Target: 18</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{len(email_content)}</div>
-                    <div>Email Content</div>
+                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'tiktok'])}</div>
+                    <div>TikTok Ideas</div>
+                    <div style="font-size: 12px; color: #666;">Target: 18</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{len(pinterest_posts)}</div>
-                    <div>Pinterest Posts</div>
+                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'linkedin'])}</div>
+                    <div>LinkedIn Posts</div>
+                    <div style="font-size: 12px; color: #666;">Target: 6</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'youtube'])}</div>
+                    <div>YouTube Outline</div>
+                    <div style="font-size: 12px; color: #666;">Target: 1</div>
                 </div>
             </div>
         
@@ -221,6 +234,9 @@ class CopyPasteGenerator:
             {self._generate_platform_section("📧 Email Content", email_content, "email")}
             {self._generate_platform_section("📌 Pinterest Posts", pinterest_posts, "pinterest")}
             {self._generate_platform_section("🐦 Twitter Posts", twitter_posts, "twitter")}
+            {self._generate_platform_section("🎵 TikTok Video Ideas", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'tiktok'], "tiktok")}
+            {self._generate_platform_section("💼 LinkedIn Posts", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'linkedin'], "linkedin")}
+            {self._generate_platform_section("📺 YouTube Content", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'youtube'], "youtube")}
             
             <div class="success-message" id="success-message">
                 ✅ Copied to clipboard!
