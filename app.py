@@ -1,3 +1,5 @@
+
+
 # Enhanced Elm Dirt Content Automation Platform - Part 1: Beginning
 # Imports, Configuration, and Core Classes
 
@@ -15,6 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 import uuid
 import random
+from export_routes import export_bp
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+app.register_blueprint(export_bp)
 
 # Configuration
 class Config:
@@ -1552,6 +1556,130 @@ def export_weekly_content(week_id):
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/export')
+def export_page():
+    """Simple export page for testing"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Content Export</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            .btn { padding: 10px 20px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 5px; cursor: pointer; }
+            .btn:hover { background: #3e8e41; }
+            .section { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 10px; }
+        </style>
+    </head>
+    <body>
+        <h1>🌱 Elm Dirt Content Export</h1>
+        
+        <div class="section">
+            <h2>📝 Export Blog Posts to Shopify</h2>
+            <p>Downloads a CSV file that you can import directly into Shopify as draft blog posts.</p>
+            <button class="btn" onclick="exportBlogCSV()">Download Blog Posts CSV</button>
+        </div>
+        
+        <div class="section">
+            <h2>📱 Copy-Paste Social Media Content</h2>
+            <p>Opens an interface where you can copy individual pieces of content.</p>
+            <button class="btn" onclick="exportCopyPaste()">Open Copy-Paste Interface</button>
+        </div>
+        
+        <div class="section">
+            <h2>🧪 Test Export Functionality</h2>
+            <button class="btn" onclick="testExport()">Test Export</button>
+            <div id="test-result"></div>
+        </div>
+        
+        <script>
+            function exportBlogCSV() {
+                // Sample blog posts data - replace with your actual data
+                const blogPosts = [
+                    {
+                        title: "Spring Gardening Tips for Organic Growers",
+                        content: "<h2>Getting Your Garden Ready</h2><p>Spring is the perfect time to prepare your organic garden...</p>",
+                        meta_description: "Essential spring gardening tips for organic growers to prepare their gardens for the growing season.",
+                        keywords: "spring gardening, organic growing, garden preparation",
+                        platform: "blog"
+                    }
+                ];
+                
+                fetch('/api/export/csv', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        blog_posts: blogPosts,
+                        week_id: new Date().getFullYear() + '-W' + getWeekNumber()
+                    })
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'elm_dirt_blogs.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                });
+            }
+            
+            function exportCopyPaste() {
+                // Sample content data - replace with your actual data
+                const contentPieces = [
+                    {
+                        title: "Instagram Post",
+                        content: "Spring is here! 🌱 Time to get your garden ready with our organic soil amendments. #SpringGardening #OrganicGardening #ElmDirt",
+                        keywords: ["SpringGardening", "OrganicGardening", "ElmDirt"],
+                        platform: "instagram"
+                    },
+                    {
+                        title: "Facebook Post",
+                        content: "Did you know that healthy soil is the foundation of a thriving garden? Our Ancient Soil blend provides the perfect nutrients for your plants to flourish this growing season.",
+                        keywords: ["gardening", "soil", "organic"],
+                        platform: "facebook"
+                    }
+                ];
+                
+                fetch('/api/export/copy-paste', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        content_pieces: contentPieces,
+                        week_id: new Date().getFullYear() + '-W' + getWeekNumber()
+                    })
+                })
+                .then(response => response.text())
+                .then(html => {
+                    const newWindow = window.open();
+                    newWindow.document.write(html);
+                    newWindow.document.close();
+                });
+            }
+            
+            function testExport() {
+                fetch('/api/export/test')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('test-result').innerHTML = 
+                        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                });
+            }
+            
+            function getWeekNumber() {
+                const now = new Date();
+                const start = new Date(now.getFullYear(), 0, 1);
+                const diff = now - start;
+                const oneWeek = 1000 * 60 * 60 * 24 * 7;
+                return Math.floor(diff / oneWeek);
+            }
+        </script>
+    </body>
+    </html>
+    '''
 
 # Error handlers
 @app.errorhandler(404)
