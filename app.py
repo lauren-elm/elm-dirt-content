@@ -537,110 +537,110 @@ class ContentGenerator:
         day_themes = daily_blog_themes.get(day_name, daily_blog_themes['Monday'])
         return random.choice(day_themes)
     
-    def generate_blog_with_claude(blog_title, seasonal_context):
-    """Generate visually appealing blog post with schema and images"""
+        def generate_blog_with_claude(blog_title, seasonal_context):
+        """Generate visually appealing blog post with schema and images"""
     
-    prompt = f"""Write a comprehensive, visually appealing blog article titled "{blog_title}"
+            prompt = f"""Write a comprehensive, visually appealing blog article titled "{blog_title}"
 
-CONTEXT:
-- Season: {seasonal_context['season']}
-- Month: {seasonal_context['month']}
-- Company: Elm Dirt - Premium organic soil amendments
-- Target: Home gardeners aged 35-65
+        CONTEXT:
+        - Season: {seasonal_context['season']}
+        - Month: {seasonal_context['month']}
+        - Company: Elm Dirt - Premium organic soil amendments
+        - Target: Home gardeners aged 35-65
 
-CONTENT REQUIREMENTS:
-- 1200-1800 words minimum
-- Engaging, expert but approachable tone
-- Include practical, actionable advice
-- Naturally mention Elm Dirt products where relevant:
-  * Ancient Soil: Premium blend with worm castings, biochar, sea kelp
-  * Plant Juice: 250+ beneficial microorganisms
-  * Bloom Juice: Specialized for flowering plants
+        CONTENT REQUIREMENTS:
+        - 1200-1800 words minimum
+        - Engaging, expert but approachable tone
+        - Include practical, actionable advice
+        - Naturally mention Elm Dirt products where relevant:
+          * Ancient Soil: Premium blend with worm castings, biochar, sea kelp
+          * Plant Juice: 250+ beneficial microorganisms
+          * Bloom Juice: Specialized for flowering plants
 
-HTML FORMATTING REQUIREMENTS:
-- Use proper HTML structure with semantic tags
-- Include engaging introduction (2-3 paragraphs)
-- 4-5 main sections with descriptive H2 headings
-- 2-3 subsections with H3 headings under each main section
-- Use bullet points (ul/li) for lists and tips
-- Include informative paragraphs with <p> tags
-- Add emphasis with <strong> and <em> tags where appropriate
-- Include a compelling conclusion with actionable next steps
+        HTML FORMATTING REQUIREMENTS:
+        - Use proper HTML structure with semantic tags
+        - Include engaging introduction (2-3 paragraphs)
+        - 4-5 main sections with descriptive H2 headings
+        - 2-3 subsections with H3 headings under each main section
+        - Use bullet points (ul/li) for lists and tips
+        - Include informative paragraphs with <p> tags
+        - Add emphasis with <strong> and <em> tags where appropriate
+        - Include a compelling conclusion with actionable next steps
 
-VISUAL ENHANCEMENT:
-- Write descriptive headings that are engaging and SEO-friendly
-- Include specific numbers, tips, and actionable advice
-- Use compelling subheadings that make readers want to continue
-- Add calls-to-action throughout the content
-- Include seasonal timing and specific recommendations
+        VISUAL ENHANCEMENT:
+        - Write descriptive headings that are engaging and SEO-friendly
+        - Include specific numbers, tips, and actionable advice
+        - Use compelling subheadings that make readers want to continue
+        - Add calls-to-action throughout the content
+        - Include seasonal timing and specific recommendations
 
-SEO OPTIMIZATION:
-- Use the main keyword "{blog_title.lower()}" naturally throughout
-- Include related {seasonal_context['season']} gardening keywords
-- Write compelling meta descriptions within content
-- Use descriptive, keyword-rich headings
+        SEO OPTIMIZATION:
+        - Use the main keyword "{blog_title.lower()}" naturally throughout
+        - Include related {seasonal_context['season']} gardening keywords
+        - Write compelling meta descriptions within content
+        - Use descriptive, keyword-rich headings
 
-FORMAT: Return only the HTML content with proper tags, starting with an H1 for the title."""
+        FORMAT: Return only the HTML content with proper tags, starting with an H1 for the title."""
 
-    try:
-        print(f"Generating enhanced blog content for: {blog_title}")
+            try:
+                print(f"Generating enhanced blog content for: {blog_title}")
+            
+                # Call Claude API
+                blog_response = make_direct_claude_call(prompt)
+            
+                if blog_response and len(blog_response) > 1000:
+                    # Claude worked and returned substantial content
+                    parsed_blog = parse_enhanced_blog_response(blog_response, blog_title, seasonal_context)
+                    print(f"Successfully generated enhanced blog ({len(blog_response)} chars)")
+                    return parsed_blog
         
-        # Call Claude API
-        blog_response = make_direct_claude_call(prompt)
+                # Fallback if Claude fails
+                print("Claude API failed, using enhanced fallback")
+                return get_enhanced_fallback_blog(blog_title, seasonal_context)
         
-        if blog_response and len(blog_response) > 1000:
-            # Claude worked and returned substantial content
-            parsed_blog = parse_enhanced_blog_response(blog_response, blog_title, seasonal_context)
-            print(f"Successfully generated enhanced blog ({len(blog_response)} chars)")
-            return parsed_blog
-        
-        # Fallback if Claude fails
-        print("Claude API failed, using enhanced fallback")
-        return get_enhanced_fallback_blog(blog_title, seasonal_context)
-        
-    except Exception as e:
-        print(f"Error in enhanced blog generation: {e}")
-        return get_enhanced_fallback_blog(blog_title, seasonal_context)
+            except Exception as e:
+                print(f"Error in enhanced blog generation: {e}")
+                return get_enhanced_fallback_blog(blog_title, seasonal_context)
 
-def parse_enhanced_blog_response(claude_response, original_title, seasonal_context):
-    """Parse blog response and add schema + image suggestions"""
-    try:
-        # Clean and enhance the HTML content
-        content = claude_response.strip()
+        def parse_enhanced_blog_response(claude_response, original_title, seasonal_context):
+            """Parse blog response and add schema + image suggestions"""
+            try:
+                # Clean and enhance the HTML content
+                content = claude_response.strip()
         
-        # Ensure it starts with H1 if not already
-        if not content.startswith('<h1>'):
-            content = f"<h1>{original_title}</h1>\n{content}"
+                # Ensure it starts with H1 if not already
+                if not content.startswith('<h1>'):
+                    content = f"<h1>{original_title}</h1>\n{content}"
+            
+                # Generate image suggestions based on content
+                image_suggestions = generate_image_suggestions(original_title, content, seasonal_context)
         
-        # Generate image suggestions based on content
-        image_suggestions = generate_image_suggestions(original_title, content, seasonal_context)
+                # Generate schema markup
+                schema_markup = generate_blog_schema(original_title, content, seasonal_context)
         
-        # Generate schema markup
-        schema_markup = generate_blog_schema(original_title, content, seasonal_context)
+                # Generate meta description from content
+                meta_description = extract_meta_description(content, original_title, seasonal_context)
         
-        # Generate meta description from content
-        meta_description = extract_meta_description(content, original_title, seasonal_context)
+                # Generate keywords
+                keywords = extract_enhanced_keywords(original_title, content, seasonal_context)
         
-        # Generate keywords
-        keywords = extract_enhanced_keywords(original_title, content, seasonal_context)
+                # Add enhanced content with image placeholders
+                enhanced_content = add_image_placeholders_to_content(content, image_suggestions)
         
-        # Add enhanced content with image placeholders
-        enhanced_content = add_image_placeholders_to_content(content, image_suggestions)
+                return {
+                    'title': original_title,
+                    'content': enhanced_content,
+                    'meta_description': meta_description,
+                    'keywords': keywords,
+                    'schema_markup': schema_markup,
+                    'image_suggestions': image_suggestions,
+                    'word_count': len(content.split()),
+                    'reading_time': f"{len(content.split()) // 200 + 1} min read"
+                }
         
-        return {
-            'title': original_title,
-            'content': enhanced_content,
-            'meta_description': meta_description,
-            'keywords': keywords,
-            'schema_markup': schema_markup,
-            'image_suggestions': image_suggestions,
-            'word_count': len(content.split()),
-            'reading_time': f"{len(content.split()) // 200 + 1} min read"
-        }
-        
-    except Exception as e:
-        print(f"Error parsing enhanced blog response: {e}")
-        return get_enhanced_fallback_blog(original_title, seasonal_context)
+            except Exception as e:
+                print(f"Error parsing enhanced blog response: {e}")
+                return get_enhanced_fallback_blog(original_title, seasonal_context)
 
 def generate_image_suggestions(title, content, seasonal_context):
     """Generate specific image suggestions for the blog post"""
