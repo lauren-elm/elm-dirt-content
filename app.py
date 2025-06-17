@@ -1427,6 +1427,182 @@ def check_claude_status():
         'fallback_mode': not claude_enabled
     })
 
+@app.route('/api/generate-content', methods=['POST'])
+def generate_content_api():
+    """Generate content based on selected date and type"""
+    try:
+        data = request.get_json()
+        selected_date = data.get('date')  # Format: YYYY-MM-DD
+        export_type = data.get('type')   # 'weekly' or 'daily'
+        day_of_week = data.get('day_of_week')  # 0-6 (Sunday-Saturday)
+        
+        # Convert date string to datetime object
+        from datetime import datetime, timedelta
+        date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
+        
+        # Generate content based on type
+        if export_type == 'weekly':
+            # Monday selected - generate full week
+            content_pieces = generate_weekly_content(date_obj)
+            week_id = f"{date_obj.year}-W{date_obj.isocalendar()[1]}"
+        else:
+            # Other day selected - generate daily content
+            content_pieces = generate_daily_content(date_obj, day_of_week)
+            week_id = selected_date
+        
+        return jsonify({
+            'success': True,
+            'content_pieces': content_pieces,
+            'week_id': week_id,
+            'export_type': export_type,
+            'total_pieces': len(content_pieces),
+            'date': selected_date
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+def generate_weekly_content(start_date):
+    """Generate content for entire week starting from Monday"""
+    # This should integrate with your existing content generation system
+    # Replace this with your actual weekly content generation logic
+    
+    content_pieces = []
+    
+    # Example: Generate blog posts (typically 2-3 per week)
+    blog_topics = [
+        "Spring Garden Preparation and Soil Health",
+        "Organic Pest Control Methods for Summer",
+        "Fall Garden Cleanup and Winter Prep"
+    ]
+    
+    for i, topic in enumerate(blog_topics[:2]):  # Generate 2 blog posts
+        blog_date = start_date + timedelta(days=i*2)
+        content_pieces.append({
+            'title': f"{topic} - Complete Guide",
+            'content': generate_blog_content(topic),  # Your existing function
+            'meta_description': f"Expert guide to {topic.lower()} with organic methods and proven techniques.",
+            'keywords': extract_keywords(topic),  # Your existing function
+            'platform': 'blog',
+            'scheduled_time': blog_date.strftime('%Y-%m-%d 09:00:00')
+        })
+    
+    # Generate social media content for each day
+    social_platforms = ['instagram', 'facebook', 'pinterest', 'twitter']
+    
+    for day in range(7):  # Monday to Sunday
+        current_date = start_date + timedelta(days=day)
+        day_name = current_date.strftime('%A')
+        
+        for platform in social_platforms:
+            if should_post_on_day(platform, day):  # Your logic for posting schedule
+                content_pieces.append({
+                    'title': f"{platform.title()} Post - {day_name}",
+                    'content': generate_social_content(platform, current_date),  # Your function
+                    'keywords': get_platform_hashtags(platform),  # Your function
+                    'platform': platform,
+                    'scheduled_time': current_date.strftime(f'%Y-%m-%d {get_optimal_time(platform)}:00')
+                })
+    
+    # Generate email newsletter (typically weekly)
+    email_date = start_date + timedelta(days=2)  # Wednesday
+    content_pieces.append({
+        'title': 'Weekly Garden Newsletter',
+        'content': generate_email_content(start_date),  # Your function
+        'platform': 'email',
+        'scheduled_time': email_date.strftime('%Y-%m-%d 08:00:00')
+    })
+    
+    return content_pieces
+
+def generate_daily_content(selected_date, day_of_week):
+    """Generate content for specific day only"""
+    content_pieces = []
+    
+    day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    day_name = day_names[day_of_week]
+    
+    # Generate social media content for the selected day
+    social_platforms = ['instagram', 'facebook', 'pinterest', 'twitter']
+    
+    for platform in social_platforms:
+        if should_post_on_day(platform, day_of_week):
+            content_pieces.append({
+                'title': f"{platform.title()} Post - {day_name}",
+                'content': generate_social_content(platform, selected_date),
+                'keywords': get_platform_hashtags(platform),
+                'platform': platform,
+                'scheduled_time': selected_date.strftime(f'%Y-%m-%d {get_optimal_time(platform)}:00')
+            })
+    
+    # Add email if it's typically sent on this day
+    if day_of_week == 3:  # Wednesday
+        content_pieces.append({
+            'title': 'Daily Garden Tip Email',
+            'content': generate_daily_email_content(selected_date),
+            'platform': 'email',
+            'scheduled_time': selected_date.strftime('%Y-%m-%d 08:00:00')
+        })
+    
+    return content_pieces
+
+# Helper functions (integrate with your existing system)
+def should_post_on_day(platform, day_of_week):
+    """Determine if platform should post on this day"""
+    posting_schedule = {
+        'instagram': [1, 3, 5],  # Monday, Wednesday, Friday
+        'facebook': [1, 2, 4, 6],  # Monday, Tuesday, Thursday, Saturday
+        'pinterest': [0, 2, 4],  # Sunday, Tuesday, Thursday
+        'twitter': [1, 2, 3, 4, 5]  # Weekdays
+    }
+    return day_of_week in posting_schedule.get(platform, [])
+
+def get_optimal_time(platform):
+    """Get optimal posting time for platform"""
+    optimal_times = {
+        'instagram': '14',  # 2 PM
+        'facebook': '15',   # 3 PM
+        'pinterest': '11',  # 11 AM
+        'twitter': '12',    # 12 PM
+        'email': '08'       # 8 AM
+    }
+    return optimal_times.get(platform, '12')
+
+# Integration functions - replace these with your actual functions
+def generate_blog_content(topic):
+    """Replace with your actual blog generation function"""
+    return f"<h2>{topic}</h2><p>Generated blog content about {topic}...</p>"
+
+def generate_social_content(platform, date):
+    """Replace with your actual social content generation function"""
+    return f"Generated {platform} content for {date.strftime('%A, %B %d')}"
+
+def generate_email_content(start_date):
+    """Replace with your actual email generation function"""
+    return f"Subject: Weekly Garden Update\n\nWeekly content for week of {start_date.strftime('%B %d, %Y')}"
+
+def generate_daily_email_content(date):
+    """Replace with your actual daily email generation function"""
+    return f"Subject: Daily Garden Tip\n\nDaily tip for {date.strftime('%A, %B %d')}"
+
+def extract_keywords(topic):
+    """Replace with your actual keyword extraction function"""
+    return topic.lower().replace(' ', ', ')
+
+def get_platform_hashtags(platform):
+    """Replace with your actual hashtag generation function"""
+    hashtags = {
+        'instagram': ['GardenLife', 'OrganicGardening', 'ElmDirt'],
+        'facebook': ['gardening', 'organic', 'sustainable'],
+        'pinterest': ['garden tips', 'organic gardening', 'plant care'],
+        'twitter': ['gardening', 'plants', 'organic']
+    }
+    return hashtags.get(platform, ['gardening'])
+
 @app.route('/api/generate-weekly-content', methods=['POST'])
 def generate_weekly_content():
     """Generate a complete week of content with holiday awareness and daily blogs"""
@@ -1563,176 +1739,337 @@ def export_weekly_content(week_id):
 
 @app.route('/export')
 def export_page():
-    """Comprehensive export page for all weekly content"""
+    """Export page with date selection for daily or weekly content"""
     return '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Weekly Content Export</title>
+        <title>Content Export by Date</title>
         <style>
-            body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
-            .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
-            .btn { padding: 15px 30px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-            .btn:hover { background: #3e8e41; transform: translateY(-2px); }
-            .section { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .workflow { background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .step { padding: 10px 0; border-bottom: 1px solid #ddd; }
-            .step:last-child { border-bottom: none; }
+            body { 
+                font-family: Arial, sans-serif; 
+                max-width: 1000px; 
+                margin: 0 auto; 
+                padding: 20px; 
+                background: #f8f9fa; 
+            }
+            .header { 
+                background: linear-gradient(135deg, #114817, #4eb155); 
+                color: white; 
+                padding: 2rem; 
+                border-radius: 10px; 
+                text-align: center; 
+                margin-bottom: 2rem; 
+            }
+            .section { 
+                background: white; 
+                padding: 30px; 
+                margin: 20px 0; 
+                border-radius: 10px; 
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            }
+            .date-selector {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin: 20px 0;
+                flex-wrap: wrap;
+            }
+            .date-input {
+                padding: 12px;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                font-size: 16px;
+                min-width: 150px;
+            }
+            .btn { 
+                padding: 15px 30px; 
+                margin: 10px; 
+                background: #4eb155; 
+                color: white; 
+                border: none; 
+                border-radius: 8px; 
+                cursor: pointer; 
+                font-size: 16px; 
+                font-weight: bold; 
+                transition: all 0.3s ease;
+            }
+            .btn:hover { 
+                background: #3e8e41; 
+                transform: translateY(-2px); 
+            }
+            .btn:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .btn-secondary {
+                background: #6c757d;
+            }
+            .btn-secondary:hover {
+                background: #545b62;
+            }
+            .info-box {
+                background: #e8f4fd;
+                border-left: 4px solid #4eb155;
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 5px;
+            }
+            .selected-date-info {
+                background: #fff3cd;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 15px 0;
+                border: 1px solid #ffeaa7;
+            }
+            .loading {
+                display: none;
+                text-align: center;
+                padding: 20px;
+            }
+            .error {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 15px 0;
+                display: none;
+            }
         </style>
     </head>
     <body>
         <div class="header">
-            <h1>🌱 Weekly Content Export Hub</h1>
-            <p>Your one-stop solution for copying all weekly content to various platforms</p>
+            <h1>🌱 Content Export by Date</h1>
+            <p>Select a date to export content - Mondays give you the whole week!</p>
         </div>
         
         <div class="section">
-            <h2>📋 Export All Weekly Content</h2>
-            <p>Get a comprehensive copy-paste interface for all your generated content including:</p>
-            <ul>
-                <li>📝 <strong>Shopify Blog Posts</strong> - Title, HTML content, meta descriptions, tags</li>
-                <li>📱 <strong>Instagram Posts</strong> - Captions and hashtags</li>
-                <li>👥 <strong>Facebook Posts</strong> - Formatted text content</li>
-                <li>📧 <strong>Email Newsletters</strong> - Subject lines and body content</li>
-                <li>📌 <strong>Pinterest Posts</strong> - Pin descriptions and keywords</li>
-                <li>🐦 <strong>Twitter Posts</strong> - Tweets and hashtags</li>
-            </ul>
-            <button class="btn" onclick="exportAllContent()">🚀 Open Copy-Paste Interface</button>
-        </div>
-        
-        <div class="workflow">
-            <h3>📋 Your Workflow:</h3>
-            <div class="step">1️⃣ <strong>Generate Content:</strong> Use your content generator for the week</div>
-            <div class="step">2️⃣ <strong>Export Interface:</strong> Click the button above to open copy-paste interface</div>
-            <div class="step">3️⃣ <strong>Copy & Paste:</strong> Click gray boxes to copy content, then paste into respective platforms</div>
-            <div class="step">4️⃣ <strong>Schedule:</strong> Use suggested times for optimal engagement</div>
-            <div class="step">5️⃣ <strong>Publish:</strong> Review and publish across all platforms</div>
+            <h2>📅 Select Export Date</h2>
+            <div class="info-box">
+                <strong>📋 How it works:</strong><br>
+                • <strong>Monday:</strong> Exports entire week (Monday-Sunday)<br>
+                • <strong>Other days:</strong> Exports content for that specific day only
+            </div>
+            
+            <div class="date-selector">
+                <label for="exportDate"><strong>Choose Date:</strong></label>
+                <input type="date" id="exportDate" class="date-input" onchange="updateDateInfo()">
+                <button class="btn" onclick="exportContent()" id="exportBtn" disabled>
+                    🚀 Export Content
+                </button>
+                <button class="btn btn-secondary" onclick="exportToday()">
+                    📅 Export Today
+                </button>
+            </div>
+            
+            <div id="dateInfo" class="selected-date-info" style="display: none;">
+                <!-- Date info will be populated here -->
+            </div>
+            
+            <div id="loading" class="loading">
+                <h3>🔄 Generating your content export...</h3>
+                <p>This may take a few moments</p>
+            </div>
+            
+            <div id="error" class="error">
+                <!-- Error messages will appear here -->
+            </div>
         </div>
         
         <div class="section">
-            <h2>🧪 Test Interface</h2>
-            <p>Try the interface with sample content to see how it works:</p>
-            <button class="btn" onclick="testExportInterface()">Test Copy-Paste Interface</button>
+            <h2>🧪 Test with Sample Data</h2>
+            <p>Try the export interface with sample content:</p>
+            <button class="btn btn-secondary" onclick="testExportInterface()">
+                Test Copy-Paste Interface
+            </button>
         </div>
         
         <script>
-            function exportAllContent() {
-            // Get current week ID
-                const weekId = new Date().getFullYear() + '-W' + getWeekNumber();
-    
-            // Fetch actual weekly content from your system
-                fetch(`/api/weekly-content/${weekId}`)
+            // Set today's date as default
+            document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+            updateDateInfo();
+            
+            function updateDateInfo() {
+                const dateInput = document.getElementById('exportDate');
+                const dateInfo = document.getElementById('dateInfo');
+                const exportBtn = document.getElementById('exportBtn');
+                
+                if (!dateInput.value) {
+                    dateInfo.style.display = 'none';
+                    exportBtn.disabled = true;
+                    return;
+                }
+                
+                const selectedDate = new Date(dateInput.value);
+                const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const dayName = dayNames[dayOfWeek];
+                
+                let infoHTML = '';
+                
+                if (dayOfWeek === 1) { // Monday
+                    const weekStart = new Date(selectedDate);
+                    const weekEnd = new Date(selectedDate);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    
+                    infoHTML = `
+                        <h3>📅 Weekly Export Selected</h3>
+                        <p><strong>Date:</strong> ${dayName}, ${selectedDate.toLocaleDateString()}</p>
+                        <p><strong>Export Range:</strong> Full week (${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()})</p>
+                        <p><strong>Content:</strong> All blog posts, social media posts, emails, and other content for the entire week</p>
+                        <p><strong>Platforms:</strong> Shopify blogs, Instagram, Facebook, Email newsletters, Pinterest, Twitter</p>
+                    `;
+                } else {
+                    infoHTML = `
+                        <h3>📅 Daily Export Selected</h3>
+                        <p><strong>Date:</strong> ${dayName}, ${selectedDate.toLocaleDateString()}</p>
+                        <p><strong>Export Range:</strong> Single day only</p>
+                        <p><strong>Content:</strong> Social media posts and other content scheduled for this specific day</p>
+                        <p><strong>Note:</strong> Blog posts are typically created weekly (Mondays)</p>
+                    `;
+                }
+                
+                dateInfo.innerHTML = infoHTML;
+                dateInfo.style.display = 'block';
+                exportBtn.disabled = false;
+            }
+            
+            function exportToday() {
+                document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+                updateDateInfo();
+            }
+            
+            function exportContent() {
+                const dateInput = document.getElementById('exportDate');
+                const selectedDate = new Date(dateInput.value);
+                const dayOfWeek = selectedDate.getDay();
+                
+                showLoading(true);
+                hideError();
+                
+                // Determine if it's a weekly or daily export
+                const isWeekly = dayOfWeek === 1; // Monday = weekly
+                const exportType = isWeekly ? 'weekly' : 'daily';
+                
+                // Format date for API
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                
+                // Call your content generation API
+                fetch('/api/generate-content', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        date: formattedDate,
+                        type: exportType,
+                        day_of_week: dayOfWeek
+                    })
+                })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Open copy-paste interface with real content
+                        // Content generated successfully, now open export interface
                         return fetch('/api/export/copy-paste', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({
                                 content_pieces: data.content_pieces,
-                                week_id: weekId
+                                week_id: data.week_id || formattedDate,
+                                export_type: exportType
                             })
                         });
                     } else {
-                        throw new Error(data.error || 'Failed to get weekly content');
+                        throw new Error(data.error || 'Failed to generate content');
                     }
                 })
                 .then(response => response.text())
                 .then(html => {
-                    const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes');
+                    showLoading(false);
+                    const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
                     newWindow.document.write(html);
                     newWindow.document.close();
                 })
                 .catch(error => {
-                    alert('Error loading content: ' + error.message);
+                    showLoading(false);
+                    showError('Error generating content: ' + error.message);
                     console.error('Error:', error);
                 });
             }
             
             function testExportInterface() {
-                // Use sample data for testing
-                fetch('/api/export/test')
-                .then(response => response.json())
-                .then(data => {
-                    // Get sample content and open interface
+                showLoading(true);
+                
+                // Generate test content
+                const testContent = [
+                    {
+                        title: "Spring Garden Preparation Guide",
+                        content: "<h2>Getting Your Garden Ready for Spring</h2><p>As winter fades, it's time to prepare your garden for the growing season...</p><h3>Essential Steps</h3><ul><li>Test soil pH</li><li>Add compost</li><li>Plan your layout</li></ul>",
+                        meta_description: "Complete guide to preparing your garden for spring with soil testing, composting, and planning tips.",
+                        keywords: "spring gardening, soil preparation, garden planning, compost",
+                        platform: "blog",
+                        scheduled_time: "2025-06-17 09:00:00"
+                    },
+                    {
+                        title: "Instagram - Spring Garden Tips",
+                        content: "Spring is here! 🌱 Time to get your garden ready with these essential tips:\\n\\n✨ Test your soil pH\\n🌿 Add fresh compost\\n📋 Plan your layout\\n🌱 Start seeds indoors\\n\\nWhat's your first spring garden task? Tell us below! ⬇️",
+                        keywords: ["SpringGardening", "GardenTips", "OrganicGardening", "ElmDirt"],
+                        platform: "instagram",
+                        scheduled_time: "2025-06-17 14:00:00"
+                    },
+                    {
+                        title: "Facebook - Community Question",
+                        content: "What's the biggest challenge you face when preparing your garden for spring? 🤔\\n\\nWe hear from gardeners all the time about:\\n• Soil that's too compact\\n• Not knowing when to start\\n• Overwhelming plant choices\\n• Pest prevention\\n\\nOur Ancient Soil blend helps with that first one - it creates loose, living soil that plants absolutely love! What's your biggest spring garden challenge? Share in the comments! 💬",
+                        keywords: ["gardening community", "spring preparation", "soil health", "gardening tips"],
+                        platform: "facebook",
+                        scheduled_time: "2025-06-17 16:00:00"
+                    },
+                    {
+                        title: "Email Newsletter - Spring Prep",
+                        content: "Subject: Your Spring Garden Prep Checklist (Plus 20% Off!)\\n\\nHello Fellow Gardener! 🌱\\n\\nSpring is officially here, and it's time to get your garden ready for the best growing season yet!\\n\\nYOUR SPRING PREP CHECKLIST:\\n□ Test soil pH (6.0-7.0 is ideal for most plants)\\n□ Add 2-3 inches of compost to beds\\n□ Remove winter debris\\n□ Plan your garden layout\\n□ Start seeds indoors\\n\\nSPECIAL OFFER: Save 20% on Ancient Soil this week only! Perfect for spring soil prep.\\n\\nHappy Gardening!\\nThe Elm Dirt Team",
+                        platform: "email",
+                        scheduled_time: "2025-06-18 08:00:00"
+                    }
+                ];
+                
+                setTimeout(() => {
                     fetch('/api/export/copy-paste', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
-                            content_pieces: [
-                                {
-                                    title: "Test Blog Post",
-                                    content: "<h2>Test Content</h2><p>This is a sample blog post to test the interface.</p>",
-                                    meta_description: "Test meta description for SEO",
-                                    keywords: "test, blogging, sample",
-                                    platform: "blog",
-                                    scheduled_time: "2025-06-17 09:00:00"
-                                },
-                                {
-                                    title: "Instagram Test Post",
-                                    content: "Test Instagram post content! 🌱 #test #gardening #sample",
-                                    keywords: ["test", "gardening", "sample"],
-                                    platform: "instagram",
-                                    scheduled_time: "2025-06-17 14:00:00"
-                               },
-                               {
-                                   title: "Facebook Test Post", 
-                                   content: "This is a test Facebook post to demonstrate the copy-paste functionality. It includes longer form content that's perfect for Facebook's format.",
-                                   keywords: ["facebook", "test", "social media"],
-                                   platform: "facebook",
-                                   scheduled_time: "2025-06-17 16:00:00"
-                               },
-                               {
-                                   title: "Email Newsletter Test",
-                                   content: "Subject: Test Weekly Newsletter\n\nHello! This is a test email newsletter to show how the copy-paste interface works for email content.",
-                                   platform: "email",
-                                   scheduled_time: "2025-06-18 08:00:00"
-                               }
-                           ],
-                           week_id: 'TEST-' + new Date().getFullYear() + '-W' + getWeekNumber()
-                       })
-                   })
-                   .then(response => response.text())
-                   .then(html => {
-                       const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes');
-                       newWindow.document.write(html);
-                       newWindow.document.close();
-                   });
-               });
-           }
-           
-           function getWeeklyContentData() {
-               // TODO: Integrate this with your actual content generation system
-               // For now, this is a placeholder that you'll replace with real data
-               console.log("Getting weekly content data...");
-               
-               // This should return the actual content generated by your system
-               // Example structure:
-               return [
-                   {
-                       title: "Your actual blog post title",
-                       content: "<h2>Your actual blog content</h2><p>With HTML formatting...</p>",
-                       meta_description: "Your SEO meta description",
-                       keywords: "your, actual, keywords",
-                       platform: "blog",
-                       scheduled_time: "2025-06-17 09:00:00"
-                   }
-                   // ... more content pieces
-               ];
-           }
-           
-           function getWeekNumber() {
-               const now = new Date();
-               const start = new Date(now.getFullYear(), 0, 1);
-               const diff = now - start;
-               const oneWeek = 1000 * 60 * 60 * 24 * 7;
-               return Math.floor(diff / oneWeek);
-           }
-       </script>
-   </body>
-   </html>
-   '''
+                            content_pieces: testContent,
+                            week_id: 'TEST-' + new Date().toISOString().split('T')[0],
+                            export_type: 'test'
+                        })
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        showLoading(false);
+                        const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
+                        newWindow.document.write(html);
+                        newWindow.document.close();
+                    });
+                }, 1000);
+            }
+            
+            function showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+                document.getElementById('exportBtn').disabled = show;
+            }
+            
+            function showError(message) {
+                const errorDiv = document.getElementById('error');
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+            
+            function hideError() {
+                document.getElementById('error').style.display = 'none';
+            }
+        </script>
+    </body>
+    </html>
+    '''
+    
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
