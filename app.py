@@ -1445,7 +1445,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         
         return posts
 
-     def _create_platform_specific_post(self, platform: str, post_type: str, date: datetime,
+    def _create_platform_specific_post(self, platform: str, post_type: str, date: datetime,
                                       day_name: str, daily_theme: str, season: str, 
                                       holiday_context: str, blog_post: ContentPiece) -> Dict:
         """Create platform-specific post content"""
