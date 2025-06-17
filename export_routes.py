@@ -7,19 +7,28 @@ export_bp = Blueprint('export', __name__)
 
 @export_bp.route('/api/export/copy-paste', methods=['POST'])
 def export_all_content():
-    """Generate copy-paste interface for ALL weekly content"""
+    """Generate copy-paste interface for date-based content"""
     try:
-        # Get content from request
         data = request.get_json()
         content_pieces = data.get('content_pieces', [])
-        week_id = data.get('week_id', datetime.now().strftime('%Y-W%U'))
+        week_id = data.get('week_id', datetime.now().strftime('%Y-%m-%d'))
+        export_type = data.get('export_type', 'daily')
         
         if not content_pieces:
-            return "<h2>No content found for this week.</h2>"
+            return f"""
+            <html>
+            <head><title>No Content Found</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 40px; text-align: center;">
+                <h2>No content found for the selected date</h2>
+                <p>Try selecting a different date or check your content generation settings.</p>
+                <button onclick="window.close()" style="padding: 10px 20px; background: #4eb155; color: white; border: none; border-radius: 5px;">Close</button>
+            </body>
+            </html>
+            """
         
         # Generate comprehensive HTML interface
         generator = CopyPasteGenerator()
-        html_content = generator.generate_all_content_html(content_pieces, week_id)
+        html_content = generator.generate_all_content_html(content_pieces, week_id, export_type)
         
         return html_content
         
