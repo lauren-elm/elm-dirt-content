@@ -1436,6 +1436,8 @@ def generate_content_api():
         export_type = data.get('type')   # 'weekly' or 'daily'
         day_of_week = data.get('day_of_week')  # 0-6 (Sunday-Saturday)
         
+        print(f"Generating content for: {selected_date}, type: {export_type}, day: {day_of_week}")
+        
         # Convert date string to datetime object
         from datetime import datetime, timedelta
         date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
@@ -1443,12 +1445,14 @@ def generate_content_api():
         # Generate content based on type
         if export_type == 'weekly':
             # Monday selected - generate full week
-            content_pieces = generate_weekly_content(date_obj)
+            content_pieces = generate_sample_weekly_content(date_obj, selected_date)
             week_id = f"{date_obj.year}-W{date_obj.isocalendar()[1]}"
         else:
             # Other day selected - generate daily content
-            content_pieces = generate_daily_content(date_obj, day_of_week)
+            content_pieces = generate_sample_daily_content(date_obj, day_of_week, selected_date)
             week_id = selected_date
+        
+        print(f"Generated {len(content_pieces)} content pieces")
         
         return jsonify({
             'success': True,
@@ -1460,90 +1464,260 @@ def generate_content_api():
         })
         
     except Exception as e:
-        logger.error(f"Error generating content: {str(e)}")
+        print(f"Error generating content: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-def generate_weekly_content(start_date):
-    """Generate content for entire week starting from Monday"""
-    # This should integrate with your existing content generation system
-    # Replace this with your actual weekly content generation logic
+def generate_sample_weekly_content(start_date, date_str):
+    """Generate sample content for entire week"""
+    from datetime import timedelta
+    import random
     
     content_pieces = []
     
-    # Example: Generate blog posts (typically 2-3 per week)
+    # Blog topics for the week
     blog_topics = [
-        "Spring Garden Preparation and Soil Health",
-        "Organic Pest Control Methods for Summer",
-        "Fall Garden Cleanup and Winter Prep"
+        {
+            'title': 'Spring Garden Soil Preparation: Your Complete Guide',
+            'content': '''<h2>Preparing Your Garden Soil for Spring Success</h2>
+<p>As winter melts away, it's time to give your garden soil the attention it deserves. Proper soil preparation is the foundation of a thriving garden.</p>
+
+<h3>Testing Your Soil</h3>
+<p>Start with a soil test to understand your pH levels and nutrient content. Most vegetables prefer a pH between 6.0-7.0.</p>
+
+<h3>Adding Organic Matter</h3>
+<ul>
+<li>Compost improves soil structure and adds nutrients</li>
+<li>Worm castings provide gentle, slow-release nutrition</li>
+<li>Our Ancient Soil blend combines the best of both worlds</li>
+</ul>
+
+<h3>Spring Soil Tasks</h3>
+<p>Remove any winter debris, gently work in organic amendments, and avoid working wet soil to prevent compaction.</p>''',
+            'meta_description': 'Complete guide to spring soil preparation including testing, organic amendments, and proper techniques for healthy garden soil.',
+            'keywords': 'spring gardening, soil preparation, soil testing, organic gardening, compost, garden soil'
+        },
+        {
+            'title': 'Organic Pest Prevention: Start Strong This Season',
+            'content': '''<h2>Getting Ahead of Garden Pests Naturally</h2>
+<p>The best pest control strategy starts before pests become a problem. Here's how to build natural defenses in your garden.</p>
+
+<h3>Companion Planting</h3>
+<p>Strategic plant combinations can naturally repel pests and attract beneficial insects.</p>
+
+<h3>Soil Health = Plant Health</h3>
+<p>Healthy plants in rich, living soil are naturally more resistant to pest damage. Strong root systems and robust growth help plants defend themselves.</p>
+
+<h3>Early Season Prevention</h3>
+<ul>
+<li>Remove overwintering pest habitat</li>
+<li>Install row covers for vulnerable plants</li>
+<li>Encourage beneficial insects with diverse plantings</li>
+</ul>''',
+            'meta_description': 'Learn organic pest prevention strategies including companion planting, soil health, and natural deterrents for a healthy garden.',
+            'keywords': 'organic pest control, companion planting, beneficial insects, natural gardening, pest prevention'
+        }
     ]
     
-    for i, topic in enumerate(blog_topics[:2]):  # Generate 2 blog posts
-        blog_date = start_date + timedelta(days=i*2)
+    # Add 2 blog posts for the week
+    for i, blog_topic in enumerate(blog_topics):
+        blog_date = start_date + timedelta(days=i)
         content_pieces.append({
-            'title': f"{topic} - Complete Guide",
-            'content': generate_blog_content(topic),  # Your existing function
-            'meta_description': f"Expert guide to {topic.lower()} with organic methods and proven techniques.",
-            'keywords': extract_keywords(topic),  # Your existing function
+            'title': blog_topic['title'],
+            'content': blog_topic['content'],
+            'meta_description': blog_topic['meta_description'],
+            'keywords': blog_topic['keywords'],
             'platform': 'blog',
             'scheduled_time': blog_date.strftime('%Y-%m-%d 09:00:00')
         })
     
     # Generate social media content for each day
-    social_platforms = ['instagram', 'facebook', 'pinterest', 'twitter']
+    social_content_templates = {
+        'monday': {
+            'instagram': "Monday motivation: Spring is here! 🌱 Time to get those garden beds ready. What's first on your spring garden to-do list?",
+            'facebook': "Monday means it's time to start thinking about spring garden prep! What's your biggest gardening goal this season?",
+        },
+        'tuesday': {
+            'instagram': "Tuesday tip: Test your soil pH before adding amendments! Most veggies love a pH between 6.0-7.0 🧪",
+            'facebook': "Tuesday garden tip: Don't skip the soil test! Understanding your soil's pH and nutrients is the first step to garden success.",
+        },
+        'wednesday': {
+            'instagram': "Wednesday wisdom: Healthy soil = healthy plants! 🌿 Our Ancient Soil blend gives your garden the foundation it needs to thrive.",
+            'facebook': "Wednesday reflection: What's the secret to amazing garden harvests? It all starts with the soil beneath your feet.",
+        },
+        'thursday': {
+            'instagram': "Thursday thoughts: Companion planting isn't just pretty - it's practical! 🌸 Marigolds with tomatoes, anyone?",
+            'facebook': "Thursday garden planning: Are you thinking about companion planting this year? Nature has some amazing partnerships to offer!",
+        },
+        'friday': {
+            'instagram': "Friday feeling: Almost weekend = almost garden time! 🎉 What projects are on your weekend gardening agenda?",
+            'facebook': "Friday check-in: How are your spring garden preparations going? Share your progress with our gardening community!",
+        },
+        'saturday': {
+            'instagram': "Saturday garden day! ☀️ Perfect weather for getting your hands dirty. What are you planting today?",
+            'facebook': "Saturday in the garden! Whether you're prepping beds or starting seeds, make today count in your garden journey.",
+        },
+        'sunday': {
+            'instagram': "Sunday garden planning: Take time to dream and plan for your best garden season yet! 📝✨",
+            'facebook': "Sunday reflection: Gardening teaches us patience, nurtures our souls, and feeds our families. What does your garden mean to you?",
+        }
+    }
     
-    for day in range(7):  # Monday to Sunday
-        current_date = start_date + timedelta(days=day)
-        day_name = current_date.strftime('%A')
+    day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    
+    # Generate content for each day of the week
+    for day_num in range(7):
+        current_date = start_date + timedelta(days=day_num)
+        day_name = day_names[day_num]
         
-        for platform in social_platforms:
-            if should_post_on_day(platform, day):  # Your logic for posting schedule
-                content_pieces.append({
-                    'title': f"{platform.title()} Post - {day_name}",
-                    'content': generate_social_content(platform, current_date),  # Your function
-                    'keywords': get_platform_hashtags(platform),  # Your function
-                    'platform': platform,
-                    'scheduled_time': current_date.strftime(f'%Y-%m-%d {get_optimal_time(platform)}:00')
-                })
+        # Instagram post
+        if day_num in [0, 2, 4, 6]:  # Monday, Wednesday, Friday, Sunday
+            instagram_content = social_content_templates[day_name]['instagram']
+            hashtags = ['SpringGardening', 'OrganicGardening', 'ElmDirt', 'GardenLife', 'HealthySoil']
+            
+            content_pieces.append({
+                'title': f'Instagram Post - {day_name.title()}',
+                'content': f"{instagram_content}\n\n#{' #'.join(hashtags)}",
+                'keywords': hashtags,
+                'platform': 'instagram',
+                'scheduled_time': current_date.strftime('%Y-%m-%d 14:00:00')
+            })
+        
+        # Facebook post
+        if day_num in [0, 2, 5]:  # Monday, Wednesday, Saturday
+            facebook_content = social_content_templates[day_name]['facebook']
+            
+            content_pieces.append({
+                'title': f'Facebook Post - {day_name.title()}',
+                'content': facebook_content,
+                'keywords': ['gardening community', 'spring prep', 'organic gardening'],
+                'platform': 'facebook',
+                'scheduled_time': current_date.strftime('%Y-%m-%d 15:00:00')
+            })
     
-    # Generate email newsletter (typically weekly)
-    email_date = start_date + timedelta(days=2)  # Wednesday
+    # Add weekly email newsletter (Wednesday)
+    email_date = start_date + timedelta(days=2)
     content_pieces.append({
         'title': 'Weekly Garden Newsletter',
-        'content': generate_email_content(start_date),  # Your function
+        'content': f'''Subject: Your Spring Garden Success Plan - Week of {start_date.strftime('%B %d')}
+
+Hello Fellow Gardener! 🌱
+
+Spring is in full swing, and your garden is calling! This week, we're focusing on the foundation of great gardening: healthy soil.
+
+THIS WEEK'S GARDEN PRIORITIES:
+□ Test your soil pH and nutrient levels
+□ Add 2-3 inches of compost to garden beds  
+□ Plan your companion planting strategy
+□ Start warm-season seeds indoors
+□ Clean and prep garden tools
+
+FEATURED TIP: Don't Rush Spring Planting!
+While it's tempting to get everything in the ground, wait for consistent soil temperatures. Cold soil leads to poor germination and stressed plants.
+
+PRODUCT SPOTLIGHT: Ancient Soil
+Give your garden the best start with our premium soil amendment. Packed with worm castings, biochar, and beneficial microorganisms.
+
+COMMUNITY QUESTION:
+What's your biggest spring gardening challenge? Reply and let us know - we love helping fellow gardeners succeed!
+
+Happy Gardening!
+The Elm Dirt Team''',
         'platform': 'email',
         'scheduled_time': email_date.strftime('%Y-%m-%d 08:00:00')
     })
     
     return content_pieces
 
-def generate_daily_content(selected_date, day_of_week):
-    """Generate content for specific day only"""
+def generate_sample_daily_content(selected_date, day_of_week, date_str):
+    """Generate sample content for specific day only"""
     content_pieces = []
     
     day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    day_name = day_names[day_of_week]
+    day_name = day_names[day_of_week].lower()
     
-    # Generate social media content for the selected day
-    social_platforms = ['instagram', 'facebook', 'pinterest', 'twitter']
+    # Daily social media content templates
+    daily_templates = {
+        0: {  # Sunday
+            'instagram': "Sunday garden reflection: What lessons has your garden taught you? 🌱✨ Share your garden wisdom below!",
+            'facebook': "Sunday thoughts: Gardening connects us to nature, teaches patience, and rewards our care. What's your favorite thing about gardening?"
+        },
+        1: {  # Monday  
+            'instagram': "Monday motivation: New week, new growth! 🌱 What garden goals are you tackling this week?",
+            'facebook': "Monday garden check-in: What's growing in your garden this week? Share your progress with our community!"
+        },
+        2: {  # Tuesday
+            'instagram': "Tuesday tip: Morning watering helps plants stay hydrated all day! 💧 What's your watering schedule?",
+            'facebook': "Tuesday garden tip: Consistent watering is key to plant health. Deep, less frequent watering encourages strong root growth."
+        },
+        3: {  # Wednesday
+            'instagram': "Wednesday wisdom: Healthy soil feeds healthy plants! 🌿 How are you nurturing your soil this season?",
+            'facebook': "Wednesday reflection: The secret to amazing harvests? It all starts with healthy, living soil full of beneficial microorganisms."
+        },
+        4: {  # Thursday
+            'instagram': "Thursday thoughts: Companion planting = nature's teamwork! 🌸 What plants are partnering in your garden?",
+            'facebook': "Thursday planning: Companion planting isn't just beautiful - it's practical! Plants can help each other grow stronger and healthier."
+        },
+        5: {  # Friday
+            'instagram': "Friday garden prep: Weekend projects ahead! 🎉 What's on your garden to-do list?",
+            'facebook': "Friday motivation: The weekend is perfect for garden projects! What garden tasks are you excited to tackle?"
+        },
+        6: {  # Saturday
+            'instagram': "Saturday garden time! ☀️ Perfect day to get your hands in the soil. What are you planting today?",
+            'facebook': "Saturday in the garden! Whether you're weeding, planting, or just enjoying your space, make it a great garden day!"
+        }
+    }
     
-    for platform in social_platforms:
-        if should_post_on_day(platform, day_of_week):
-            content_pieces.append({
-                'title': f"{platform.title()} Post - {day_name}",
-                'content': generate_social_content(platform, selected_date),
-                'keywords': get_platform_hashtags(platform),
-                'platform': platform,
-                'scheduled_time': selected_date.strftime(f'%Y-%m-%d {get_optimal_time(platform)}:00')
-            })
+    # Generate Instagram post for most days
+    if day_of_week in [0, 1, 2, 4, 5, 6]:  # All days except Wednesday
+        instagram_content = daily_templates[day_of_week]['instagram']
+        hashtags = ['GardenLife', 'OrganicGardening', 'ElmDirt', 'PlantLove', 'GrowYourOwn']
+        
+        content_pieces.append({
+            'title': f'Instagram Post - {day_name.title()}',
+            'content': f"{instagram_content}\n\n#{' #'.join(hashtags)}",
+            'keywords': hashtags,
+            'platform': 'instagram',
+            'scheduled_time': selected_date.strftime('%Y-%m-%d 14:00:00')
+        })
     
-    # Add email if it's typically sent on this day
+    # Generate Facebook post for select days
+    if day_of_week in [1, 3, 6]:  # Monday, Wednesday, Saturday
+        facebook_content = daily_templates[day_of_week]['facebook']
+        
+        content_pieces.append({
+            'title': f'Facebook Post - {day_name.title()}',
+            'content': facebook_content,
+            'keywords': ['gardening community', 'garden tips', 'organic gardening'],
+            'platform': 'facebook',
+            'scheduled_time': selected_date.strftime('%Y-%m-%d 15:00:00')
+        })
+    
+    # Add daily email tip for Wednesday
     if day_of_week == 3:  # Wednesday
         content_pieces.append({
             'title': 'Daily Garden Tip Email',
-            'content': generate_daily_email_content(selected_date),
+            'content': f'''Subject: Wednesday Garden Wisdom - {selected_date.strftime('%B %d')}
+
+Quick garden tip for your Wednesday! 🌱
+
+Today's focus: SOIL HEALTH
+
+The foundation of every great garden is healthy, living soil. Here's one simple thing you can do today:
+
+ADD ORGANIC MATTER
+Whether it's compost, aged manure, or our Ancient Soil blend, adding organic matter:
+- Improves soil structure
+- Feeds beneficial microorganisms  
+- Increases water retention
+- Provides slow-release nutrients
+
+Even adding just an inch of compost to your beds makes a huge difference!
+
+Keep growing!
+The Elm Dirt Team''',
             'platform': 'email',
             'scheduled_time': selected_date.strftime('%Y-%m-%d 08:00:00')
         })
