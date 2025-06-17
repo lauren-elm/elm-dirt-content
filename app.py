@@ -2006,9 +2006,72 @@ def generate_fallback_content(prompt):
 
 # You'll need to replace this with your actual Claude API function
 def generate_claude_content(prompt):
-    """Replace this with your existing Claude API integration"""
-    # Replace this with your actual Claude function:
-    return your_existing_claude_function(prompt)
+    """Connect to Claude API for content generation"""
+    try:
+        # Replace YOUR_API_KEY with your actual Claude API key
+        import requests
+        import os
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": os.getenv('CLAUDE_API_KEY'),  # Make sure this environment variable is set
+            "anthropic-version": "2023-06-01"
+        }
+        
+        data = {
+            "model": "claude-3-5-sonnet-20241022",  # Updated model
+            "max_tokens": 2000,
+            "messages": [
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ]
+        }
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result["content"][0]["text"]
+        else:
+            print(f"Claude API error: {response.status_code} - {response.text}")
+            return generate_fallback_content_simple(prompt)
+            
+    except Exception as e:
+        print(f"Error calling Claude API: {e}")
+        return generate_fallback_content_simple(prompt)
+
+def generate_fallback_content_simple(prompt):
+    """Simple fallback content when Claude API fails"""
+    if "blog article" in prompt.lower():
+        return """<h2>Expert Garden Care Guide</h2>
+<p>Creating a successful garden starts with understanding the fundamentals of soil health and plant nutrition.</p>
+<h3>Essential Garden Practices</h3>
+<p>Healthy soil is the foundation of any thriving garden. By focusing on organic amendments and beneficial microorganisms, you can create an environment where plants naturally flourish.</p>
+<ul>
+<li>Test soil pH regularly for optimal plant nutrition</li>
+<li>Add organic matter to improve soil structure</li>
+<li>Use beneficial microorganisms to enhance nutrient availability</li>
+<li>Practice sustainable watering techniques</li>
+</ul>
+<p>Our Ancient Soil blend provides these essential components, creating the perfect foundation for your garden's success.</p>"""
+    
+    elif "blog ideas" in prompt.lower():
+        return """1. Spring Garden Soil Preparation Complete Guide
+2. Organic Pest Control Methods That Actually Work  
+3. Best Vegetables for Beginning Gardeners
+4. Creating Living Soil with Natural Amendments
+5. Companion Planting for Garden Success
+6. Natural Fertilizers vs Synthetic Options"""
+    
+    else:
+        return "Quality gardening content generated for your organic garden success."
 
 def generate_sample_weekly_content(start_date, date_str):
     """Generate sample content for entire week"""
