@@ -1376,6 +1376,99 @@ def index():
 </body>
 </html>'''
 
+@app.route('/api/test-claude')
+def test_claude_api():
+    """Test Claude API connection"""
+    try:
+        import os
+        import requests
+        
+        api_key = os.getenv('CLAUDE_API_KEY')
+        
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'CLAUDE_API_KEY environment variable not set',
+                'instructions': 'Add your API key in Render Environment settings'
+            })
+        
+        print(f"Testing Claude API with key: {api_key[:15]}...")
+        
+        # Test API call
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01"
+        }
+        
+        data = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 100,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Say 'Hello, API is working!' and nothing else."
+                }
+            ]
+        }
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=data,
+            timeout=10
+        )
+        
+        print(f"Claude API response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            return jsonify({
+                'success': True,
+                'api_response': result["content"][0]["text"],
+                'status_code': response.status_code,
+                'api_key_preview': f"{api_key[:15]}...{api_key[-10:]}" if len(api_key) > 25 else "Key format issue",
+                'message': 'Claude API is working correctly!'
+            })
+        elif response.status_code == 401:
+            return jsonify({
+                'success': False,
+                'error': 'API key unauthorized',
+                'status_code': response.status_code,
+                'solution': 'Check your API key at https://console.anthropic.com/',
+                'api_key_preview': f"{api_key[:15]}..." if len(api_key) > 15 else "Key too short"
+            })
+        elif response.status_code == 429:
+            return jsonify({
+                'success': False,
+                'error': 'Rate limit exceeded',
+                'status_code': response.status_code,
+                'solution': 'Wait a few minutes and try again'
+            })
+        elif response.status_code == 400:
+            return jsonify({
+                'success': False,
+                'error': 'Bad request',
+                'status_code': response.status_code,
+                'response_text': response.text,
+                'solution': 'Check model name and request format'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f"Unexpected status code: {response.status_code}",
+                'response_text': response.text,
+                'api_key_preview': f"{api_key[:15]}..." if len(api_key) > 15 else "Key issue"
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'solution': 'Check the error details and try again'
+        })
+
 @app.route('/health')
 def health_check():
     """Health check endpoint"""
