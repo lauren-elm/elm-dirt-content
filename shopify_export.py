@@ -71,18 +71,15 @@ class CopyPasteGenerator:
                     color: white;
                     margin: 0;
                 }}
-                .blog-header {{ background: #114817; }}
+                 .blog-header {{ background: #114817; }}
                 .instagram-header {{ background: #E4405F; }}
                 .facebook-header {{ background: #1877F2; }}
                 .email-header {{ background: #34495e; }}
                 .pinterest-header {{ background: #BD081C; }}
                 .twitter-header {{ background: #1DA1F2; }}
-                .tiktok-header { background: #000000; }
-                .linkedin-header { background: #0077B5; }
-                .youtube-header { background: #FF0000; }
-                .tiktok-header { background: #000000; }
-                .linkedin-header { background: #0077B5; }  
-                .youtube-header { background: #FF0000; }
+                .tiktok-header {{ background: #000000; }}
+                .linkedin-header {{ background: #0077B5; }}
+                .youtube-header {{ background: #FF0000; }}
             
                 .content-item {{
                     padding: 2rem;
