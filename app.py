@@ -1564,45 +1564,149 @@ def generate_content_api():
         }), 500
 
 def generate_full_weekly_content(start_date, date_str):
-    """Generate complete weekly content using Claude AI integration"""
+    """Generate smaller amount of content to avoid timeouts"""
     from datetime import timedelta
-    import random
     
     content_pieces = []
     
-    # Get seasonal context for the date
-    seasonal_context = get_seasonal_context(start_date)
-    
-    # Step 1: Generate 6 Blog Post Ideas using Claude AI
-    blog_ideas = generate_blog_ideas_with_claude(seasonal_context, start_date)
-    
-    # Step 2: Generate 6 Full Blog Posts using Claude AI
-    for i, blog_idea in enumerate(blog_ideas):
-        blog_date = start_date + timedelta(days=i)
-        full_blog = generate_blog_with_claude(blog_idea, seasonal_context)
+    try:
+        print(f"Starting LIGHT content generation for {date_str}")
         
-        content_pieces.append({
-            'title': full_blog['title'],
-            'content': full_blog['content'],
-            'meta_description': full_blog['meta_description'],
-            'keywords': full_blog['keywords'],
-            'platform': 'blog',
-            'scheduled_time': blog_date.strftime('%Y-%m-%d 09:00:00')
+        # Get seasonal context
+        seasonal_context = get_seasonal_context(start_date)
+        print(f"Seasonal context: {seasonal_context}")
+        
+        # Generate 1 Blog Post
+        try:
+            print("Generating 1 blog post...")
+            blog_ideas = generate_blog_ideas_with_claude(seasonal_context, start_date)
+            
+            if blog_ideas and len(blog_ideas) > 0:
+                # Generate just the first blog post
+                blog_title = blog_ideas[0]
+                full_blog = generate_blog_with_claude(blog_title, seasonal_context)
+                
+                content_pieces.append({
+                    'title': full_blog['title'],
+                    'content': full_blog['content'],
+                    'meta_description': full_blog['meta_description'],
+                    'keywords': full_blog['keywords'],
+                    'platform': 'blog',
+                    'scheduled_time': start_date.strftime('%Y-%m-%d 09:00:00')
+                })
+                print(f"✅ Generated 1 blog post: {full_blog['title']}")
+            
+        except Exception as e:
+            print(f"Error generating blog post: {e}")
+        
+        # Generate 3 Instagram Posts
+        try:
+            print("Generating 3 Instagram posts...")
+            instagram_posts = generate_instagram_posts_light(start_date, seasonal_context)
+            content_pieces.extend(instagram_posts)
+            print(f"✅ Generated {len(instagram_posts)} Instagram posts")
+        except Exception as e:
+            print(f"Error generating Instagram posts: {e}")
+        
+        # Generate 3 Facebook Posts
+        try:
+            print("Generating 3 Facebook posts...")
+            facebook_posts = generate_facebook_posts_light(start_date, seasonal_context)
+            content_pieces.extend(facebook_posts)
+            print(f"✅ Generated {len(facebook_posts)} Facebook posts")
+        except Exception as e:
+            print(f"Error generating Facebook posts: {e}")
+        
+        # Generate 3 TikTok Ideas
+        try:
+            print("Generating 3 TikTok ideas...")
+            tiktok_posts = generate_tiktok_posts_light(start_date, seasonal_context)
+            content_pieces.extend(tiktok_posts)
+            print(f"✅ Generated {len(tiktok_posts)} TikTok ideas")
+        except Exception as e:
+            print(f"Error generating TikTok posts: {e}")
+        
+        print(f"🎉 Total content pieces generated: {len(content_pieces)}")
+        return content_pieces
+        
+    except Exception as e:
+        print(f"Critical error in light content generation: {e}")
+        return []
+
+def generate_instagram_posts_light(start_date, seasonal_context):
+    """Generate 3 Instagram posts"""
+    posts = []
+    season = seasonal_context.get('season', 'spring')
+    
+    instagram_templates = [
+        f"{season.title()} garden prep time! 🌱\n\n✨ Test your soil pH\n🌿 Add organic matter\n💧 Plan your watering\n🪱 Feed the soil life\n\nWhat's first on your {season} garden list?\n\n#OrganicGardening #{season.title()}Gardening #SoilHealth #ElmDirt #GardenLife",
+        
+        f"Soil health secret! 🤫\n\nHealthy soil = happy plants 🌱\n\nOur Ancient Soil blend contains:\n🪱 Premium worm castings\n🔥 Activated biochar\n🌊 Sea kelp meal\n🌋 Volcanic minerals\n\nReady to transform your garden?\n\n#HealthySoil #OrganicGardening #PlantNutrition #ElmDirt",
+        
+        f"Garden myth busted! 🚫\n\nMyth: More fertilizer = better plants\nTruth: Living soil + balance = thriving plants 🌿\n\nFocus on feeding the soil, not just the plant!\n\n#GardenMyths #OrganicGardening #SoilLife #PlantScience #ElmDirt"
+    ]
+    
+    for i, template in enumerate(instagram_templates):
+        hour = 14 + (i * 2)  # 2pm, 4pm, 6pm
+        posts.append({
+            'title': f'Instagram Post {i+1} - {season.title()} Tips',
+            'content': template,
+            'keywords': ['OrganicGardening', f'{season.title()}Gardening', 'SoilHealth', 'ElmDirt', 'GardenLife'],
+            'platform': 'instagram',
+            'scheduled_time': start_date.strftime(f'%Y-%m-%d {hour:02d}:00:00')
         })
     
-    # Step 3: Generate Social Media Content (18 posts each for FB, IG, TikTok)
-    social_content = generate_social_media_content(start_date, seasonal_context, blog_ideas)
-    content_pieces.extend(social_content)
+    return posts
+
+def generate_facebook_posts_light(start_date, seasonal_context):
+    """Generate 3 Facebook posts"""
+    posts = []
+    season = seasonal_context.get('season', 'spring')
     
-    # Step 4: Generate 6 LinkedIn Posts
-    linkedin_content = generate_linkedin_content(start_date, seasonal_context, blog_ideas)
-    content_pieces.extend(linkedin_content)
+    facebook_templates = [
+        f"🌱 {season.title()} gardening question for our community: What's your biggest garden challenge this season?\n\nWhether it's soil prep, pest control, or just knowing where to start - share below and let's help each other succeed! Our gardening community is here to support you. 💚\n\nDrop your questions in the comments! 👇",
+        
+        f"Did you know that healthy soil contains more living organisms than there are people on Earth? 🤯\n\nJust one teaspoon of quality garden soil hosts billions of beneficial bacteria, fungi, and microorganisms working 24/7 to:\n• Break down organic matter\n• Make nutrients available to plants\n• Protect roots from harmful pathogens\n• Improve soil structure and water retention\n\nThat's why we're passionate about creating living soil with our Ancient Soil blend! What's your soil doing for your garden?",
+        
+        f"{season.title()} garden success tip: Start with your soil! 🌿\n\nBefore you plant a single seed, take time to:\n✅ Test your soil pH (most veggies love 6.0-7.0)\n✅ Add organic matter like compost or aged manure\n✅ Ensure good drainage\n✅ Feed the beneficial microorganisms\n\nHealthy soil = healthy plants = amazing harvests! What's your soil prep routine looking like this {season}?"
+    ]
     
-    # Step 5: Generate YouTube Outline
-    youtube_outline = generate_youtube_outline(start_date, seasonal_context, blog_ideas)
-    content_pieces.append(youtube_outline)
+    for i, template in enumerate(facebook_templates):
+        hour = 15 + (i * 3)  # 3pm, 6pm, 9pm
+        posts.append({
+            'title': f'Facebook Post {i+1} - {season.title()} Community',
+            'content': template,
+            'keywords': ['gardening community', f'{season} gardening', 'soil health', 'organic gardening'],
+            'platform': 'facebook',
+            'scheduled_time': start_date.strftime(f'%Y-%m-%d {hour:02d}:00:00')
+        })
     
-    return content_pieces
+    return posts
+
+def generate_tiktok_posts_light(start_date, seasonal_context):
+    """Generate 3 TikTok video ideas"""
+    posts = []
+    season = seasonal_context.get('season', 'spring')
+    
+    tiktok_templates = [
+        f"POV: You're learning the soil pH test that changed everything 🧪\n\n[Show pH test kit, test garden soil, dramatic reaction to results, quick fix with lime or sulfur, happy plants growing]\n\nCaption: 'When you realize your plants weren't lazy, they just had the wrong pH! #{season}Garden #SoilTest #GardeningHacks #PlantTok'",
+        
+        f"Ancient Soil unboxing but make it ASMR 📦✨\n\n[Slow motion opening, close-up of rich soil texture, hands running through it, satisfied 'ahh' reaction, before/after plant comparison]\n\nCaption: 'This soil hits different 🌱 #SoilASMR #GardeningTok #PlantParent #OrganicGardening #ElmDirt'",
+        
+        f"Garden transformation in 30 seconds! ⏰\n\n[Time-lapse: sad garden bed → adding Ancient Soil → mixing → planting → fast-forward 2 weeks of growth → thriving plants]\n\nCaption: 'The glow up your garden deserves ✨ #GardenGlowUp #BeforeAndAfter #PlantTransformation #{season}Gardening'"
+    ]
+    
+    for i, template in enumerate(tiktok_templates):
+        hour = 16 + (i * 2)  # 4pm, 6pm, 8pm
+        posts.append({
+            'title': f'TikTok Video Idea {i+1} - {season.title()} Content',
+            'content': template,
+            'keywords': ['GardeningTok', 'PlantTok', f'{season}Garden', 'ElmDirt', 'OrganicGardening'],
+            'platform': 'tiktok',
+            'scheduled_time': start_date.strftime(f'%Y-%m-%d {hour:02d}:00:00')
+        })
+    
+    return posts
 
 def get_seasonal_context(date_obj):
     """Get seasonal and holiday context for content generation"""
