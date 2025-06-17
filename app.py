@@ -537,7 +537,7 @@ class ContentGenerator:
         day_themes = daily_blog_themes.get(day_name, daily_blog_themes['Monday'])
         return random.choice(day_themes)
     
-        def generate_blog_with_claude(blog_title, seasonal_context):
+    def generate_blog_with_claude(blog_title, seasonal_context):
         """Generate visually appealing blog post with schema and images"""
     
             prompt = f"""Write a comprehensive, visually appealing blog article titled "{blog_title}"
