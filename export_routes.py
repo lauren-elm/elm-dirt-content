@@ -78,4 +78,84 @@ Our customers have seen amazing results when they switch to living soil:
 - Reduced need for synthetic fertilizers
 - Healthier vegetables and flowers
 
-What's your biggest gardening challenge this
+What's your biggest gardening challenge this spring? Let us know in the comments! We love helping fellow gardeners succeed. 🌱''',
+            'keywords': ['soil health', 'microorganisms', 'organic gardening', 'sustainable gardening'],
+            'platform': 'facebook',
+            'scheduled_time': '2025-03-16 10:00:00'
+        },
+        {
+            'title': 'Email Newsletter - Weekly Garden Update',
+            'content': '''Subject: Your Spring Garden Checklist (Plus 20% Off Ancient Soil!)
+
+Hello Fellow Gardener! 🌱
+
+Spring is officially here, and your garden is calling! Whether you're a seasoned grower or just getting started, this week is perfect for laying the groundwork for your best garden yet.
+
+THIS WEEK'S GARDEN TASKS:
+□ Test soil pH (ideal range: 6.0-7.0 for most vegetables)
+□ Add organic matter to garden beds
+□ Start seeds indoors for warm-season crops
+□ Clean and organize garden tools
+□ Plan your garden layout for companion planting
+
+FEATURED PRODUCT: Ancient Soil
+This week only, save 20% on our best-selling Ancient Soil blend. Perfect for:
+- Revitalizing tired garden beds
+- Starting seedlings with premium nutrition
+- Improving soil structure and water retention
+
+Customer Spotlight:
+"I've been using Ancient Soil for two seasons now, and the difference is incredible. My tomatoes have never been more productive!" - Sarah K., Illinois
+
+SPRING PLANTING REMINDER:
+Remember to check your last frost date before transplanting seedlings outdoors. Most areas are still 2-4 weeks away from safe planting time for tender crops.
+
+Happy Gardening!
+The Elm Dirt Team
+
+P.S. Reply to this email with photos of your spring prep - we love seeing your gardens come to life!''',
+            'keywords': ['spring gardening', 'garden checklist', 'soil preparation', 'organic amendments'],
+            'platform': 'email',
+            'scheduled_time': '2025-03-17 08:00:00'
+        },
+        {
+            'title': 'Pinterest Pin - Soil Amendment Guide',
+            'content': '''🌱 ULTIMATE SOIL AMENDMENT GUIDE 🌱
+
+Transform your garden soil naturally:
+
+ORGANIC MATTER:
+- Compost (homemade or bagged)
+- Aged manure (cow, chicken, rabbit)
+- Leaf mold
+- Worm castings ⭐
+
+SOIL CONDITIONERS:
+- Biochar (improves structure)
+- Perlite (drainage)
+- Vermiculite (water retention)
+- Coconut coir
+
+NATURAL FERTILIZERS:
+- Bone meal (phosphorus)
+- Blood meal (nitrogen)
+- Kelp meal (trace minerals)
+- Ancient Soil blend (all-in-one)
+
+💡 PRO TIP: Test your soil first, then amend based on results!
+
+Save this pin for your spring garden prep! 📌
+
+#OrganicGardening #SoilHealth #GardenTips #SpringGardening #HealthySoil #GardenPrep''',
+            'keywords': ['soil amendment', 'organic gardening', 'garden tips', 'spring prep', 'soil health'],
+            'platform': 'pinterest',
+            'scheduled_time': '2025-03-18 11:00:00'
+        }
+    ]
+    
+    return jsonify({
+        'message': 'Sample weekly content generated!',
+        'content_count': len(sample_weekly_content),
+        'platforms': list(set([item['platform'] for item in sample_weekly_content])),
+        'test_url': '/api/export/copy-paste (POST with this data)'
+    })
