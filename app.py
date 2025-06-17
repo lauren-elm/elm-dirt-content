@@ -1741,21 +1741,27 @@ Write the complete article with HTML formatting:"""
         return get_fallback_blog_content(blog_title, seasonal_context)
 
 def make_direct_claude_call(prompt):
-    """Direct Claude API call - NO RECURSION"""
+    """Direct Claude API call - WORKING VERSION based on successful test"""
     try:
-        import requests
         import os
+        import requests
         
-        # Claude API configuration
+        api_key = os.getenv('CLAUDE_API_KEY')
+        if not api_key:
+            print("ERROR: CLAUDE_API_KEY not found")
+            return None
+        
+        print(f"Making Claude API call for content generation...")
+        
         headers = {
             "Content-Type": "application/json",
-            "x-api-key": os.getenv('CLAUDE_API_KEY'),
+            "x-api-key": api_key,
             "anthropic-version": "2023-06-01"
         }
         
         data = {
             "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 3000,
+            "max_tokens": 4000,  # Increased for longer blog posts
             "messages": [
                 {
                     "role": "user",
@@ -1764,7 +1770,6 @@ def make_direct_claude_call(prompt):
             ]
         }
         
-        print("Making Claude API call...")
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers=headers,
@@ -1772,20 +1777,20 @@ def make_direct_claude_call(prompt):
             timeout=60
         )
         
-        print(f"Claude API response status: {response.status_code}")
+        print(f"Claude API Response Status: {response.status_code}")
         
         if response.status_code == 200:
             result = response.json()
             content = result["content"][0]["text"]
-            print(f"Claude returned {len(content)} characters")
+            print(f"✅ SUCCESS: Generated {len(content)} characters")
             return content
         else:
-            print(f"Claude API error: {response.status_code} - {response.text}")
-            raise Exception(f"API returned {response.status_code}")
+            print(f"❌ API Error {response.status_code}: {response.text}")
+            return None
             
     except Exception as e:
-        print(f"Error in make_direct_claude_call: {e}")
-        raise e
+        print(f"❌ Error in make_direct_claude_call: {e}")
+        return None
 
 def parse_blog_ideas(claude_response):
     """Parse Claude response to extract blog titles - IMPROVED"""
