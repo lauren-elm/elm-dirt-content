@@ -244,7 +244,7 @@ class ClaudeAPIClient:
         """Generate content using Claude API"""
         try:
             payload = {
-                'model': 'claude-3-sonnet-20240229',
+                'model': 'claude-3-sonnet-latest',
                 'max_tokens': max_tokens,
                 'messages': [{
                     'role': 'user',
