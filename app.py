@@ -1894,26 +1894,27 @@ def export_page():
                 const dateInput = document.getElementById('exportDate');
                 const dateInfo = document.getElementById('dateInfo');
                 const exportBtn = document.getElementById('exportBtn');
+    
+            if (!dateInput.value) {
+                dateInfo.style.display = 'none';
+                exportBtn.disabled = true;
+                return;
+            }
                 
-                if (!dateInput.value) {
-                    dateInfo.style.display = 'none';
-                    exportBtn.disabled = true;
-                    return;
-                }
-                
-                const selectedDate = new Date(dateInput.value);
+                const dateStr = dateInput.value;
+                const selectedDate = new Date(dateStr + 'T12:00:00'); // Add time to avoid timezone issues
                 const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const dayName = dayNames[dayOfWeek];
-                
+    
                 let infoHTML = '';
-                
+    
                 if (dayOfWeek === 1) { // Monday
                     const weekStart = new Date(selectedDate);
                     const weekEnd = new Date(selectedDate);
                     weekEnd.setDate(weekEnd.getDate() + 6);
                     
-                    infoHTML = `
+                     infoHTML = `
                         <h3>📅 Weekly Export Selected</h3>
                         <p><strong>Date:</strong> ${dayName}, ${selectedDate.toLocaleDateString()}</p>
                         <p><strong>Export Range:</strong> Full week (${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()})</p>
@@ -1930,7 +1931,7 @@ def export_page():
                     `;
                 }
                 
-                dateInfo.innerHTML = infoHTML;
+                 dateInfo.innerHTML = infoHTML;
                 dateInfo.style.display = 'block';
                 exportBtn.disabled = false;
             }
@@ -1942,59 +1943,66 @@ def export_page():
             
             function exportContent() {
                 const dateInput = document.getElementById('exportDate');
-                const selectedDate = new Date(dateInput.value);
+                const dateStr = dateInput.value;
+                const selectedDate = new Date(dateStr + 'T12:00:00'); // Fix timezone issue
                 const dayOfWeek = selectedDate.getDay();
-                
+    
                 showLoading(true);
                 hideError();
                 
                 // Determine if it's a weekly or daily export
                 const isWeekly = dayOfWeek === 1; // Monday = weekly
                 const exportType = isWeekly ? 'weekly' : 'daily';
+    
+                console.log('Exporting:', {
+                    date: dateStr,
+                    dayOfWeek: dayOfWeek,
+                    exportType: exportType
+                });
+             
+            
                 
-                // Format date for API
-                const formattedDate = selectedDate.toISOString().split('T')[0];
-                
-                // Call your content generation API
+                 // Call your content generation API
                 fetch('/api/generate-content', {
-                    method: 'POST',
+                   method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        date: formattedDate,
-                        type: exportType,
-                        day_of_week: dayOfWeek
-                    })
+                    date: dateStr,
+                    type: exportType,
+                    day_of_week: dayOfWeek
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Content generated successfully, now open export interface
-                        return fetch('/api/export/copy-paste', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                content_pieces: data.content_pieces,
-                                week_id: data.week_id || formattedDate,
-                                export_type: exportType
-                            })
-                        });
-                    } else {
-                        throw new Error(data.error || 'Failed to generate content');
-                    }
-                })
-                .then(response => response.text())
-                .then(html => {
-                    showLoading(false);
-                    const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
-                    newWindow.document.write(html);
-                    newWindow.document.close();
-                })
-                .catch(error => {
-                    showLoading(false);
-                    showError('Error generating content: ' + error.message);
-                    console.error('Error:', error);
-                });
-            }
+            })
+           .then(response => response.json())
+           .then(data => {
+                console.log('Content generation response:', data);
+                if (data.success) {
+                    // Content generated successfully, now open export interface
+                    return fetch('/api/export/copy-paste', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            content_pieces: data.content_pieces,
+                            week_id: data.week_id || dateStr,
+                            export_type: exportType
+                        })
+                    });
+                } else {
+                    throw new Error(data.error || 'Failed to generate content');
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                showLoading(false);
+                const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes,resizable=yes');
+                newWindow.document.write(html);
+                newWindow.document.close();
+            })
+            .catch(error => {
+                showLoading(false);
+                showError('Error generating content: ' + error.message);
+                console.error('Error:', error);
+            });
+        }
             
             function testExportInterface() {
                 showLoading(true);
