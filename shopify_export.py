@@ -203,32 +203,22 @@ class CopyPasteGenerator:
                 <div class="stat-card">
                     <div class="stat-number">{len(blog_posts)}</div>
                     <div>Blog Posts</div>
-                    <div style="font-size: 12px; color: #666;">Target: 6</div>
+                    <div style="font-size: 12px; color: #666;">Generated: 1</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">{len(instagram_posts)}</div>
                     <div>Instagram Posts</div>
-                    <div style="font-size: 12px; color: #666;">Target: 18</div>
+                    <div style="font-size: 12px; color: #666;">Generated: 3</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">{len(facebook_posts)}</div>
                     <div>Facebook Posts</div>
-                    <div style="font-size: 12px; color: #666;">Target: 18</div>
+                    <div style="font-size: 12px; color: #666;">Generated: 3</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'tiktok'])}</div>
+                    <div class="stat-number">{len(tiktok_posts)}</div>
                     <div>TikTok Ideas</div>
-                    <div style="font-size: 12px; color: #666;">Target: 18</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'linkedin'])}</div>
-                    <div>LinkedIn Posts</div>
-                    <div style="font-size: 12px; color: #666;">Target: 6</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{len([cp for cp in content_pieces if cp.get('platform', '').lower() == 'youtube'])}</div>
-                    <div>YouTube Outline</div>
-                    <div style="font-size: 12px; color: #666;">Target: 1</div>
+                    <div style="font-size: 12px; color: #666;">Generated: 3</div>
                 </div>
             </div>
         
