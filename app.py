@@ -1630,7 +1630,7 @@ def call_claude_api(prompt):
         # return your_existing_claude_function(prompt)
         
         # For now, using a placeholder that connects to Claude
-        response = generate_claude_content(prompt)  # Your existing function
+        response = call_claude_api(prompt)  # Your existing function
         return response
         
     except Exception as e:
@@ -2007,11 +2007,8 @@ def generate_fallback_content(prompt):
 # You'll need to replace this with your actual Claude API function
 def generate_claude_content(prompt):
     """Replace this with your existing Claude API integration"""
-    # This should call your existing Claude API setup
-    # Example: return your_claude_api_function(prompt)
-    
-    # Placeholder - replace with your actual implementation
-    return generate_fallback_content(prompt)
+    # Replace this with your actual Claude function:
+    return your_existing_claude_function(prompt)
 
 def generate_sample_weekly_content(start_date, date_str):
     """Generate sample content for entire week"""
