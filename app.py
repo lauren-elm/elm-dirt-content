@@ -2200,6 +2200,7 @@ def export_page():
             .section { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
             .btn { padding: 15px 30px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
             .btn:hover { background: #3e8e41; }
+            .btn:disabled { background: #6c757d; cursor: not-allowed; }
             .info-box { background: #e8f4fd; border-left: 4px solid #4eb155; padding: 15px; margin: 15px 0; border-radius: 5px; }
         </style>
     </head>
@@ -2210,190 +2211,203 @@ def export_page():
         </div>
         
         <div class="section">
-    <h2>📋 Export Enhanced Content</h2>
-    <div class="info-box">
-        <strong>🆕 Enhanced Features:</strong><br>
-        • Complete HTML blogs with CSS styling<br>
-        • SEO optimization with meta tags and schema markup<br>
-        • Detailed image suggestions with specifications<br>
-        • Brand-compliant styling and responsive design
-    </div>
-    
-    <input type="date" id="exportDate" onchange="updateDateInfo()">
-    <button class="btn" onclick="exportContent()">🚀 Export Enhanced Content</button>
-    <button class="btn" onclick="testEnhanced()">🧪 Test Enhanced Features</button>
-    
-    <div id="dateInfo" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px;"></div>
-    
-    <div id="exportResults" style="display: none; margin-top: 20px; padding: 20px; background: #d1e7dd; border-radius: 8px; border-left: 4px solid #198754;">
-        <h3>✅ Export Complete!</h3>
-        <p>Your content has been generated and opened in a new window for review.</p>
-    </div>
-</div>
+            <h2>📋 Export Enhanced Content</h2>
+            <div class="info-box">
+                <strong>🆕 Enhanced Features:</strong><br>
+                • Complete HTML blogs with CSS styling<br>
+                • SEO optimization with meta tags and schema markup<br>
+                • Detailed image suggestions with specifications<br>
+                • Brand-compliant styling and responsive design
+            </div>
+            
+            <input type="date" id="exportDate" onchange="updateDateInfo()">
+            <button class="btn" id="exportBtn" onclick="exportContent()">🚀 Export Enhanced Content</button>
+            <button class="btn" onclick="testEnhanced()">🧪 Test Enhanced Features</button>
+            
+            <div id="dateInfo" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px;"></div>
+            
+            <div id="exportResults" style="display: none; margin-top: 20px; padding: 20px; background: #d1e7dd; border-radius: 8px; border-left: 4px solid #198754;">
+                <h3>✅ Export Complete!</h3>
+                <p>Your content has been generated and opened in a new window for review.</p>
+            </div>
+        </div>
 
-       <script>
+        <script>
         // Set today's date as default
-document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
-
-function updateDateInfo() {
-    const dateInput = document.getElementById('exportDate');
-    const dateInfo = document.getElementById('dateInfo');
-    
-    if (dateInput.value) {
-        const selectedDate = new Date(dateInput.value + 'T12:00:00');
-        const dayOfWeek = selectedDate.getDay();
-        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
-        
-        dateInfo.innerHTML = '<h3>📅 Export Content for ' + dayName + '</h3><p><strong>Will Generate:</strong> 1 Enhanced HTML Blog + 3 Instagram + 3 Facebook + 3 TikTok + 1 YouTube Outline = 11 pieces total</p>';
-        dateInfo.style.display = 'block';
-    }
-}
-
-async function exportContent() {
-    const dateStr = document.getElementById('exportDate').value;
-    if (!dateStr) {
-        alert('Please select a date');
-        return;
-    }
-    
-    // Disable button and show loading
-    const exportBtn = document.querySelector('button[onclick="exportContent()"]');
-    const originalText = exportBtn.textContent;
-    exportBtn.disabled = true;
-    exportBtn.textContent = '🔄 Generating Content...';
-    
-    try {
-        const response = await fetch('/api/export-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ export_date: dateStr })
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+            updateDateInfo();
         });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            displayExportedContent(result);
-        } else {
-            throw new Error(result.error || 'Failed to export content');
+
+        function updateDateInfo() {
+            const dateInput = document.getElementById('exportDate');
+            const dateInfo = document.getElementById('dateInfo');
+            
+            if (dateInput && dateInput.value) {
+                const selectedDate = new Date(dateInput.value + 'T12:00:00');
+                const dayOfWeek = selectedDate.getDay();
+                const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+                
+                dateInfo.innerHTML = '<h3>📅 Export Content for ' + dayName + '</h3><p><strong>Will Generate:</strong> 1 Enhanced HTML Blog + 3 Instagram + 3 Facebook + 3 TikTok + 1 YouTube Outline = 11 pieces total</p>';
+                dateInfo.style.display = 'block';
+            }
         }
-    } catch (error) {
-        console.error('Export error:', error);
-        alert('Error exporting content: ' + error.message);
-    } finally {
-        exportBtn.disabled = false;
-        exportBtn.textContent = originalText;
-    }
-}
 
-function displayExportedContent(result) {
-    // Create a new window to display the content
-    const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes');
-    
-    const htmlContent = \`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Exported Content - \${result.export_date}</title>
-        <style>
-            body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-            .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
-            .content-section { background: white; margin: 20px 0; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .content-title { color: #114817; font-size: 1.5rem; margin-bottom: 15px; border-bottom: 2px solid #4eb155; padding-bottom: 10px; }
-            .content-meta { background: #e8f4fd; padding: 10px 15px; border-radius: 5px; margin: 10px 0; font-size: 0.9rem; }
-            .blog-content { border: 2px solid #c9d393; border-radius: 8px; padding: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; }
-            .social-post { background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0; }
-            .hashtags { color: #4eb155; font-weight: bold; }
-            .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 20px 0; }
-            .breakdown-item { background: #4eb155; color: white; padding: 10px; border-radius: 8px; text-align: center; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>🌱 Exported Content</h1>
-            <p>Generated for \${result.export_date} • \${result.content_count} pieces total</p>
-        </div>
-        
-        <div class="content-section">
-            <h2>📊 Content Breakdown</h2>
-            <div class="breakdown">
-                <div class="breakdown-item">
-                    <strong>\${result.content_breakdown.blog_posts}</strong><br>Blog Post
-                </div>
-                <div class="breakdown-item">
-                    <strong>\${result.content_breakdown.instagram_posts}</strong><br>Instagram
-                </div>
-                <div class="breakdown-item">
-                    <strong>\${result.content_breakdown.facebook_posts}</strong><br>Facebook
-                </div>
-                <div class="breakdown-item">
-                    <strong>\${result.content_breakdown.tiktok_posts}</strong><br>TikTok
-                </div>
-                <div class="breakdown-item">
-                    <strong>\${result.content_breakdown.youtube_outlines}</strong><br>YouTube
-                </div>
-            </div>
-        </div>
-        
-        \${generateContentHTML(result.content)}
-        
-    </body>
-    </html>\`;
-    
-    newWindow.document.write(htmlContent);
-    newWindow.document.close();
-}
-
-function generateContentHTML(contentArray) {
-    let html = '';
-    
-    contentArray.forEach((content, index) => {
-        const platform = content.platform.toUpperCase();
-        const contentType = content.content_type.replace('_', ' ').toUpperCase();
-        
-        html += \`
-        <div class="content-section">
-            <div class="content-title">
-                \${platform === 'BLOG' ? '📝' : platform === 'INSTAGRAM' ? '📸' : platform === 'FACEBOOK' ? '👥' : platform === 'TIKTOK' ? '🎵' : '🎥'} 
-                \${content.title}
-            </div>
+        async function exportContent() {
+            console.log('Export button clicked!');
             
-            <div class="content-meta">
-                <strong>Platform:</strong> \${platform} • 
-                <strong>Type:</strong> \${contentType} • 
-                <strong>Scheduled:</strong> \${new Date(content.scheduled_time).toLocaleString()}
-                \${content.keywords && content.keywords.length > 0 ? \` • <strong>Keywords:</strong> \${content.keywords.join(', ')}\` : ''}
-            </div>
-            
-            \${platform === 'BLOG' ? 
-                \`<div class="blog-content">
-                    <iframe srcdoc="\${content.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: none; border-radius: 5px;"></iframe>
-                </div>\` :
-                \`<div class="social-post">
-                    <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">\${content.content}</pre>
-                    \${content.hashtags && content.hashtags.length > 0 ? 
-                        \`<div class="hashtags" style="margin-top: 10px;">#\${content.hashtags.join(' #')}</div>\` : ''}
-                </div>\`
+            const dateStr = document.getElementById('exportDate').value;
+            if (!dateStr) {
+                alert('Please select a date');
+                return;
             }
             
-            \${content.image_suggestion ? 
-                \`<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                    <strong>📷 Image Suggestion:</strong> \${content.image_suggestion}
-                </div>\` : ''}
-        </div>\`;
-    });
-    
-    return html;
-}
+            const exportBtn = document.getElementById('exportBtn');
+            const originalText = exportBtn.textContent;
+            exportBtn.disabled = true;
+            exportBtn.textContent = '🔄 Generating Content...';
+            
+            try {
+                console.log('Making API call to /api/export-content');
+                const response = await fetch('/api/export-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ export_date: dateStr })
+                });
+                
+                console.log('API response status:', response.status);
+                const result = await response.json();
+                console.log('API result:', result);
+                
+                if (result.success) {
+                    displayExportedContent(result);
+                    document.getElementById('exportResults').style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Failed to export content');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting content: ' + error.message);
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = originalText;
+            }
+        }
 
-function testEnhanced() {
-    window.open('/api/preview-enhanced-blog', '_blank');
-}
+        function displayExportedContent(result) {
+            console.log('Displaying exported content');
+            
+            const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes');
+            
+            if (!newWindow) {
+                alert('Please allow popups for this site to view the exported content.');
+                return;
+            }
+            
+            const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Exported Content - ` + result.export_date + `</title>
+                <style>
+                    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+                    .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
+                    .content-section { background: white; margin: 20px 0; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .content-title { color: #114817; font-size: 1.5rem; margin-bottom: 15px; border-bottom: 2px solid #4eb155; padding-bottom: 10px; }
+                    .content-meta { background: #e8f4fd; padding: 10px 15px; border-radius: 5px; margin: 10px 0; font-size: 0.9rem; }
+                    .blog-content { border: 2px solid #c9d393; border-radius: 8px; padding: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; }
+                    .social-post { background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0; }
+                    .hashtags { color: #4eb155; font-weight: bold; }
+                    .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 20px 0; }
+                    .breakdown-item { background: #4eb155; color: white; padding: 10px; border-radius: 8px; text-align: center; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>🌱 Exported Content</h1>
+                    <p>Generated for ` + result.export_date + ` • ` + result.content_count + ` pieces total</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>📊 Content Breakdown</h2>
+                    <div class="breakdown">
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.blog_posts + `</strong><br>Blog Post
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.instagram_posts + `</strong><br>Instagram
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.facebook_posts + `</strong><br>Facebook
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.tiktok_posts + `</strong><br>TikTok
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.youtube_outlines + `</strong><br>YouTube
+                        </div>
+                    </div>
+                </div>
+                
+                ` + generateContentHTML(result.content) + `
+                
+            </body>
+            </html>`;
+            
+            newWindow.document.write(htmlContent);
+            newWindow.document.close();
+        }
 
-updateDateInfo();
-      </script> 
+        function generateContentHTML(contentArray) {
+            let html = '';
+            
+            contentArray.forEach((content, index) => {
+                const platform = content.platform.toUpperCase();
+                const contentType = content.content_type.replace('_', ' ').toUpperCase();
+                
+                html += `
+                <div class="content-section">
+                    <div class="content-title">
+                        ` + (platform === 'BLOG' ? '📝' : platform === 'INSTAGRAM' ? '📸' : platform === 'FACEBOOK' ? '👥' : platform === 'TIKTOK' ? '🎵' : '🎥') + ` 
+                        ` + content.title + `
+                    </div>
+                    
+                    <div class="content-meta">
+                        <strong>Platform:</strong> ` + platform + ` • 
+                        <strong>Type:</strong> ` + contentType + ` • 
+                        <strong>Scheduled:</strong> ` + new Date(content.scheduled_time).toLocaleString() + `
+                        ` + (content.keywords && content.keywords.length > 0 ? ` • <strong>Keywords:</strong> ` + content.keywords.join(', ') : '') + `
+                    </div>
+                    
+                    ` + (platform === 'BLOG' ? 
+                        `<div class="blog-content">
+                            <iframe srcdoc="` + content.content.replace(/"/g, '&quot;') + `" width="100%" height="400" style="border: none; border-radius: 5px;"></iframe>
+                        </div>` :
+                        `<div class="social-post">
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">` + content.content + `</pre>
+                            ` + (content.hashtags && content.hashtags.length > 0 ? 
+                                `<div class="hashtags" style="margin-top: 10px;">#` + content.hashtags.join(' #') + `</div>` : '') + `
+                        </div>`
+                    ) + `
+                    
+                    ` + (content.image_suggestion ? 
+                        `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                            <strong>📷 Image Suggestion:</strong> ` + content.image_suggestion + `
+                        </div>` : '') + `
+                </div>`;
+            });
+            
+            return html;
+        }
+
+        function testEnhanced() {
+            window.open('/api/preview-enhanced-blog', '_blank');
+        }
+        </script>
     </body>
     </html>
     '''
+                         
 @app.route('/api/export-content', methods=['POST'])
 def export_content():
     """Export enhanced content for a specific date"""
