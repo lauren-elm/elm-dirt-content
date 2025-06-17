@@ -337,38 +337,72 @@ class CopyPasteGenerator:
             return self._generate_social_item(post, platform, index)
     
     def _generate_blog_item(self, post: dict, index: int) -> str:
-        """Generate blog post item with Shopify-specific fields"""
-        title = post.get('title', f'Blog Post {index}')
-        content = post.get('content', '')
-        meta_description = post.get('meta_description', '')
-        keywords = post.get('keywords', '')
-        scheduled_time = post.get('scheduled_time', '')
-        
-        return f"""
-        <div class="content-item">
-            <h3>{title}</h3>
-            
-            <div class="meta-info">
-                <strong>📅 Suggested Publish:</strong> {scheduled_time}<br>
-                <strong>🏷️ Tags for Shopify:</strong> {keywords}<br>
-                <strong>📝 Word Count:</strong> ~{len(content.split())} words
-            </div>
-            
-            <div class="copy-section">
-                <span class="label">📋 Blog Title (Copy for Shopify):</span>
-                <div class="copy-box" onclick="copyToClipboard('blog-title-{index}')" id="blog-title-{index}">{title}</div>
-                
-                <span class="label">📋 HTML Content (Copy for Shopify Blog Editor):</span>
-                <div class="copy-box html-content" onclick="copyToClipboard('blog-content-{index}')" id="blog-content-{index}">{content.replace('<', '&lt;').replace('>', '&gt;')}</div>
-                
-                <span class="label">📋 Meta Description (Copy for Shopify SEO):</span>
-                <div class="copy-box" onclick="copyToClipboard('blog-meta-{index}')" id="blog-meta-{index}">{meta_description}</div>
-                
-                <span class="label">📋 Tags (Copy for Shopify Tags Field):</span>
-                <div class="copy-box" onclick="copyToClipboard('blog-tags-{index}')" id="blog-tags-{index}">{keywords}</div>
-            </div>
+    """Generate enhanced blog post item with schema and images"""
+    title = post.get('title', f'Blog Post {index}')
+    content = post.get('content', '')
+    meta_description = post.get('meta_description', '')
+    keywords = post.get('keywords', '')
+    scheduled_time = post.get('scheduled_time', '')
+    schema_markup = post.get('schema_markup', {})
+    image_suggestions = post.get('image_suggestions', [])
+    word_count = post.get('word_count', 0)
+    reading_time = post.get('reading_time', 'Unknown')
+    
+    # Format schema as JSON
+    import json
+    schema_json = json.dumps(schema_markup, indent=2) if schema_markup else '{}'
+    
+    # Format image suggestions
+    images_html = ""
+    for img in image_suggestions:
+        priority_color = {'high': '#e74c3c', 'medium': '#f39c12', 'low': '#95a5a6'}.get(img.get('priority', 'medium'), '#f39c12')
+        images_html += f"""
+        <div style="border-left: 4px solid {priority_color}; padding: 10px; margin: 10px 0; background: #f8f9fa;">
+            <strong>📍 {img.get('position', 'unknown').replace('_', ' ').title()}:</strong><br>
+            <strong>Style:</strong> {img.get('style', 'standard')}<br>
+            <strong>Alt Text:</strong> {img.get('alt_text', '')}<br>
+            <strong>Description:</strong> {img.get('description', '')}<br>
+            <small style="color: #666;">Priority: {img.get('priority', 'medium')}</small>
         </div>
         """
+    
+    return f"""
+    <div class="content-item">
+        <h3>📝 {title}</h3>
+        
+        <div class="meta-info">
+            <strong>📅 Suggested Publish:</strong> {scheduled_time}<br>
+            <strong>📊 Stats:</strong> {word_count} words • {reading_time}<br>
+            <strong>🏷️ Tags for Shopify:</strong> {keywords}<br>
+            <strong>🖼️ Images Needed:</strong> {len(image_suggestions)} suggested images
+        </div>
+        
+        <div class="copy-section">
+            <span class="label">📋 Blog Title (Copy for Shopify):</span>
+            <div class="copy-box" onclick="copyToClipboard('blog-title-{index}')" id="blog-title-{index}">{title}</div>
+            
+            <span class="label">📋 Complete HTML Content (Copy for Shopify Blog Editor):</span>
+            <div class="copy-box html-content" onclick="copyToClipboard('blog-content-{index}')" id="blog-content-{index}">{content.replace('<', '&lt;').replace('>', '&gt;')}</div>
+            
+            <span class="label">📋 Meta Description (Copy for Shopify SEO):</span>
+            <div class="copy-box" onclick="copyToClipboard('blog-meta-{index}')" id="blog-meta-{index}">{meta_description}</div>
+            
+            <span class="label">📋 Keywords (Copy for Shopify Tags):</span>
+            <div class="copy-box" onclick="copyToClipboard('blog-tags-{index}')" id="blog-tags-{index}">{keywords}</div>
+            
+            <span class="label">📋 JSON-LD Schema (Copy to Shopify theme.liquid before closing &lt;/head&gt;):</span>
+            <div class="copy-box html-content" onclick="copyToClipboard('blog-schema-{index}')" id="blog-schema-{index}">&lt;script type="application/ld+json"&gt;\n{schema_json}\n&lt;/script&gt;</div>
+            
+            <span class="label">🖼️ Image Suggestions (Use these for visual content):</span>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                {images_html}
+                <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                    <strong>💡 Tips:</strong> Use high-quality images (1200px+ width), optimize for web, include alt text for SEO
+                </p>
+            </div>
+        </div>
+    </div>
+    """
     
     def _generate_email_item(self, post: dict, index: int) -> str:
         """Generate email content item"""
