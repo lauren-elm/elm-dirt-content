@@ -1511,24 +1511,28 @@ def get_content_piece(content_id):
             'error': str(e)
         }), 500
 
+# Add this route to your app.py to provide real content data
 @app.route('/api/weekly-content/<week_id>')
-def get_weekly_content(week_id):
-    """Get all content for a specific week"""
+def get_weekly_content_api(week_id):
+    """API endpoint to get actual weekly content"""
     try:
-        content_pieces = content_generator.db_manager.get_weekly_content(week_id)
+        # Replace this with your actual content retrieval logic
+        # This should connect to your existing content generation system
+        weekly_content = get_generated_content_for_week(week_id)  # Your existing function
+        
         return jsonify({
             'success': True,
+            'content_pieces': weekly_content,
             'week_id': week_id,
-            'content_pieces': len(content_pieces),
-            'content_breakdown': content_generator._get_content_breakdown(content_pieces),
-            'content': [content_generator._content_piece_to_dict(cp) for cp in content_pieces]
+            'total_pieces': len(weekly_content)
         })
     except Exception as e:
-        logger.error(f"Error retrieving weekly content: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+
+# Update the JavaScript in your export page to use real data:
 
 @app.route('/api/export-content/<week_id>')
 def export_weekly_content(week_id):
@@ -1559,128 +1563,163 @@ def export_weekly_content(week_id):
 
 @app.route('/export')
 def export_page():
-    """Simple export page for testing"""
+    """Comprehensive export page for all weekly content"""
     return '''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Content Export</title>
+        <title>Weekly Content Export</title>
         <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-            .btn { padding: 10px 20px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 5px; cursor: pointer; }
-            .btn:hover { background: #3e8e41; }
-            .section { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 10px; }
+            body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+            .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
+            .btn { padding: 15px 30px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+            .btn:hover { background: #3e8e41; transform: translateY(-2px); }
+            .section { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .workflow { background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .step { padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .step:last-child { border-bottom: none; }
         </style>
     </head>
     <body>
-        <h1>🌱 Elm Dirt Content Export</h1>
-        
-        <div class="section">
-            <h2>📝 Export Blog Posts to Shopify</h2>
-            <p>Downloads a CSV file that you can import directly into Shopify as draft blog posts.</p>
-            <button class="btn" onclick="exportBlogCSV()">Download Blog Posts CSV</button>
+        <div class="header">
+            <h1>🌱 Weekly Content Export Hub</h1>
+            <p>Your one-stop solution for copying all weekly content to various platforms</p>
         </div>
         
         <div class="section">
-            <h2>📱 Copy-Paste Social Media Content</h2>
-            <p>Opens an interface where you can copy individual pieces of content.</p>
-            <button class="btn" onclick="exportCopyPaste()">Open Copy-Paste Interface</button>
+            <h2>📋 Export All Weekly Content</h2>
+            <p>Get a comprehensive copy-paste interface for all your generated content including:</p>
+            <ul>
+                <li>📝 <strong>Shopify Blog Posts</strong> - Title, HTML content, meta descriptions, tags</li>
+                <li>📱 <strong>Instagram Posts</strong> - Captions and hashtags</li>
+                <li>👥 <strong>Facebook Posts</strong> - Formatted text content</li>
+                <li>📧 <strong>Email Newsletters</strong> - Subject lines and body content</li>
+                <li>📌 <strong>Pinterest Posts</strong> - Pin descriptions and keywords</li>
+                <li>🐦 <strong>Twitter Posts</strong> - Tweets and hashtags</li>
+            </ul>
+            <button class="btn" onclick="exportAllContent()">🚀 Open Copy-Paste Interface</button>
+        </div>
+        
+        <div class="workflow">
+            <h3>📋 Your Workflow:</h3>
+            <div class="step">1️⃣ <strong>Generate Content:</strong> Use your content generator for the week</div>
+            <div class="step">2️⃣ <strong>Export Interface:</strong> Click the button above to open copy-paste interface</div>
+            <div class="step">3️⃣ <strong>Copy & Paste:</strong> Click gray boxes to copy content, then paste into respective platforms</div>
+            <div class="step">4️⃣ <strong>Schedule:</strong> Use suggested times for optimal engagement</div>
+            <div class="step">5️⃣ <strong>Publish:</strong> Review and publish across all platforms</div>
         </div>
         
         <div class="section">
-            <h2>🧪 Test Export Functionality</h2>
-            <button class="btn" onclick="testExport()">Test Export</button>
-            <div id="test-result"></div>
+            <h2>🧪 Test Interface</h2>
+            <p>Try the interface with sample content to see how it works:</p>
+            <button class="btn" onclick="testExportInterface()">Test Copy-Paste Interface</button>
         </div>
         
         <script>
-            function exportBlogCSV() {
-                // Sample blog posts data - replace with your actual data
-                const blogPosts = [
-                    {
-                        title: "Spring Gardening Tips for Organic Growers",
-                        content: "<h2>Getting Your Garden Ready</h2><p>Spring is the perfect time to prepare your organic garden...</p>",
-                        meta_description: "Essential spring gardening tips for organic growers to prepare their gardens for the growing season.",
-                        keywords: "spring gardening, organic growing, garden preparation",
-                        platform: "blog"
-                    }
-                ];
-                
-                fetch('/api/export/csv', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        blog_posts: blogPosts,
-                        week_id: new Date().getFullYear() + '-W' + getWeekNumber()
-                    })
-                })
-                .then(response => response.blob())
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'elm_dirt_blogs.csv';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                });
-            }
-            
-            function exportCopyPaste() {
-                // Sample content data - replace with your actual data
-                const contentPieces = [
-                    {
-                        title: "Instagram Post",
-                        content: "Spring is here! 🌱 Time to get your garden ready with our organic soil amendments. #SpringGardening #OrganicGardening #ElmDirt",
-                        keywords: ["SpringGardening", "OrganicGardening", "ElmDirt"],
-                        platform: "instagram"
-                    },
-                    {
-                        title: "Facebook Post",
-                        content: "Did you know that healthy soil is the foundation of a thriving garden? Our Ancient Soil blend provides the perfect nutrients for your plants to flourish this growing season.",
-                        keywords: ["gardening", "soil", "organic"],
-                        platform: "facebook"
-                    }
-                ];
+            function exportAllContent() {
+                // Replace this with your actual weekly content data
+                // This should come from your content generation system
+                const weeklyContent = getWeeklyContentData(); // You'll implement this
                 
                 fetch('/api/export/copy-paste', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        content_pieces: contentPieces,
+                        content_pieces: weeklyContent,
                         week_id: new Date().getFullYear() + '-W' + getWeekNumber()
                     })
                 })
                 .then(response => response.text())
                 .then(html => {
-                    const newWindow = window.open();
+                    const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes');
                     newWindow.document.write(html);
                     newWindow.document.close();
                 });
             }
             
-            function testExport() {
+            function testExportInterface() {
+                // Use sample data for testing
                 fetch('/api/export/test')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('test-result').innerHTML = 
-                        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-                });
-            }
-            
-            function getWeekNumber() {
-                const now = new Date();
-                const start = new Date(now.getFullYear(), 0, 1);
-                const diff = now - start;
-                const oneWeek = 1000 * 60 * 60 * 24 * 7;
-                return Math.floor(diff / oneWeek);
-            }
-        </script>
-    </body>
-    </html>
-    '''
-
+                    // Get sample content and open interface
+                    fetch('/api/export/copy-paste', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            content_pieces: [
+                                {
+                                    title: "Test Blog Post",
+                                    content: "<h2>Test Content</h2><p>This is a sample blog post to test the interface.</p>",
+                                    meta_description: "Test meta description for SEO",
+                                    keywords: "test, blogging, sample",
+                                    platform: "blog",
+                                    scheduled_time: "2025-06-17 09:00:00"
+                                },
+                                {
+                                    title: "Instagram Test Post",
+                                    content: "Test Instagram post content! 🌱 #test #gardening #sample",
+                                    keywords: ["test", "gardening", "sample"],
+                                    platform: "instagram",
+                                    scheduled_time: "2025-06-17 14:00:00"
+                               },
+                               {
+                                   title: "Facebook Test Post", 
+                                   content: "This is a test Facebook post to demonstrate the copy-paste functionality. It includes longer form content that's perfect for Facebook's format.",
+                                   keywords: ["facebook", "test", "social media"],
+                                   platform: "facebook",
+                                   scheduled_time: "2025-06-17 16:00:00"
+                               },
+                               {
+                                   title: "Email Newsletter Test",
+                                   content: "Subject: Test Weekly Newsletter\n\nHello! This is a test email newsletter to show how the copy-paste interface works for email content.",
+                                   platform: "email",
+                                   scheduled_time: "2025-06-18 08:00:00"
+                               }
+                           ],
+                           week_id: 'TEST-' + new Date().getFullYear() + '-W' + getWeekNumber()
+                       })
+                   })
+                   .then(response => response.text())
+                   .then(html => {
+                       const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes');
+                       newWindow.document.write(html);
+                       newWindow.document.close();
+                   });
+               });
+           }
+           
+           function getWeeklyContentData() {
+               // TODO: Integrate this with your actual content generation system
+               // For now, this is a placeholder that you'll replace with real data
+               console.log("Getting weekly content data...");
+               
+               // This should return the actual content generated by your system
+               // Example structure:
+               return [
+                   {
+                       title: "Your actual blog post title",
+                       content: "<h2>Your actual blog content</h2><p>With HTML formatting...</p>",
+                       meta_description: "Your SEO meta description",
+                       keywords: "your, actual, keywords",
+                       platform: "blog",
+                       scheduled_time: "2025-06-17 09:00:00"
+                   }
+                   // ... more content pieces
+               ];
+           }
+           
+           function getWeekNumber() {
+               const now = new Date();
+               const start = new Date(now.getFullYear(), 0, 1);
+               const diff = now - start;
+               const oneWeek = 1000 * 60 * 60 * 24 * 7;
+               return Math.floor(diff / oneWeek);
+           }
+       </script>
+   </body>
+   </html>
+   '''
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
