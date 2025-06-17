@@ -1,80 +1,5 @@
-</div>
-                <div id="week-info" class="week-info" style="display: none;">
-                    <h3>Week Information</h3>
-                    <div id="week-details"></div>
-                </div>
-            </div>
-            <div class="content-preview" id="content-preview" style="display: none;">
-                <h2 class="section-title">📝 Generated Content</h2>
-                <div id="content-grid" class="content-grid"></div>
-            </div>
-        </div>
-    </div>
-    <script>
-        // Check API status on page load
-        async function checkAPIStatus() {
-            try {
-                const response = await fetch('/api/check-claude-status');
-                const result = await response.json();
-                const statusNotice = document.getElementById('api-status-notice');
-                
-                if (result.claude_enabled) {
-                    statusNotice.className = 'api-status api-enabled';
-                    statusNotice.innerHTML = '<strong>✅ Claude AI Enabled:</strong> High-quality content generation with AI assistance.';
-                } else {
-                    statusNotice.className = 'api-status api-disabled';
-                    statusNotice.innerHTML = '<strong>⚠️ Claude AI Disabled:</strong> Using fallback templates. Add Claude API key for AI-powered content.';
-                }
-            } catch (error) {
-                const statusNotice = document.getElementById('api-status-notice');
-                statusNotice.className = 'api-status api-disabled';
-                statusNotice.innerHTML = '<strong>❌ API Check Failed:</strong> Unable to verify Claude status. Content will use fallback mode.';
-            }
-        }
-        
-        function setDefaultDate() {
-            const today = new Date();
-            const monday = new Date(today);
-            const dayOfWeek = today.getDay();
-            const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
-            monday.setDate(today.getDate() + daysUntilMonday);
-            const dateInput = document.getElementById('week-date');
-            dateInput.value = monday.toISOString().split('T')[0];
-        }
-        
-        async function generateWeeklyContent() {
-            const dateInput = document.getElementById('week-date');
-            const generateBtn = document.getElementById('generate-btn');
-            const weekInfo = document.getElementById('week-info');
-            const contentPreview = document.getElementById('content-preview');
-            const contentGrid = document.getElementById('content-grid');
-            
-            if (!dateInput.value) { 
-                alert('Please select a date'); 
-                return; 
-            }
-            
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating 56 Pieces...';
-            contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating complete weekly content package...</p><p>Creating 56 pieces of content across all platforms</p><p>Including 6 daily blog posts with Claude AI</p><p>This may take 3-5 minutes</p></div>';
-            contentPreview.style.display = 'block';
-            
-            try {
-                const response = await fetch('/api/generate-weekly-content', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ week_start_date: dateInput.value })
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    const weekDetails = document.getElementById('week-details');
-                    weekDetails.innerHTML = '<p><strong>Season:</strong> ' + result.season + '</p><p><strong>Theme:</strong> ' + result.theme + '</p><p><strong>Content Pieces:</strong> ' + result.content_pieces + '</p>' + (result.holidays.length > 0 ? '<p><strong>Holidays:</strong></p>' + result.holidays.map(h => '<span class="holiday-badge">' + h[1] + '</span>').join('') : '');
-                    weekInfo.style.display = 'block';
-                    displayContent(result.content, result.content_breakdown);
-                    contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Successfully generated ' + result.content_pieces + ' pieces of content for the week of ' + new Date(result.week_start_date).toLocaleDateString() + '!<br><strong>Ready for:</strong> Blog publishing, social media scheduling, and video production.<br><strong>Includes:</strong> 6 daily blog posts, social media content, and video scripts.</div>');
-                } else {# Enhanced Elm Dirt Content Automation Platform
-# Complete version with daily blog posts, Claude API integration, and HTML formatting
+# Enhanced Elm Dirt Content Automation Platform - Part 1: Beginning
+# Imports, Configuration, and Core Classes
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -413,6 +338,14 @@ class HolidayManager:
             theme_index = (week_of_year % 4)
             return seasonal_themes[season][theme_index]
 
+# Initialize core services
+db_manager = DatabaseManager(Config.DB_PATH)
+
+# This concludes Part 1 - Beginning
+# Continue to Part 2 for ContentGenerator class and content generation methods
+# Enhanced Elm Dirt Content Automation Platform - Part 2: Middle
+# ContentGenerator Class and Content Creation Methods
+
 class ContentGenerator:
     def __init__(self, db_manager: DatabaseManager):
         self.config = Config()
@@ -716,11 +649,7 @@ Provide the complete HTML article ready for Shopify, starting with the H1 title 
             f"Before/after comparison: Garden transformation showing improvement in plant health and growth",
             f"Close-up: Healthy plant roots in rich, organic soil demonstrating soil health benefits",
             f"Seasonal garden scene: {season.title()} garden layout with diverse plants and organic growing methods",
-            f"Lifestyle shot: Experienced gardener (50+) working in well-maintained organic garden",
-            f"Product in use: Plant Juice being applied to plants with visible healthy growth results",
-            f"Soil health demonstration: Cross-section of healthy soil showing earthworms and organic matter",
-            f"Harvest/bloom shots: Abundant flowers or vegetables showing results of organic methods",
-            f"Garden tools and products: Elm Dirt products arranged with quality garden tools and fresh harvest"
+            f"Lifestyle shot: Experienced gardener (50+) working in well-maintained organic garden"
         ]
         
         # Add holiday-specific suggestions if applicable
@@ -993,7 +922,12 @@ Provide the complete HTML article ready for Shopify, starting with the H1 title 
         
         self.db_manager.save_content_piece(content_piece)
         return content_piece
-    
+
+# This concludes Part 2 - Middle
+# Continue to Part 3 for YouTube outline generation, utility methods, and Flask routes
+# Enhanced Elm Dirt Content Automation Platform - Part 3: End
+# YouTube Generation, Utility Methods, and Flask Routes
+
     def _generate_youtube_outline(self, week_start_date: datetime, season: str, theme: str,
                                  holidays: List, week_id: str) -> ContentPiece:
         """Generate 60-minute YouTube video outline"""
@@ -1207,11 +1141,10 @@ KEYWORDS: {season} gardening, organic fertilizer, soil health, plant nutrition, 
         except Exception as e:
             logger.error(f"Error saving weekly package: {str(e)}")
 
-# Initialize services
-db_manager = DatabaseManager(Config.DB_PATH)
+# Initialize content generator
 content_generator = ContentGenerator(db_manager)
 
-# Web Interface
+# Flask Routes and Web Interface
 @app.route('/')
 def index():
     """Serve the main interface"""
@@ -1275,3 +1208,412 @@ def index():
                         <label for="week-date">Select Week (Monday):</label>
                         <input type="date" id="week-date" />
                     </div>
+                    <button class="generate-btn" id="generate-btn" onclick="generateWeeklyContent()">Generate 56 Pieces of Content</button>
+                </div>
+                <div id="week-info" class="week-info" style="display: none;">
+                    <h3>Week Information</h3>
+                    <div id="week-details"></div>
+                </div>
+            </div>
+            <div class="content-preview" id="content-preview" style="display: none;">
+                <h2 class="section-title">📝 Generated Content</h2>
+                <div id="content-grid" class="content-grid"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('/api/check-claude-status');
+                const result = await response.json();
+                const statusNotice = document.getElementById('api-status-notice');
+                
+                if (result.claude_enabled) {
+                    statusNotice.className = 'api-status api-enabled';
+                    statusNotice.innerHTML = '<strong>✅ Claude AI Enabled:</strong> High-quality content generation with AI assistance.';
+                } else {
+                    statusNotice.className = 'api-status api-disabled';
+                    statusNotice.innerHTML = '<strong>⚠️ Claude AI Disabled:</strong> Using fallback templates. Add Claude API key for AI-powered content.';
+                }
+            } catch (error) {
+                const statusNotice = document.getElementById('api-status-notice');
+                statusNotice.className = 'api-status api-disabled';
+                statusNotice.innerHTML = '<strong>❌ API Check Failed:</strong> Unable to verify Claude status. Content will use fallback mode.';
+            }
+        }
+        
+        function setDefaultDate() {
+            const today = new Date();
+            const monday = new Date(today);
+            const dayOfWeek = today.getDay();
+            const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+            monday.setDate(today.getDate() + daysUntilMonday);
+            const dateInput = document.getElementById('week-date');
+            dateInput.value = monday.toISOString().split('T')[0];
+        }
+        
+        async function generateWeeklyContent() {
+            const dateInput = document.getElementById('week-date');
+            const generateBtn = document.getElementById('generate-btn');
+            const weekInfo = document.getElementById('week-info');
+            const contentPreview = document.getElementById('content-preview');
+            const contentGrid = document.getElementById('content-grid');
+            
+            if (!dateInput.value) { 
+                alert('Please select a date'); 
+                return; 
+            }
+            
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Generating 56 Pieces...';
+            contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating complete weekly content package...</p><p>Creating 56 pieces of content across all platforms</p><p>Including 6 daily blog posts with Claude AI</p><p>This may take 3-5 minutes</p></div>';
+            contentPreview.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/generate-weekly-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week_start_date: dateInput.value })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const weekDetails = document.getElementById('week-details');
+                    weekDetails.innerHTML = '<p><strong>Season:</strong> ' + result.season + '</p><p><strong>Theme:</strong> ' + result.theme + '</p><p><strong>Content Pieces:</strong> ' + result.content_pieces + '</p>' + (result.holidays.length > 0 ? '<p><strong>Holidays:</strong></p>' + result.holidays.map(h => '<span class="holiday-badge">' + h[1] + '</span>').join('') : '');
+                    weekInfo.style.display = 'block';
+                    displayContent(result.content, result.content_breakdown);
+                    contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Successfully generated ' + result.content_pieces + ' pieces of content for the week of ' + new Date(result.week_start_date).toLocaleDateString() + '!<br><strong>Ready for:</strong> Blog publishing, social media scheduling, and video production.<br><strong>Includes:</strong> 6 daily blog posts, social media content, and video scripts.</div>');
+                } else {
+                    throw new Error(result.error || 'Failed to generate content');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                contentGrid.innerHTML = '<div class="error-message">❌ Error generating content: ' + error.message + '<br><br>Please check your configuration and try again.</div>';
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate 56 Pieces of Content';
+            }
+        }
+        
+        function displayContent(contentPieces, contentBreakdown) {
+            const contentGrid = document.getElementById('content-grid');
+            const successMessage = contentGrid.querySelector('.success-message');
+            contentGrid.innerHTML = '';
+            if (successMessage) { contentGrid.appendChild(successMessage); }
+            
+            const breakdownSummary = document.createElement('div');
+            breakdownSummary.className = 'content-breakdown';
+            breakdownSummary.innerHTML = '<div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0;"><h3 style="color: #114817; margin-bottom: 0.5rem;">📊 Weekly Content Breakdown</h3><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">' + Object.entries(contentBreakdown || {}).map(([platform, count]) => '<div style="text-align: center; padding: 0.5rem; background: white; border-radius: 8px;"><div style="font-size: 1.5rem; font-weight: bold; color: #4eb155;">' + count + '</div><div style="font-size: 0.9rem; color: #666; text-transform: capitalize;">' + platform + ' ' + (count === 1 ? 'post' : 'posts') + '</div></div>').join('') + '</div><div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border-radius: 4px; font-size: 0.9rem; color: #856404;"><strong>🎯 Your Schedule:</strong> 56 pieces of content per week across all platforms including daily blogs!</div></div>';
+            contentGrid.appendChild(breakdownSummary);
+            
+            const contentByPlatform = {};
+            contentPieces.forEach(piece => {
+                if (!contentByPlatform[piece.platform]) { contentByPlatform[piece.platform] = []; }
+                contentByPlatform[piece.platform].push(piece);
+            });
+            
+            Object.entries(contentByPlatform).forEach(([platform, pieces]) => {
+                const platformHeader = document.createElement('div');
+                platformHeader.className = 'platform-section';
+                let platformIcon = '📱';
+                if (platform === 'blog') platformIcon = '📝';
+                if (platform === 'instagram') platformIcon = '📸';
+                if (platform === 'facebook') platformIcon = '👥';
+                if (platform === 'linkedin') platformIcon = '💼';
+                if (platform === 'tiktok') platformIcon = '🎵';
+                if (platform === 'youtube') platformIcon = '📺';
+                
+                platformHeader.innerHTML = '<h3 style="color: #114817; margin: 2rem 0 1rem 0; padding: 0.5rem; background: #f8f9fa; border-left: 4px solid #4eb155; text-transform: capitalize;">' + platformIcon + ' ' + platform + ' Content (' + pieces.length + ' pieces)</h3>';
+                contentGrid.appendChild(platformHeader);
+                
+                pieces.forEach(piece => {
+                    const contentCard = document.createElement('div');
+                    contentCard.className = 'content-card';
+                    let preview = piece.content.length > 300 ? piece.content.substring(0, 300) + '...' : piece.content;
+                    
+                    // Special handling for HTML blog content
+                    if (piece.platform === 'blog' && piece.content.includes('<')) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = piece.content;
+                        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                        preview = textContent.length > 300 ? textContent.substring(0, 300) + '...' : textContent;
+                    }
+                    
+                    let typeIcon = '📝';
+                    if (piece.content_type.includes('video')) typeIcon = '🎬';
+                    if (piece.content_type.includes('blog')) typeIcon = '📖';
+                    if (piece.platform === 'instagram') typeIcon = '📸';
+                    if (piece.platform === 'facebook') typeIcon = '👥';
+                    if (piece.platform === 'linkedin') typeIcon = '💼';
+                    if (piece.platform === 'tiktok') typeIcon = '🎵';
+                    if (piece.platform === 'youtube') typeIcon = '📺';
+                    
+                    let specialBadges = '';
+                    if (piece.content_type.includes('video')) {
+                        specialBadges += '<span style="background: #fec962; color: #3a2313; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">VIDEO</span>';
+                    }
+                    if (piece.content_type.includes('blog')) {
+                        specialBadges += '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">BLOG</span>';
+                    }
+                    if (piece.ai_provider === 'claude') {
+                        specialBadges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">AI-POWERED</span>';
+                    }
+                    
+                    contentCard.innerHTML = '<div style="display: flex; align-items: center; margin-bottom: 1rem;"><span style="font-size: 1.5rem; margin-right: 0.5rem;">' + typeIcon + '</span><span class="platform-badge">' + piece.platform + '</span>' + specialBadges + '</div><h4>' + piece.title + '</h4><div class="content-preview-text">' + preview + '</div><div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9rem; color: #666;"><p><strong>Keywords:</strong> ' + piece.keywords.join(', ') + '</p><p><strong>Scheduled:</strong> ' + new Date(piece.scheduled_time).toLocaleString() + '</p><p><strong>Status:</strong> ' + piece.status + '</p>' + (piece.hashtags && piece.hashtags.length > 0 ? '<p><strong>Hashtags:</strong> ' + piece.hashtags.slice(0, 5).map(tag => '#' + tag).join(' ') + '</p>' : '') + (piece.image_suggestion ? '<p><strong>Image Ideas:</strong> ' + piece.image_suggestion.split(' | ')[0] + '</p>' : '') + '</div>';
+                    contentGrid.appendChild(contentCard);
+                });
+            });
+        }
+        
+        checkAPIStatus();
+        setDefaultDate();
+    </script>
+</body>
+</html>'''
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    claude_enabled = bool(content_generator.claude_client)
+    
+    health_status = {
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '3.0.0',
+        'mode': 'claude_ai' if claude_enabled else 'fallback_templates',
+        'content_schedule': '56 pieces per week (including 6 daily blogs)',
+        'features': {
+            'weekly_calendar': True,
+            'holiday_awareness': True,
+            'content_preview': True,
+            'database_storage': True,
+            'bulk_generation': True,
+            'claude_ai_integration': claude_enabled,
+            'daily_blog_posts': True,
+            'html_formatted_blogs': True,
+            'image_suggestions': True
+        },
+        'services': {
+            'claude_api': 'enabled' if claude_enabled else 'disabled',
+            'shopify_api': 'configured' if Config.SHOPIFY_PASSWORD != 'your_shopify_password' else 'not_configured',
+            'database': 'connected'
+        }
+    }
+    return jsonify(health_status)
+
+@app.route('/api/check-claude-status')
+def check_claude_status():
+    """Check if Claude API is enabled and working"""
+    claude_enabled = bool(content_generator.claude_client)
+    
+    # Test Claude API if enabled
+    if claude_enabled:
+        try:
+            test_response = content_generator.claude_client.generate_content("Test message", max_tokens=50)
+            working = bool(test_response)
+        except:
+            working = False
+    else:
+        working = False
+    
+    return jsonify({
+        'claude_enabled': claude_enabled,
+        'claude_working': working,
+        'api_key_configured': Config.CLAUDE_API_KEY != 'your_claude_api_key_here',
+        'fallback_mode': not claude_enabled
+    })
+
+@app.route('/api/generate-weekly-content', methods=['POST'])
+def generate_weekly_content():
+    """Generate a complete week of content with holiday awareness and daily blogs"""
+    data = request.json
+    
+    try:
+        week_start_str = data.get('week_start_date')
+        if not week_start_str:
+            return jsonify({
+                'success': False,
+                'error': 'week_start_date is required (YYYY-MM-DD format)'
+            }), 400
+        
+        week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
+        
+        if week_start_date.weekday() != 0:
+            week_start_date = week_start_date - timedelta(days=week_start_date.weekday())
+        
+        result = content_generator.generate_weekly_content(week_start_date)
+        
+        return jsonify(result)
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error generating weekly content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/test-generation', methods=['GET'])
+def test_generation():
+    """Test endpoint for content generation"""
+    try:
+        current_monday = datetime.now() - timedelta(days=datetime.now().weekday())
+        
+        logger.info("Testing weekly content generation...")
+        result = content_generator.generate_weekly_content(current_monday)
+        
+        return jsonify({
+            'success': True,
+            'test_results': {
+                'weekly_generation': result.get('success', False),
+                'content_pieces_generated': result.get('content_pieces', 0),
+                'week_theme': result.get('theme'),
+                'season': result.get('season'),
+                'ai_provider': 'claude' if content_generator.claude_client else 'fallback',
+                'daily_blogs_included': True
+            },
+            'full_result': result
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/content/<content_id>')
+def get_content_piece(content_id):
+    """Get individual content piece by ID"""
+    try:
+        content_piece = content_generator.db_manager.get_content_piece(content_id)
+        if content_piece:
+            return jsonify({
+                'success': True,
+                'content': content_generator._content_piece_to_dict(content_piece)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Content piece not found'
+            }), 404
+    except Exception as e:
+        logger.error(f"Error retrieving content piece: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/weekly-content/<week_id>')
+def get_weekly_content(week_id):
+    """Get all content for a specific week"""
+    try:
+        content_pieces = content_generator.db_manager.get_weekly_content(week_id)
+        return jsonify({
+            'success': True,
+            'week_id': week_id,
+            'content_pieces': len(content_pieces),
+            'content_breakdown': content_generator._get_content_breakdown(content_pieces),
+            'content': [content_generator._content_piece_to_dict(cp) for cp in content_pieces]
+        })
+    except Exception as e:
+        logger.error(f"Error retrieving weekly content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/export-content/<week_id>')
+def export_weekly_content(week_id):
+    """Export weekly content in various formats"""
+    try:
+        content_pieces = content_generator.db_manager.get_weekly_content(week_id)
+        
+        export_data = {
+            'week_id': week_id,
+            'generated_at': datetime.now().isoformat(),
+            'total_pieces': len(content_pieces),
+            'content_breakdown': content_generator._get_content_breakdown(content_pieces),
+            'content': [content_generator._content_piece_to_dict(cp) for cp in content_pieces]
+        }
+        
+        return jsonify({
+            'success': True,
+            'export_data': export_data,
+            'download_ready': True
+        })
+        
+    except Exception as e:
+        logger.error(f"Error exporting weekly content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({
+        'success': False,
+        'error': 'Endpoint not found',
+        'available_endpoints': [
+            '/',
+            '/health',
+            '/api/check-claude-status',
+            '/api/generate-weekly-content',
+            '/api/test-generation',
+            '/api/content/<content_id>',
+            '/api/weekly-content/<week_id>',
+            '/api/export-content/<week_id>'
+        ]
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {str(error)}")
+    return jsonify({
+        'success': False,
+        'error': 'Internal server error',
+        'message': 'Please check the logs for more details'
+    }), 500
+
+# Main application entry point
+if __name__ == '__main__':
+    logger.info("Starting Enhanced Elm Dirt Content Automation Platform v3.0")
+    logger.info(f"Claude API: {'Enabled' if content_generator.claude_client else 'Disabled (using fallback)'}")
+    logger.info("Features: 56 pieces per week including 6 daily blog posts")
+    logger.info("Database: SQLite initialized")
+    logger.info("Endpoints: Web interface and API routes configured")
+    
+    # Get port from environment or use default
+    port = int(os.getenv('PORT', 5000))
+    
+    # Run the application
+    app.run(debug=False, host='0.0.0.0', port=port)
+
+# End of Enhanced Elm Dirt Content Automation Platform
+# Total: 56 pieces of content per week including:
+# - 6 Daily Blog Posts (HTML formatted for Shopify)
+# - 18 Instagram Posts (3 per day × 6 days)
+# - 18 Facebook Posts (3 per day × 6 days)
+# - 6 TikTok Video Scripts (1 per day × 6 days)
+# - 6 LinkedIn Posts (1 per day × 6 days)
+# - 1 YouTube Video Outline (weekly)
+# - 1 Weekly Content Package
+
+# Features:
+# ✅ Claude AI Integration with fallback templates
+# ✅ Holiday and seasonal awareness
+# ✅ SEO-optimized HTML blog content
+# ✅ Comprehensive image suggestions
+# ✅ Database storage and retrieval
+# ✅ Professional web interface
+# ✅ API endpoints for content management
+# ✅ Error handling and logging
+# ✅ Export functionality
+# ✅ Health monitoring
