@@ -1617,23 +1617,36 @@ def export_page():
         
         <script>
             function exportAllContent() {
-                // Replace this with your actual weekly content data
-                // This should come from your content generation system
-                const weeklyContent = getWeeklyContentData(); // You'll implement this
-                
-                fetch('/api/export/copy-paste', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        content_pieces: weeklyContent,
-                        week_id: new Date().getFullYear() + '-W' + getWeekNumber()
-                    })
+            // Get current week ID
+                const weekId = new Date().getFullYear() + '-W' + getWeekNumber();
+    
+            // Fetch actual weekly content from your system
+                fetch(`/api/weekly-content/${weekId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Open copy-paste interface with real content
+                        return fetch('/api/export/copy-paste', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                content_pieces: data.content_pieces,
+                                week_id: weekId
+                            })
+                        });
+                    } else {
+                        throw new Error(data.error || 'Failed to get weekly content');
+                    }
                 })
                 .then(response => response.text())
                 .then(html => {
                     const newWindow = window.open('', '_blank', 'width=1400,height=800,scrollbars=yes');
                     newWindow.document.write(html);
                     newWindow.document.close();
+                })
+                .catch(error => {
+                    alert('Error loading content: ' + error.message);
+                    console.error('Error:', error);
                 });
             }
             
