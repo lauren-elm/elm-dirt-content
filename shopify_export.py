@@ -336,7 +336,7 @@ class CopyPasteGenerator:
         else:
             return self._generate_social_item(post, platform, index)
     
-   def _generate_blog_item(self, post: dict, index: int) -> str:
+    def _generate_blog_item(self, post: dict, index: int) -> str:
         """Generate enhanced blog post item with schema and images"""
         title = post.get('title', f'Blog Post {index}')
         content = post.get('content', '')
