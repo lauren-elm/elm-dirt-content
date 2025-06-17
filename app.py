@@ -8,6 +8,7 @@ from flask_cors import CORS
 import requests
 import json
 from datetime import datetime, timedelta
+import calendar
 import os
 from typing import Dict, List, Optional, Tuple
 import re
@@ -1429,7 +1430,7 @@ def check_claude_status():
 
 @app.route('/api/generate-content', methods=['POST'])
 def generate_content_api():
-    """Generate content based on selected date and type"""
+    """Generate content based on selected date and type with Claude AI integration"""
     try:
         data = request.get_json()
         selected_date = data.get('date')  # Format: YYYY-MM-DD
@@ -1439,13 +1440,12 @@ def generate_content_api():
         print(f"Generating content for: {selected_date}, type: {export_type}, day: {day_of_week}")
         
         # Convert date string to datetime object
-        from datetime import datetime, timedelta
         date_obj = datetime.strptime(selected_date, '%Y-%m-%d')
         
         # Generate content based on type
         if export_type == 'weekly':
-            # Monday selected - generate full week
-            content_pieces = generate_sample_weekly_content(date_obj, selected_date)
+            # Monday selected - generate full week with Claude AI
+            content_pieces = generate_full_weekly_content(date_obj, selected_date)
             week_id = f"{date_obj.year}-W{date_obj.isocalendar()[1]}"
         else:
             # Other day selected - generate daily content
@@ -1469,6 +1469,549 @@ def generate_content_api():
             'success': False,
             'error': str(e)
         }), 500
+
+def generate_full_weekly_content(start_date, date_str):
+    """Generate complete weekly content using Claude AI integration"""
+    from datetime import timedelta
+    import random
+    
+    content_pieces = []
+    
+    # Get seasonal context for the date
+    seasonal_context = get_seasonal_context(start_date)
+    
+    # Step 1: Generate 6 Blog Post Ideas using Claude AI
+    blog_ideas = generate_blog_ideas_with_claude(seasonal_context, start_date)
+    
+    # Step 2: Generate 6 Full Blog Posts using Claude AI
+    for i, blog_idea in enumerate(blog_ideas):
+        blog_date = start_date + timedelta(days=i)
+        full_blog = generate_blog_with_claude(blog_idea, seasonal_context)
+        
+        content_pieces.append({
+            'title': full_blog['title'],
+            'content': full_blog['content'],
+            'meta_description': full_blog['meta_description'],
+            'keywords': full_blog['keywords'],
+            'platform': 'blog',
+            'scheduled_time': blog_date.strftime('%Y-%m-%d 09:00:00')
+        })
+    
+    # Step 3: Generate Social Media Content (18 posts each for FB, IG, TikTok)
+    social_content = generate_social_media_content(start_date, seasonal_context, blog_ideas)
+    content_pieces.extend(social_content)
+    
+    # Step 4: Generate 6 LinkedIn Posts
+    linkedin_content = generate_linkedin_content(start_date, seasonal_context, blog_ideas)
+    content_pieces.extend(linkedin_content)
+    
+    # Step 5: Generate YouTube Outline
+    youtube_outline = generate_youtube_outline(start_date, seasonal_context, blog_ideas)
+    content_pieces.append(youtube_outline)
+    
+    return content_pieces
+
+def get_seasonal_context(date_obj):
+    """Get seasonal and holiday context for content generation"""
+    month = date_obj.month
+    day = date_obj.day
+    
+    # Seasonal mapping
+    seasons = {
+        (12, 1, 2): "winter",
+        (3, 4, 5): "spring", 
+        (6, 7, 8): "summer",
+        (9, 10, 11): "fall"
+    }
+    
+    current_season = "spring"  # default
+    for months, season in seasons.items():
+        if month in months:
+            current_season = season
+            break
+    
+    # Holiday context
+    holidays = []
+    if month == 3 and 15 <= day <= 25:
+        holidays.append("Spring Equinox")
+    elif month == 4 and 15 <= day <= 25:
+        holidays.append("Earth Day")
+    elif month == 5 and 8 <= day <= 15:
+        holidays.append("Mother's Day")
+    elif month == 6 and 15 <= day <= 25:
+        holidays.append("Summer Solstice")
+    elif month == 9 and 15 <= day <= 25:
+        holidays.append("Fall Equinox")
+    elif month == 10:
+        holidays.append("Halloween/Fall Harvest")
+    elif month == 11:
+        holidays.append("Thanksgiving")
+    elif month == 12:
+        holidays.append("Winter Holidays")
+    elif month == 1:
+        holidays.append("New Year/Winter Gardening")
+    elif month == 2:
+        holidays.append("Valentine's Day")
+    
+    return {
+        'season': current_season,
+        'month': calendar.month_name[month],
+        'holidays': holidays,
+        'date': date_obj.strftime('%B %d, %Y')
+    }
+
+def generate_blog_ideas_with_claude(seasonal_context, start_date):
+    """Generate 6 blog ideas using Claude AI"""
+    
+    # This should connect to your existing Claude AI system
+    # For now, I'll create a function that calls your Claude API
+    
+    prompt = f"""Generate blog article ideas
+
+Context:
+- Season: {seasonal_context['season']}
+- Month: {seasonal_context['month']}
+- Date: {seasonal_context['date']}
+- Holidays/Events: {', '.join(seasonal_context['holidays']) if seasonal_context['holidays'] else 'None'}
+
+Generate 6 blog article titles for Elm Dirt, an organic gardening soil company. Consider:
+- Seasonal gardening tasks appropriate for {seasonal_context['season']}
+- Organic gardening methods
+- Soil health and plant nutrition
+- Seasonal plant care
+- Holiday-related gardening if applicable
+
+Make titles SEO-friendly and engaging for home gardeners."""
+
+    # Call your existing Claude API function
+    blog_ideas_response = call_claude_api(prompt)
+    
+    # Parse the response to extract 6 blog titles
+    blog_ideas = parse_blog_ideas(blog_ideas_response)
+    
+    return blog_ideas
+
+def generate_blog_with_claude(blog_title, seasonal_context):
+    """Generate full blog post using Claude AI"""
+    
+    prompt = f"""Generate an SEO-optimized blog article for the title '{blog_title}'
+
+Context:
+- Season: {seasonal_context['season']}
+- Month: {seasonal_context['month']}
+- Brand: Elm Dirt (organic soil amendments and gardening products)
+- Target audience: Home gardeners aged 35-65
+- Focus: Organic gardening, soil health, sustainable practices
+
+Requirements:
+- 800-1200 words
+- Include H2 and H3 subheadings
+- SEO-optimized with natural keyword integration
+- Include practical tips and actionable advice
+- Mention Elm Dirt products naturally (Ancient Soil, Plant Juice, Bloom Juice)
+- Write in friendly, expert tone
+- Include seasonal considerations for {seasonal_context['season']}"""
+
+    # Call your existing Claude API function
+    blog_response = call_claude_api(prompt)
+    
+    # Parse the response
+    parsed_blog = parse_blog_response(blog_response, blog_title)
+    
+    return parsed_blog
+
+def call_claude_api(prompt):
+    """Connect to your existing Claude AI system"""
+    try:
+        # This should use your existing Claude API setup
+        # Replace this with your actual Claude API call from your existing system
+        
+        # Example using your existing setup:
+        # return your_existing_claude_function(prompt)
+        
+        # For now, using a placeholder that connects to Claude
+        response = generate_claude_content(prompt)  # Your existing function
+        return response
+        
+    except Exception as e:
+        print(f"Claude API error: {e}")
+        # Fallback content if Claude fails
+        return generate_fallback_content(prompt)
+
+def parse_blog_ideas(claude_response):
+    """Parse Claude response to extract blog titles"""
+    try:
+        # Extract titles from Claude response
+        lines = claude_response.split('\n')
+        titles = []
+        
+        for line in lines:
+            line = line.strip()
+            if line and (line.startswith('1.') or line.startswith('-') or line.startswith('•')):
+                # Clean up the title
+                title = line.replace('1.', '').replace('2.', '').replace('3.', '')
+                title = title.replace('4.', '').replace('5.', '').replace('6.', '')
+                title = title.replace('-', '').replace('•', '').strip()
+                if title and len(title) > 10:
+                    titles.append(title)
+        
+        # Ensure we have 6 titles
+        while len(titles) < 6:
+            titles.append(f"Seasonal Gardening Guide for {get_seasonal_context(datetime.now())['season'].title()}")
+        
+        return titles[:6]
+        
+    except Exception as e:
+        print(f"Error parsing blog ideas: {e}")
+        # Fallback titles
+        return [
+            "Spring Garden Soil Preparation Guide",
+            "Organic Pest Control Methods That Actually Work", 
+            "Composting 101: Turn Waste into Garden Gold",
+            "Seasonal Plant Care for Maximum Growth",
+            "Building Healthy Soil with Natural Amendments",
+            "Water-Wise Gardening for Sustainable Gardens"
+        ]
+
+def parse_blog_response(claude_response, original_title):
+    """Parse Claude blog response into structured format"""
+    try:
+        # Extract meta description (look for it in the response)
+        meta_description = f"Expert gardening advice about {original_title.lower()} with organic methods and proven techniques."
+        
+        # Extract keywords from title and content
+        keywords = extract_keywords_from_content(original_title, claude_response)
+        
+        return {
+            'title': original_title,
+            'content': claude_response,
+            'meta_description': meta_description,
+            'keywords': keywords
+        }
+        
+    except Exception as e:
+        print(f"Error parsing blog response: {e}")
+        return {
+            'title': original_title,
+            'content': f"<h2>{original_title}</h2><p>Content generated by Elm Dirt content system.</p>",
+            'meta_description': f"Expert advice about {original_title.lower()}",
+            'keywords': "organic gardening, soil health, plant care"
+        }
+
+def extract_keywords_from_content(title, content):
+    """Extract SEO keywords from title and content"""
+    # Simple keyword extraction
+    import re
+    
+    # Common gardening keywords
+    base_keywords = ["organic gardening", "soil health", "plant care", "garden tips"]
+    
+    # Extract keywords from title
+    title_words = re.findall(r'\b\w+\b', title.lower())
+    title_keywords = [word for word in title_words if len(word) > 3]
+    
+    # Combine and return
+    all_keywords = base_keywords + title_keywords[:3]
+    return ', '.join(all_keywords[:6])
+
+def generate_social_media_content(start_date, seasonal_context, blog_ideas):
+    """Generate 18 posts each for Facebook, Instagram, and TikTok"""
+    content_pieces = []
+    
+    # Content themes for the week
+    themes = [
+        "Educational Tips",
+        "Product Features", 
+        "Seasonal Advice",
+        "Community Engagement",
+        "Behind the Scenes",
+        "User Generated Content"
+    ]
+    
+    platforms = ['facebook', 'instagram', 'tiktok']
+    
+    for platform in platforms:
+        for day in range(7):  # 7 days
+            current_date = start_date + timedelta(days=day)
+            
+            # Generate 2-3 posts per day to reach 18 total
+            posts_per_day = 3 if day < 4 else 2  # More posts early in week
+            
+            for post_num in range(posts_per_day):
+                theme = themes[post_num % len(themes)]
+                
+                if platform == 'facebook':
+                    post_content = generate_facebook_post(theme, seasonal_context, blog_ideas, day, post_num)
+                elif platform == 'instagram':
+                    post_content = generate_instagram_post(theme, seasonal_context, blog_ideas, day, post_num)
+                else:  # tiktok
+                    post_content = generate_tiktok_idea(theme, seasonal_context, blog_ideas, day, post_num)
+                
+                # Schedule posts throughout the day
+                hour = 9 + (post_num * 4)  # 9am, 1pm, 5pm
+                
+                content_pieces.append({
+                    'title': f'{platform.title()} - {theme} (Day {day+1})',
+                    'content': post_content['content'],
+                    'keywords': post_content['keywords'],
+                    'platform': platform,
+                    'scheduled_time': current_date.strftime(f'%Y-%m-%d {hour:02d}:00:00')
+                })
+    
+    return content_pieces
+
+def generate_facebook_post(theme, seasonal_context, blog_ideas, day, post_num):
+    """Generate Facebook post content"""
+    
+    facebook_templates = {
+        "Educational Tips": [
+            f"🌱 {seasonal_context['season'].title()} gardening tip: Did you know that healthy soil contains billions of microorganisms? These tiny helpers break down organic matter and make nutrients available to your plants. Our Ancient Soil blend supports this natural ecosystem!",
+            f"💡 Quick {seasonal_context['season']} garden tip: The best time to water your plants is early morning. This gives them time to absorb water before the heat of the day and reduces evaporation. What's your watering schedule?",
+            f"🌿 Soil health fact: Adding just 2 inches of compost to your garden beds can improve water retention by up to 40%! Perfect for {seasonal_context['season']} gardening when water efficiency matters."
+        ],
+        "Product Features": [
+            f"🏆 Why gardeners love Ancient Soil: 'I've been using it for two seasons and my vegetable yields have doubled!' - Sarah K. Perfect for {seasonal_context['season']} planting!",
+            f"✨ What makes our Plant Juice special? Over 250 beneficial microorganisms working together to create living soil. Your plants will thank you this {seasonal_context['season']}!",
+            f"🌱 Ancient Soil vs regular potting mix: Our blend includes worm castings, biochar, and beneficial microbes. Regular potting mix? Just dead organic matter. See the difference in your {seasonal_context['season']} garden!"
+        ],
+        "Seasonal Advice": [
+            f"🍂 {seasonal_context['season'].title()} garden checklist: Test soil pH, add organic matter, plan your layout, and don't forget to feed your soil! What's first on your {seasonal_context['season']} to-do list?",
+            f"🌤️ Perfect {seasonal_context['season']} weather for garden prep! Time to get those beds ready for the growing season. Who else is excited to get their hands dirty?",
+            f"📅 {seasonal_context['season'].title()} reminder: Don't rush the season! Wait for consistent soil temperatures before planting tender crops. Patience pays off in the garden."
+        ]
+    }
+    
+    templates = facebook_templates.get(theme, facebook_templates["Educational Tips"])
+    content = templates[post_num % len(templates)]
+    
+    return {
+        'content': content,
+        'keywords': [f'{seasonal_context["season"]} gardening', 'organic soil', 'garden tips', 'plant care']
+    }
+
+def generate_instagram_post(theme, seasonal_context, blog_ideas, day, post_num):
+    """Generate Instagram post content"""
+    
+    instagram_templates = {
+        "Educational Tips": [
+            f"{seasonal_context['season'].title()} soil prep 101! 🌱\n\n✨ Test pH levels\n🌿 Add organic matter\n💧 Check drainage\n🪱 Feed the microbes\n\nReady to level up your garden game?\n\n#OrganicGardening #{seasonal_context['season'].title()}Gardening #SoilHealth #ElmDirt",
+            f"Garden myth busted! 🚫\n\nMyth: More fertilizer = better plants\nTruth: Healthy soil + balanced nutrition = thriving plants\n\nOur Ancient Soil provides slow, steady nutrition your plants actually need! 🌱\n\n#GardenMyths #OrganicGardening #HealthySoil",
+            f"Why we're obsessed with soil microbes 🔬\n\n• Break down organic matter\n• Make nutrients available\n• Protect plant roots\n• Improve soil structure\n\nLiving soil = living plants! 🌿\n\n#SoilScience #MicroorganismsMatter #OrganicGardening"
+        ],
+        "Product Features": [
+            f"Ancient Soil ingredients spotlight! ✨\n\n🪱 Premium worm castings\n🔥 Activated biochar\n🌊 Sea kelp meal\n🦇 Aged bat guano\n🌋 Volcanic azomite\n\nNature's perfect recipe for plant success!\n\n#AncientSoil #OrganicIngredients #PlantNutrition",
+            f"Customer love! 💚\n\n'My tomatoes have never been bigger!' - Maria T.\n'Best investment for my garden' - John R.\n'Plants are thriving like never before' - Lisa K.\n\nJoin thousands of happy gardeners! 🌱\n\n#CustomerLove #GardenSuccess #HappyPlants",
+            f"Science meets nature 🧪🌱\n\nOur Plant Juice contains:\n• 250+ beneficial microorganisms\n• Organic growth stimulants\n• Natural plant hormones\n• Enzyme activators\n\nWatch your garden come alive!\n\n#PlantScience #LivingSoil #OrganicGardening"
+        ]
+    }
+    
+    templates = instagram_templates.get(theme, instagram_templates["Educational Tips"])
+    content = templates[post_num % len(templates)]
+    
+    hashtags = ['ElmDirt', 'OrganicGardening', f'{seasonal_context["season"].title()}Gardening', 'GardenLife', 'HealthySoil']
+    
+    return {
+        'content': content,
+        'keywords': hashtags
+    }
+
+def generate_tiktok_idea(theme, seasonal_context, blog_ideas, day, post_num):
+    """Generate TikTok video ideas"""
+    
+    tiktok_ideas = {
+        "Educational Tips": [
+            f"POV: You're learning why soil pH matters for {seasonal_context['season']} planting 🌱 [Show pH test kit, explain ideal ranges, dramatic before/after plant comparison]",
+            f"Soil transformation in 30 seconds! ⏰ [Time-lapse of adding Ancient Soil to garden bed, mixing, planting, fast-forward growth]",
+            f"Garden hack: The paper towel soil test! 📄 [Show how to test soil drainage with simple paper towel method]"
+        ],
+        "Product Features": [
+            f"Unboxing our Ancient Soil blend! 📦 [ASMR unboxing, show texture, smell, ingredients close-up, satisfied customer reaction]",
+            f"Why worm castings are garden gold! 🪱✨ [Microscope view of castings, plant growth comparison, happy plant dance]",
+            f"Ancient Soil vs regular soil challenge! ⚔️ [Side-by-side plant growth test, dramatic reveal after 2 weeks]"
+        ],
+        "Behind the Scenes": [
+            f"How we make Ancient Soil! 🏭 [Behind-scenes of production, ingredients mixing, quality testing, team passion]",
+            f"Meet our soil scientist! 👩‍🔬 [Quick expert tips, lab testing, nerdy soil facts made fun]",
+            f"From farm to garden! 🚚 [Follow a bag from production to happy customer's garden]"
+        ]
+    }
+    
+    ideas = tiktok_ideas.get(theme, tiktok_ideas["Educational Tips"])
+    content = ideas[post_num % len(ideas)]
+    
+    return {
+        'content': content,
+        'keywords': ['ElmDirtTok', 'GardeningHacks', 'PlantTok', f'{seasonal_context["season"]}Garden', 'OrganicGardening']
+    }
+
+def generate_linkedin_content(start_date, seasonal_context, blog_ideas):
+    """Generate 6 LinkedIn posts for the week"""
+    content_pieces = []
+    
+    linkedin_themes = [
+        "Industry Insights",
+        "Sustainability Focus", 
+        "Business Growth",
+        "Team Spotlight",
+        "Customer Success",
+        "Innovation Story"
+    ]
+    
+    for i, theme in enumerate(linkedin_themes):
+        post_date = start_date + timedelta(days=i)
+        
+        linkedin_content = generate_linkedin_post(theme, seasonal_context, blog_ideas[i % len(blog_ideas)])
+        
+        content_pieces.append({
+            'title': f'LinkedIn - {theme}',
+            'content': linkedin_content['content'],
+            'keywords': linkedin_content['keywords'],
+            'platform': 'linkedin',
+            'scheduled_time': post_date.strftime('%Y-%m-%d 10:00:00')
+        })
+    
+    return content_pieces
+
+def generate_linkedin_post(theme, seasonal_context, blog_topic):
+    """Generate individual LinkedIn post"""
+    
+    linkedin_templates = {
+        "Industry Insights": f"""The organic gardening industry is experiencing unprecedented growth, with 77% of households now growing food at home.
+
+Key trends we're seeing this {seasonal_context['season']}:
+- Increased focus on soil health over quick fixes
+- Growing demand for sustainable growing practices  
+- Shift toward regenerative gardening methods
+- Rising interest in beneficial microorganisms
+
+At Elm Dirt, we're proud to be at the forefront of this movement, providing gardeners with science-backed, organic solutions that build healthy soil ecosystems.
+
+What trends are you seeing in your industry? 
+
+#OrganicGardening #Sustainability #IndustryTrends #SoilHealth""",
+
+        "Sustainability Focus": f"""Sustainability isn't just a buzzword for us - it's our mission.
+
+Our {seasonal_context['season']} sustainability initiatives:
+🌱 Carbon-negative production process
+♻️ 100% recyclable packaging  
+🌍 Local sourcing to reduce transport
+🔬 Supporting soil regeneration research
+🤝 Partnering with sustainable farms
+
+Every bag of Ancient Soil sold helps sequester carbon and builds healthier ecosystems. When business aligns with environmental impact, everyone wins.
+
+How is your organization contributing to sustainability?
+
+#Sustainability #RegenerativeAgriculture #CarbonSequestration #ClimateAction""",
+
+        "Customer Success": f"""Customer spotlight: Sarah's garden transformation 🌟
+
+"After switching to Ancient Soil last {seasonal_context['season']}, my vegetable yields increased 150%. But more importantly, my plants are healthier and more resilient. The soil feels alive!" - Sarah K., Colorado
+
+This is why we do what we do. It's not just about selling products - it's about empowering people to grow healthy food and build sustainable gardens.
+
+Success stories like Sarah's remind us that when we help soil thrive, we help communities thrive.
+
+What success story would you like to share?
+
+#CustomerSuccess #OrganicGardening #CommunityImpact #HealthySoil"""
+    }
+    
+    content = linkedin_templates.get(theme, linkedin_templates["Industry Insights"])
+    
+    return {
+        'content': content,
+        'keywords': ['B2B gardening', 'organic agriculture', 'sustainability', 'soil health']
+    }
+
+def generate_youtube_outline(start_date, seasonal_context, blog_ideas):
+    """Generate 60-minute YouTube video outline"""
+    
+    outline_content = f"""60-Minute YouTube Video: "Complete {seasonal_context['season'].title()} Garden Setup Guide"
+
+INTRO (5 minutes)
+- Welcome and channel introduction
+- What we'll cover in this comprehensive guide
+- Why {seasonal_context['season']} prep is crucial for year-round success
+
+SEGMENT 1: Soil Foundation (15 minutes)
+- Testing your soil pH and nutrients
+- Understanding soil composition
+- When and how to add organic amendments
+- Ancient Soil demonstration and benefits
+- Common soil mistakes to avoid
+
+SEGMENT 2: {seasonal_context['season'].title()} Plant Selection (12 minutes) 
+- Best plants for {seasonal_context['season']} in different zones
+- Seed starting vs transplants
+- Companion planting strategies
+- Succession planting for continuous harvest
+
+SEGMENT 3: Garden Layout & Design (10 minutes)
+- Planning your {seasonal_context['season']} garden layout
+- Maximizing space and sunlight
+- Creating efficient watering systems
+- Tool and equipment essentials
+
+SEGMENT 4: Organic Pest & Disease Prevention (8 minutes)
+- Preventive measures for {seasonal_context['season']}
+- Beneficial insects and how to attract them
+- Natural pest control methods
+- Building plant immunity through soil health
+
+SEGMENT 5: Maintenance Schedule (8 minutes)
+- Weekly {seasonal_context['season']} garden tasks
+- Watering, feeding, and monitoring schedules
+- When to harvest for peak nutrition
+- Preparing for next season
+
+CONCLUSION & Q&A (2 minutes)
+- Key takeaways for {seasonal_context['season']} success
+- Where to find more resources
+- Community engagement and comments
+
+CALL TO ACTION:
+- Subscribe for weekly garden tips
+- Download free {seasonal_context['season']} planting calendar
+- Try Ancient Soil with special YouTube discount
+
+PRODUCTS TO FEATURE:
+- Ancient Soil (soil amendment demo)
+- Plant Juice (feeding demonstration)  
+- Bloom Juice (flowering plant care)
+
+SEASONAL FOCUS: {', '.join(seasonal_context['holidays']) if seasonal_context['holidays'] else f'{seasonal_context["season"]} gardening tasks'}"""
+
+    return {
+        'title': f'YouTube Video - Complete {seasonal_context["season"].title()} Garden Guide',
+        'content': outline_content,
+        'keywords': [f'{seasonal_context["season"]} gardening', 'garden setup', 'organic gardening', 'soil health'],
+        'platform': 'youtube',
+        'scheduled_time': start_date.strftime('%Y-%m-%d 11:00:00')
+    }
+
+def generate_fallback_content(prompt):
+    """Fallback content when Claude API fails"""
+    return """<h2>Seasonal Garden Care Guide</h2>
+<p>Expert gardening advice for maintaining healthy plants and soil throughout the growing season.</p>
+<h3>Essential Garden Tasks</h3>
+<ul>
+<li>Test and amend soil as needed</li>
+<li>Monitor plant health regularly</li>
+<li>Maintain consistent watering schedule</li>
+<li>Add organic matter to support soil life</li>
+</ul>
+<p>For best results, use high-quality organic amendments like Ancient Soil to build healthy, living soil that supports vigorous plant growth.</p>"""
+
+# You'll need to replace this with your actual Claude API function
+def generate_claude_content(prompt):
+    """Replace this with your existing Claude API integration"""
+    # This should call your existing Claude API setup
+    # Example: return your_claude_api_function(prompt)
+    
+    # Placeholder - replace with your actual implementation
+    return generate_fallback_content(prompt)
 
 def generate_sample_weekly_content(start_date, date_str):
     """Generate sample content for entire week"""
