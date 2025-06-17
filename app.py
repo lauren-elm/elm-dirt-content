@@ -1561,158 +1561,378 @@ def get_seasonal_context(date_obj):
     }
 
 def generate_blog_ideas_with_claude(seasonal_context, start_date):
-    """Generate 6 blog ideas using Claude AI"""
+    """Generate 6 blog ideas using Claude AI - FIXED VERSION"""
     
-    # This should connect to your existing Claude AI system
-    # For now, I'll create a function that calls your Claude API
-    
-    prompt = f"""Generate blog article ideas
+    prompt = f"""You are an expert content writer for Elm Dirt, an organic gardening soil company. Generate exactly 6 blog article titles.
 
-Context:
-- Season: {seasonal_context['season']}
-- Month: {seasonal_context['month']}
+CONTEXT:
+- Current season: {seasonal_context['season']}
+- Month: {seasonal_context['month']} 
 - Date: {seasonal_context['date']}
 - Holidays/Events: {', '.join(seasonal_context['holidays']) if seasonal_context['holidays'] else 'None'}
 
-Generate 6 blog article titles for Elm Dirt, an organic gardening soil company. Consider:
-- Seasonal gardening tasks appropriate for {seasonal_context['season']}
-- Organic gardening methods
-- Soil health and plant nutrition
-- Seasonal plant care
-- Holiday-related gardening if applicable
+BRAND INFO:
+- Company: Elm Dirt
+- Products: Ancient Soil, Plant Juice, Bloom Juice
+- Target audience: Home gardeners aged 35-65
 
-Make titles SEO-friendly and engaging for home gardeners."""
+REQUIREMENTS:
+- Generate exactly 6 blog article titles
+- Focus on {seasonal_context['season']} gardening tasks
+- Make titles SEO-friendly and engaging
+- Include seasonal plant care and soil health topics
+- Each title should be 8-12 words long
 
-    # Call your existing Claude API function
-    blog_ideas_response = call_claude_api(prompt)
-    
-    # Parse the response to extract 6 blog titles
-    blog_ideas = parse_blog_ideas(blog_ideas_response)
-    
-    return blog_ideas
+FORMAT: Return only the titles, numbered 1-6, one per line.
+
+Example:
+1. Spring Garden Soil Preparation: Complete Guide for Success
+2. Organic Pest Control Methods for Spring Gardens
+3. Best Spring Vegetables to Plant in Small Gardens
+
+Generate 6 titles for {seasonal_context['season']} gardening:"""
+
+    try:
+        # Call the ACTUAL Claude API (not recursive!)
+        blog_ideas_response = make_direct_claude_call(prompt)
+        blog_ideas = parse_blog_ideas(blog_ideas_response)
+        print(f"Generated {len(blog_ideas)} blog ideas")
+        return blog_ideas
+        
+    except Exception as e:
+        print(f"Error generating blog ideas: {e}")
+        return get_fallback_blog_titles(seasonal_context)
 
 def generate_blog_with_claude(blog_title, seasonal_context):
-    """Generate full blog post using Claude AI"""
+    """Generate full blog post using Claude AI - FIXED VERSION"""
     
     prompt = f"""Generate an SEO-optimized blog article for the title '{blog_title}'
 
-Context:
+CONTEXT:
 - Season: {seasonal_context['season']}
 - Month: {seasonal_context['month']}
 - Brand: Elm Dirt (organic soil amendments and gardening products)
 - Target audience: Home gardeners aged 35-65
-- Focus: Organic gardening, soil health, sustainable practices
 
-Requirements:
-- 800-1200 words
-- Include H2 and H3 subheadings
-- SEO-optimized with natural keyword integration
-- Include practical tips and actionable advice
-- Mention Elm Dirt products naturally (Ancient Soil, Plant Juice, Bloom Juice)
-- Write in friendly, expert tone
-- Include seasonal considerations for {seasonal_context['season']}"""
+REQUIREMENTS:
+- Write 1000-1500 words minimum
+- Include H2 and H3 HTML subheadings
+- Use engaging, expert but approachable tone
+- Include practical, actionable advice
+- Naturally mention Elm Dirt products where relevant:
+  * Ancient Soil: Premium soil amendment with worm castings, biochar, kelp
+  * Plant Juice: Liquid fertilizer with 250+ beneficial microorganisms
+  * Bloom Juice: Specialized fertilizer for flowering plants
+- Focus on organic, sustainable gardening methods
+- Include seasonal considerations for {seasonal_context['season']}
+- Use proper HTML formatting (h2, h3, p, ul, li tags)
 
-    # Call your existing Claude API function
-    blog_response = call_claude_api(prompt)
-    
-    # Parse the response
-    parsed_blog = parse_blog_response(blog_response, blog_title)
-    
-    return parsed_blog
+STRUCTURE:
+- Introduction explaining importance of topic
+- 3-4 main sections with H2 headings
+- Subsections with H3 headings
+- Practical tips and step-by-step instructions
+- Conclusion with key takeaways
 
-def call_claude_api(prompt):
-    """Connect to your existing Claude AI system"""
+Write the complete article with HTML formatting:"""
+
     try:
-        # This should use your existing Claude API setup
-        # Replace this with your actual Claude API call from your existing system
-        
-        # Example using your existing setup:
-        # return your_existing_claude_function(prompt)
-        
-        # For now, using a placeholder that connects to Claude
-        response = call_claude_api(prompt)  # Your existing function
-        return response
+        # Call the ACTUAL Claude API (not recursive!)
+        blog_response = make_direct_claude_call(prompt)
+        parsed_blog = parse_blog_response(blog_response, blog_title, seasonal_context)
+        print(f"Generated blog length: {len(blog_response)} characters")
+        return parsed_blog
         
     except Exception as e:
-        print(f"Claude API error: {e}")
-        # Fallback content if Claude fails
-        return generate_fallback_content(prompt)
+        print(f"Error generating blog: {e}")
+        return get_fallback_blog_content(blog_title, seasonal_context)
+
+def make_direct_claude_call(prompt):
+    """Direct Claude API call - NO RECURSION"""
+    try:
+        import requests
+        import os
+        
+        # Claude API configuration
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": os.getenv('CLAUDE_API_KEY'),
+            "anthropic-version": "2023-06-01"
+        }
+        
+        data = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 3000,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        }
+        
+        print("Making Claude API call...")
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=data,
+            timeout=60
+        )
+        
+        print(f"Claude API response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            result = response.json()
+            content = result["content"][0]["text"]
+            print(f"Claude returned {len(content)} characters")
+            return content
+        else:
+            print(f"Claude API error: {response.status_code} - {response.text}")
+            raise Exception(f"API returned {response.status_code}")
+            
+    except Exception as e:
+        print(f"Error in make_direct_claude_call: {e}")
+        raise e
 
 def parse_blog_ideas(claude_response):
-    """Parse Claude response to extract blog titles"""
+    """Parse Claude response to extract blog titles - IMPROVED"""
     try:
-        # Extract titles from Claude response
-        lines = claude_response.split('\n')
+        lines = claude_response.strip().split('\n')
         titles = []
         
         for line in lines:
             line = line.strip()
-            if line and (line.startswith('1.') or line.startswith('-') or line.startswith('•')):
+            # Look for numbered lines
+            if line and any(line.startswith(f'{i}.') for i in range(1, 7)):
                 # Clean up the title
-                title = line.replace('1.', '').replace('2.', '').replace('3.', '')
-                title = title.replace('4.', '').replace('5.', '').replace('6.', '')
-                title = title.replace('-', '').replace('•', '').strip()
+                title = line
+                for i in range(1, 7):
+                    title = title.replace(f'{i}.', '').strip()
+                
                 if title and len(title) > 10:
                     titles.append(title)
         
-        # Ensure we have 6 titles
-        while len(titles) < 6:
-            titles.append(f"Seasonal Gardening Guide for {get_seasonal_context(datetime.now())['season'].title()}")
+        print(f"Parsed {len(titles)} titles from Claude response")
+        
+        # Ensure we have exactly 6 titles
+        if len(titles) < 6:
+            fallback = get_fallback_blog_titles(get_seasonal_context(datetime.now()))
+            titles.extend(fallback[len(titles):6])
         
         return titles[:6]
         
     except Exception as e:
         print(f"Error parsing blog ideas: {e}")
-        # Fallback titles
-        return [
-            "Spring Garden Soil Preparation Guide",
-            "Organic Pest Control Methods That Actually Work", 
-            "Composting 101: Turn Waste into Garden Gold",
-            "Seasonal Plant Care for Maximum Growth",
-            "Building Healthy Soil with Natural Amendments",
-            "Water-Wise Gardening for Sustainable Gardens"
-        ]
+        return get_fallback_blog_titles(get_seasonal_context(datetime.now()))
 
-def parse_blog_response(claude_response, original_title):
-    """Parse Claude blog response into structured format"""
+def parse_blog_response(claude_response, original_title, seasonal_context):
+    """Parse Claude blog response into structured format - IMPROVED"""
     try:
-        # Extract meta description (look for it in the response)
-        meta_description = f"Expert gardening advice about {original_title.lower()} with organic methods and proven techniques."
+        content = claude_response.strip()
         
-        # Extract keywords from title and content
-        keywords = extract_keywords_from_content(original_title, claude_response)
+        # Check if content is substantial
+        if len(content) < 800:
+            print(f"Blog content too short ({len(content)} chars), using fallback")
+            return get_fallback_blog_content(original_title, seasonal_context)
+        
+        # Generate meta description
+        # Try to extract first paragraph
+        if '<p>' in content:
+            first_p_start = content.find('<p>') + 3
+            first_p_end = content.find('</p>')
+            if first_p_end > first_p_start:
+                first_paragraph = content[first_p_start:first_p_end].strip()
+                if len(first_paragraph) > 160:
+                    meta_description = first_paragraph[:157] + "..."
+                else:
+                    meta_description = first_paragraph
+            else:
+                meta_description = f"Expert guide to {original_title.lower()} with organic methods for {seasonal_context['season']} gardening."
+        else:
+            meta_description = f"Expert guide to {original_title.lower()} with organic methods for {seasonal_context['season']} gardening."
+        
+        # Extract keywords
+        keywords = extract_keywords_from_content(original_title, content, seasonal_context)
         
         return {
             'title': original_title,
-            'content': claude_response,
+            'content': content,
             'meta_description': meta_description,
             'keywords': keywords
         }
         
     except Exception as e:
         print(f"Error parsing blog response: {e}")
-        return {
-            'title': original_title,
-            'content': f"<h2>{original_title}</h2><p>Content generated by Elm Dirt content system.</p>",
-            'meta_description': f"Expert advice about {original_title.lower()}",
-            'keywords': "organic gardening, soil health, plant care"
-        }
+        return get_fallback_blog_content(original_title, seasonal_context)
 
-def extract_keywords_from_content(title, content):
+def get_fallback_blog_titles(seasonal_context):
+    """Fallback blog titles when Claude fails"""
+    season = seasonal_context.get('season', 'spring')
+    
+    titles = {
+        'spring': [
+            "Spring Garden Soil Preparation: Complete Success Guide",
+            "Organic Spring Pest Control Methods That Work",
+            "Best Spring Vegetables for Beginning Gardeners",
+            "Creating Living Soil: Transform Your Garden Naturally",
+            "Spring Composting: Turn Scraps into Garden Gold",
+            "Natural Spring Fertilizers for Healthy Plant Growth"
+        ],
+        'summer': [
+            "Summer Garden Watering: Smart Strategies for Hot Weather",
+            "Organic Summer Pest Management Without Chemicals",
+            "Heat-Tolerant Vegetables: Best Summer Garden Crops",
+            "Maintaining Healthy Soil During Hot Summer Months",
+            "Summer Companion Planting for Garden Success",
+            "Natural Ways to Keep Summer Gardens Thriving"
+        ],
+        'fall': [
+            "Fall Garden Cleanup: Preparing Soil for Winter",
+            "Fall Planting Guide: Cool Weather Crop Success",
+            "Composting Fall Leaves: Building Next Year's Soil",
+            "Winter Garden Prep: Protecting Plants and Soil",
+            "Fall Soil Amendment: Perfect Time for Improvements",
+            "Extending Growing Season: Fall Gardening Techniques"
+        ],
+        'winter': [
+            "Winter Soil Health: Maintaining Garden Soil",
+            "Indoor Gardening: Fresh Food All Winter Long",
+            "Planning Next Year's Garden: Winter Design Tips",
+            "Winter Composting: Active Compost in Cold Weather",
+            "Protecting Garden Soil: Winter Cover Strategies",
+            "Winter Garden Projects: Preparing for Spring"
+        ]
+    }
+    
+    return titles.get(season, titles['spring'])
+
+def get_fallback_blog_content(title, seasonal_context):
+    """Generate substantial fallback blog content"""
+    season = seasonal_context.get('season', 'spring')
+    
+    content = f"""<h2>{title}</h2>
+
+<p>Welcome to your comprehensive guide for {title.lower()}! As experienced gardeners know, success in {season} gardening comes from understanding both the science and art of working with nature's rhythms.</p>
+
+<p>Whether you're a seasoned gardener or just beginning your {season} gardening journey, this guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem that produces abundant, healthy harvests.</p>
+
+<h3>Understanding {season.title()} Garden Fundamentals</h3>
+
+<p>Every season presents unique opportunities and challenges for gardeners. During {season}, your plants have specific environmental needs that must be met for optimal growth, health, and productivity. Understanding these requirements is the first step toward gardening success.</p>
+
+<p>Key considerations for {season} gardening include:</p>
+
+<ul>
+<li>Soil temperature and moisture management for optimal root development</li>
+<li>Seasonal pest and disease prevention strategies</li>
+<li>Proper nutrition timing and organic fertilizer application</li>
+<li>Weather protection and microclimate creation techniques</li>
+<li>Harvest timing for peak nutrition and flavor</li>
+</ul>
+
+<h3>Building the Foundation: Healthy Soil for {season.title()} Success</h3>
+
+<p>The secret to any thriving garden lies beneath the surface in the complex ecosystem of living soil. Healthy, biologically active soil provides the stable foundation that supports vigorous plant growth, natural pest resistance, improved nutrient density, and abundant harvests throughout the {season} growing season.</p>
+
+<h4>Essential Components of Living Soil</h4>
+
+<p>Creating truly healthy soil requires understanding and nurturing several key components that work together:</p>
+
+<ul>
+<li><strong>Beneficial Microorganisms:</strong> Billions of bacteria, fungi, and other microbes that break down organic matter, cycle nutrients, and protect plant roots from pathogens</li>
+<li><strong>Optimal pH Balance:</strong> Proper soil acidity/alkalinity (typically 6.0-7.0) that ensures maximum nutrient availability to plant roots</li>
+<li><strong>Soil Structure:</strong> Well-aggregated soil that provides proper drainage while retaining adequate moisture and allowing root penetration</li>
+<li><strong>Organic Matter:</strong> Decomposed plant and animal materials that feed soil life and improve water retention</li>
+</ul>
+
+<p>Our Ancient Soil blend addresses all these essential components by combining premium worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports plant health from the ground up.</p>
+
+<h3>Organic {season.title()} Management Strategies</h3>
+
+<p>Implementing proven organic gardening practices during {season} helps build long-term soil health while producing safe, nutritious food for your family. These methods work with natural systems rather than against them, creating sustainable abundance.</p>
+
+<h4>Integrated Pest Management</h4>
+
+<p>Prevention is always more effective and economical than treatment when dealing with garden pests. Healthy plants growing in nutrient-rich, biologically active soil naturally resist pest damage and disease pressure through stronger immune systems and improved cellular structure.</p>
+
+<p>Effective organic pest prevention strategies include:</p>
+
+<ul>
+<li>Encouraging beneficial insects through diverse plantings and habitat creation</li>
+<li>Using companion planting to naturally repel harmful pests</li>
+<li>Maintaining proper plant spacing for good air circulation</li>
+<li>Regular monitoring and early intervention when issues arise</li>
+</ul>
+
+<h4>Seasonal Nutrition Management</h4>
+
+<p>Plants have varying nutritional requirements throughout their growth cycles, and understanding when and how to provide proper nutrition ensures optimal development without waste or environmental impact. Organic fertilizers release nutrients slowly and feed soil biology, creating sustainable fertility.</p>
+
+<p>Our Plant Juice provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available precisely when plants need them most. This biological approach to plant nutrition creates healthier, more resilient plants that produce better yields.</p>
+
+<h3>Essential {season.title()} Maintenance Tasks</h3>
+
+<p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential:</p>
+
+<ul>
+<li><strong>Soil Moisture Monitoring:</strong> Regular checking and adjustment of watering schedules based on weather, plant needs, and soil conditions</li>
+<li><strong>Weekly Garden Inspection:</strong> Systematic examination of plants for early signs of pest, disease, or nutritional issues</li>
+<li><strong>Proper Harvesting Techniques:</strong> Timing harvests for peak nutrition and using methods that encourage continued production</li>
+<li><strong>Ongoing Soil Health Improvement:</strong> Regular additions of organic matter and beneficial microorganisms to build soil life</li>
+<li><strong>Season Extension Planning:</strong> Preparing for weather changes and extending productive growing periods</li>
+</ul>
+
+<h3>Advanced {season.title()} Techniques for Maximum Results</h3>
+
+<p>Once you've mastered the fundamentals, these advanced techniques can significantly improve your {season} garden's productivity and resilience:</p>
+
+<h4>Succession Planting</h4>
+
+<p>Staggering plantings every 2-3 weeks ensures continuous harvests throughout {season} rather than overwhelming abundance followed by gaps in production.</p>
+
+<h4>Companion Planting Systems</h4>
+
+<p>Strategic plant combinations that provide mutual benefits through pest deterrence, nutrient sharing, and improved growing conditions.</p>
+
+<h4>Soil Biology Enhancement</h4>
+
+<p>Regular applications of compost tea, beneficial microorganisms, and organic amendments that specifically feed and support soil life.</p>
+
+<h3>Conclusion: Your Path to {season.title()} Garden Success</h3>
+
+<p>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems where soil, plants, beneficial insects, and gardeners work together in harmony. By focusing on soil health, implementing organic practices, and maintaining consistent care, you'll create a garden that not only produces abundantly this {season} but continues to improve and become more productive year after year.</p>
+
+<p>Remember that gardening is a continuous learning journey where each season brings new insights and opportunities for improvement. Start with the fundamentals of healthy soil, embrace organic methods that work with nature, and enjoy the deeply satisfying process of growing your own food naturally and sustainably.</p>
+
+<p>The investment you make in building soil health and implementing these practices will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes.</p>"""
+
+    return {
+        'title': title,
+        'content': content,
+        'meta_description': f"Complete expert guide to {title.lower()} using proven organic methods and sustainable practices for successful {season} gardening.",
+        'keywords': f"{season} gardening, organic gardening, soil health, {title.lower()}, sustainable practices, garden management"
+    }
+
+def extract_keywords_from_content(title, content, seasonal_context):
     """Extract SEO keywords from title and content"""
-    # Simple keyword extraction
     import re
     
-    # Common gardening keywords
-    base_keywords = ["organic gardening", "soil health", "plant care", "garden tips"]
+    season = seasonal_context.get('season', 'spring')
     
-    # Extract keywords from title
-    title_words = re.findall(r'\b\w+\b', title.lower())
-    title_keywords = [word for word in title_words if len(word) > 3]
+    # Base keywords
+    base_keywords = [f"{season} gardening", "organic gardening", "soil health"]
     
-    # Combine and return
+    # Extract from title
+    title_words = re.findall(r'\b[a-zA-Z]{4,}\b', title.lower())
+    title_keywords = [word for word in title_words if word not in ['garden', 'gardening', 'guide', 'complete', 'best']]
+    
+    # Combine
     all_keywords = base_keywords + title_keywords[:3]
     return ', '.join(all_keywords[:6])
+
+# Remove the old recursive function completely
+# DELETE THIS FUNCTION if it exists:
+# def call_claude_api(prompt):
 
 def generate_social_media_content(start_date, seasonal_context, blog_ideas):
     """Generate 18 posts each for Facebook, Instagram, and TikTok"""
