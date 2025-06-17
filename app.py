@@ -2938,8 +2938,17 @@ def export_weekly_content(week_id):
 
 @app.route('/export')
 def export_page():
-    """Export page with date selection for daily or weekly content"""
     return '''
+    <div class="section">
+        <h2>📋 Export Daily Content</h2>
+        <p>Get a focused set of content for your selected date:</p>
+        <ul>
+            <li>📝 <strong>1 Blog Post</strong> - Full SEO-optimized article</li>
+            <li>📱 <strong>3 Instagram Posts</strong> - Ready-to-post content with hashtags</li>
+            <li>👥 <strong>3 Facebook Posts</strong> - Community-focused content</li>
+            <li>🎵 <strong>3 TikTok Ideas</strong> - Video concepts with descriptions</li>
+        </ul>
+        <p><strong>Total: 10 pieces of content</strong> - Perfect for daily management!</p>
     <!DOCTYPE html>
     <html>
     <head>
