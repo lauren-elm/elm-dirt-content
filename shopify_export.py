@@ -17,7 +17,11 @@ class CopyPasteGenerator:
         email_content = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'email']
         pinterest_posts = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'pinterest']
         twitter_posts = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'twitter']
-    
+        tiktok_posts = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'tiktok']
+        linkedin_posts = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'linkedin']
+        youtube_content = [cp for cp in content_pieces if cp.get('platform', '').lower() == 'youtube']
+
+        
         # Add export type info to the header
         export_info = "Weekly Export" if export_type == 'weekly' else "Daily Export"
     
@@ -75,6 +79,9 @@ class CopyPasteGenerator:
                 .twitter-header {{ background: #1DA1F2; }}
                 .tiktok-header { background: #000000; }
                 .linkedin-header { background: #0077B5; }
+                .youtube-header { background: #FF0000; }
+                .tiktok-header { background: #000000; }
+                .linkedin-header { background: #0077B5; }  
                 .youtube-header { background: #FF0000; }
             
                 .content-item {{
@@ -234,9 +241,9 @@ class CopyPasteGenerator:
             {self._generate_platform_section("📧 Email Content", email_content, "email")}
             {self._generate_platform_section("📌 Pinterest Posts", pinterest_posts, "pinterest")}
             {self._generate_platform_section("🐦 Twitter Posts", twitter_posts, "twitter")}
-            {self._generate_platform_section("🎵 TikTok Video Ideas", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'tiktok'], "tiktok")}
-            {self._generate_platform_section("💼 LinkedIn Posts", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'linkedin'], "linkedin")}
-            {self._generate_platform_section("📺 YouTube Content", [cp for cp in content_pieces if cp.get('platform', '').lower() == 'youtube'], "youtube")}
+            {self._generate_platform_section("🎵 TikTok Video Ideas", tiktok_posts, "tiktok")}
+            {self._generate_platform_section("💼 LinkedIn Posts", linkedin_posts, "linkedin")}
+            {self._generate_platform_section("📺 YouTube Content", youtube_content, "youtube")}
             
             <div class="success-message" id="success-message">
                 ✅ Copied to clipboard!
