@@ -775,10 +775,31 @@ class ContentGenerator:
         return content_piece
 
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
-        """Generate enhanced blog with Claude API including full HTML structure and schema"""
-        
-        prompt = f"""Write a comprehensive, visually appealing blog article titled "{blog_title}"
+    """Generate enhanced blog with Claude API including full HTML structure and schema"""
+    
+    prompt = f"""Create a complete, ready-to-publish HTML blog post titled "{blog_title}". Generate the ENTIRE document from <!DOCTYPE html> to </html> without asking for permission to continue.
 
+REQUIREMENTS:
+- Season: {season} | Context: {holiday_context}
+- Company: Elm Dirt (organic soil amendments)
+- Target: Home gardeners 35-65 years old
+- Keywords: {', '.join(keywords)}
+- Length: 1500+ words minimum
+
+MUST INCLUDE:
+- Complete HTML document with head section
+- Meta title (50-60 chars) and description (150-160 chars)
+- Elm Dirt brand colors (#114817, #4eb155, #c9d393, #fec962)
+- Poppins font family
+- 5+ main H2 sections with H3 subsections
+- Product mentions (Ancient Soil, Plant Juice, Bloom Juice)
+- CSS styling with classes
+- JSON-LD schema in script tag
+
+OUTPUT FORMAT: Complete HTML document only. Do not ask to continue. Generate the full content immediately.
+
+Begin with <!DOCTYPE html> and end with </html>. Include everything."""
+        
 CONTEXT:
 - Season: {season}
 - Holiday Context: {holiday_context}
@@ -830,19 +851,58 @@ BRAND VOICE:
 
 FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
 
+         try:
+             if self.claude_client:
+                 blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
+                 if blog_response and len(blog_response) > 1000:
+                     # Check if Claude provided complete HTML
+                     if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
+                         return self._parse_complete_claude_blog(blog_response, blog_title, season, keywords)
+                     else:
+                         # If incomplete, use our enhanced fallback
+                         logger.warning("Claude provided incomplete HTML, using enhanced fallback")
+                         return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+        
+             # Fallback if Claude fails
+             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+    
+         except Exception as e:
+             logger.error(f"Error generating blog with Claude: {str(e)}")
+             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+    
+    def _parse_complete_claude_blog(self, claude_response, original_title, season, keywords):
+    """Parse complete HTML blog response from Claude"""
         try:
-            if self.claude_client:
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
-                if blog_response and len(blog_response) > 1000:
-                    return self._parse_enhanced_blog_response(blog_response, blog_title, season, holiday_context, keywords)
-            
-            # Fallback if Claude fails
-            return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+            content = claude_response.strip()
+        
+            # Extract meta title and description from the HTML
+            meta_title = self._extract_meta_title(content, original_title)
+            meta_description = self._extract_meta_description(content, original_title, season)
+        
+            # Generate additional components that might be missing
+            schema_markup = self._generate_blog_schema(original_title, content, season, keywords)
+            image_suggestions = self._generate_image_suggestions(original_title, content, season)
+        
+            # Count words (remove HTML tags for accurate count)
+            text_content = re.sub(r'<[^>]+>', '', content)
+            word_count = len(text_content.split())
+        
+            return {
+                'title': original_title,
+                'meta_title': meta_title,
+                'content': content,
+                'meta_description': meta_description,
+                'keywords': ', '.join(keywords),
+                'schema_markup': schema_markup,
+                'image_suggestions': image_suggestions,
+                'word_count': word_count,
+                'reading_time': f"{word_count // 200 + 1} min read"
+            }
         
         except Exception as e:
-            logger.error(f"Error generating blog with Claude: {str(e)}")
-            return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
-
+            logger.error(f"Error parsing complete Claude blog: {str(e)}")
+            return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
+                     
     def _parse_enhanced_blog_response(self, claude_response, original_title, season, holiday_context, keywords):
         """Parse Claude response and ensure it has all required components"""
         try:
@@ -1093,11 +1153,21 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 </html>"""
 
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
-        """Generate comprehensive blog content with proper structure"""
-        
-        return f"""<p>Welcome to your comprehensive guide for <strong>{title.lower()}</strong>! As experienced gardeners know, success in {season} gardening comes from understanding both the science and art of working with nature's seasonal rhythms.</p>
+    """Generate comprehensive blog content with proper structure"""
+    
+        # Generate season-specific intro
+        season_intros = {
+            'spring': f"Spring has arrived, and it's time to awaken your garden from its winter slumber! As any experienced gardener knows, successful {season} gardening starts with understanding your soil's needs and preparing for the growing season ahead.",
+            'summer': f"Summer gardening brings both opportunities and challenges. The key to thriving plants during the hottest months lies in smart soil management and understanding how to support your garden through heat stress.",
+            'fall': f"Fall is nature's time for preparation and reflection. Smart gardeners use this season to build soil health and set the foundation for next year's incredible growing season.",
+            'winter': f"Winter might seem quiet in the garden, but it's actually the perfect time for planning, soil building, and nurturing your indoor plants while dreaming of spring."
+        }
+    
+        intro = season_intros.get(season, f"Every season in the garden teaches us something new about working with nature's rhythms and building healthy, productive growing spaces.")
+    
+        return f"""<p>{intro}</p>
 
-<p>Whether you're a seasoned gardener or just beginning your {season} gardening journey, this guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>
+<p>Whether you're a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>
 
 <div class="pull-quote">
     "The health of your plants is a direct reflection of the health of your soil ecosystem."
@@ -1123,6 +1193,8 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 
 <h3>Essential Components of Healthy Soil</h3>
 
+<p>Understanding what makes soil truly alive helps us make better decisions about amendments and care practices.</p>
+
 <ul>
 <li><strong>Beneficial Microorganisms:</strong> Billions of bacteria, fungi, and other microbes that break down organic matter and protect plant roots</li>
 <li><strong>Optimal pH Balance:</strong> Proper soil acidity/alkalinity (typically 6.0-7.0) for maximum nutrient availability</li>
@@ -1131,8 +1203,8 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 </ul>
 
 <div class="product-highlight">
-    <h4>Ancient Soil</h4>
-    <p>Our premium blend combines worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up.</p>
+    <h4>🌱 Ancient Soil</h4>
+    <p>Our premium blend combines worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up. Perfect for {season} soil building.</p>
 </div>
 
 <h2>Organic {season.title()} Management Strategies</h2>
@@ -1141,33 +1213,63 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 
 <h3>Integrated Pest Management</h3>
 
-<p><strong>Prevention is always more effective</strong> than treatment when dealing with garden pests. Healthy plants in nutrient-rich soil naturally resist pest damage through stronger immune systems.</p>
+<p><strong>Prevention is always more effective</strong> than treatment when dealing with garden pests. Healthy plants in nutrient-rich soil naturally resist pest damage through stronger immune systems and better root development.</p>
 
 <h3>Seasonal Nutrition Management</h3>
 
-<p>Plants have varying nutritional requirements throughout their growth cycles. <strong>Understanding when and how to provide proper nutrition</strong> ensures optimal development without waste.</p>
+<p>Plants have varying nutritional requirements throughout their growth cycles. <strong>Understanding when and how to provide proper nutrition</strong> ensures optimal development without waste or environmental impact.</p>
 
 <div class="product-highlight">
-    <h4>Plant Juice</h4>
-    <p>Our micronutrient and probiotic formula provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available when plants need them most.</p>
+    <h4>🌿 Plant Juice</h4>
+    <p>Our micronutrient and probiotic formula provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available when plants need them most. Ideal for {season} feeding schedules.</p>
 </div>
 
 <h2>Essential {season.title()} Maintenance Schedule</h2>
 
 <p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential.</p>
 
+<h3>Weekly Garden Tasks</h3>
+
 <ul>
-<li><strong>Soil Moisture Monitoring:</strong> Regular checking and adjustment of watering schedules</li>
-<li><strong>Garden Inspection:</strong> Weekly examination for early signs of pest or disease issues</li>
-<li><strong>Optimal Harvesting:</strong> Timing harvests for peak nutrition and continued production</li>
-<li><strong>Soil Health Improvement:</strong> Regular additions of organic matter and beneficial microorganisms</li>
+<li><strong>Soil Moisture Monitoring:</strong> Check soil 2-3 inches deep and adjust watering as needed</li>
+<li><strong>Plant Health Inspection:</strong> Look for early signs of pest or disease issues</li>
+<li><strong>Growth Assessment:</strong> Monitor plant development and adjust support as needed</li>
+<li><strong>Harvest Planning:</strong> Identify crops approaching harvest time</li>
 </ul>
+
+<h3>Monthly Soil Health Activities</h3>
+
+<ul>
+<li><strong>Organic Matter Addition:</strong> Apply compost or worm castings as needed</li>
+<li><strong>Soil Biology Support:</strong> Add beneficial microorganisms through liquid fertilizers</li>
+<li><strong>pH Monitoring:</strong> Test and adjust soil pH if necessary</li>
+<li><strong>Nutrient Assessment:</strong> Evaluate plant health and feeding schedules</li>
+</ul>
+
+<div class="product-highlight">
+    <h4>🌸 Bloom Juice</h4>
+    <p>Specially formulated for flowering and fruiting plants, Bloom Juice provides the phosphorus, calcium, and micronutrients needed for abundant {season} blooms and harvests.</p>
+</div>
+
+<h2>Troubleshooting Common {season.title()} Challenges</h2>
+
+<p>Every gardener faces challenges, but understanding common {season} issues helps you respond quickly and effectively.</p>
+
+<h3>Environmental Stress Management</h3>
+
+<p>Weather fluctuations during {season} can stress plants. Building soil health creates a buffer that helps plants cope with environmental challenges more effectively.</p>
+
+<h3>Natural Problem Prevention</h3>
+
+<p>The best defense against garden problems is creating conditions where plants can thrive naturally. Strong, healthy plants grown in living soil resist many common issues.</p>
 
 <h2>Your Path to {season.title()} Garden Success</h2>
 
 <p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, and gardeners work together in harmony. By focusing on soil health first and implementing organic practices, you'll create a garden that produces abundantly this {season} and continues to improve year after year.</p>
 
-<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes.</p>"""
+<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes. Remember, every small step toward organic, sustainable gardening practices contributes to both your family's health and environmental stewardship.</p>
+
+<p>Start with one improvement this week - whether it's adding organic matter to your soil, switching to organic fertilizers, or simply observing your garden more closely. Your plants will respond positively, and you'll gain confidence in your ability to work with nature rather than against it.</p>"""
 
     def _extract_meta_title(self, content, original_title):
         """Extract or generate SEO-optimized meta title"""
