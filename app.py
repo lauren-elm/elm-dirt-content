@@ -1,4 +1,4 @@
-# Single app.py file with all enhancements integrated
+# Fixed version with proper string handling
 
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
@@ -775,9 +775,9 @@ class ContentGenerator:
         return content_piece
 
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
-    """Generate enhanced blog with Claude API including full HTML structure and schema"""
-    
-    prompt = f"""Create a complete, ready-to-publish HTML blog post titled "{blog_title}". Generate the ENTIRE document from <!DOCTYPE html> to </html> without asking for permission to continue.
+        """Generate enhanced blog with Claude API including full HTML structure and schema"""
+        
+        prompt = f"""Create a complete, ready-to-publish HTML blog post titled "{blog_title}". Generate the ENTIRE document from <!DOCTYPE html> to </html> without asking for permission to continue.
 
 REQUIREMENTS:
 - Season: {season} | Context: {holiday_context}
@@ -800,78 +800,27 @@ OUTPUT FORMAT: Complete HTML document only. Do not ask to continue. Generate the
 
 Begin with <!DOCTYPE html> and end with </html>. Include everything."""
         
-CONTEXT:
-- Season: {season}
-- Holiday Context: {holiday_context}
-- Company: Elm Dirt - Premium organic soil amendments and gardening products
-- Target: Home gardeners aged 35-65 across the United States
-- Brand Products: Ancient Soil, Plant Juice, Bloom Juice, Worm Castings
-- Keywords to include naturally: {', '.join(keywords)}
-
-CONTENT REQUIREMENTS:
-- 1500-2000 words minimum for comprehensive coverage
-- Expert but approachable tone with colloquial elements for 50+ gardeners
-- Include practical, actionable advice with specific steps
-- Naturally mention Elm Dirt products where relevant with benefits
-- Focus on organic, sustainable gardening methods
-- Include seasonal timing and regional considerations
-
-HTML STRUCTURE REQUIREMENTS:
-- Complete HTML document with proper head section
-- Include meta title (50-60 characters), meta description (150-160 characters)
-- Use Elm Dirt brand colors and Poppins font family
-- Include engaging introduction (2-3 paragraphs)
-- 5-7 main sections with descriptive H2 headings
-- 2-3 subsections with H3 headings under each main section
-- Use bullet points (ul/li) for actionable tips and lists
-- Include pull quotes for key insights
-- Add product highlight boxes for Elm Dirt products
-- Include author box and social sharing elements
-- Add JSON-LD schema markup for SEO
-
-VISUAL ENHANCEMENT:
-- Use CSS classes for styling (blog-header, content-section, product-highlight, pull-quote, etc.)
-- Include image suggestions with specific alt text and descriptions
-- Add call-to-action boxes with compelling offers
-- Use engaging subheadings that encourage reading
-- Include step-by-step instructions with numbered formatting
-
-SEO OPTIMIZATION:
-- Include target keywords naturally throughout (1-2% density)
-- Use semantic HTML structure with proper heading hierarchy
-- Include related keywords and long-tail variations
-- Add internal linking suggestions to other garden topics
-- Include social media meta tags
-
-BRAND VOICE:
-- Use conversational tone suitable for experienced home gardeners
-- Include regional gardening references and practical wisdom
-- Show expertise while remaining accessible and friendly
-- Include seasonal gardening insights and timing advice
-
-FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
-
-         try:
-             if self.claude_client:
-                 blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
-                 if blog_response and len(blog_response) > 1000:
-                     # Check if Claude provided complete HTML
-                     if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
-                         return self._parse_complete_claude_blog(blog_response, blog_title, season, keywords)
-                     else:
-                         # If incomplete, use our enhanced fallback
-                         logger.warning("Claude provided incomplete HTML, using enhanced fallback")
-                         return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+        try:
+            if self.claude_client:
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
+                if blog_response and len(blog_response) > 1000:
+                    # Check if Claude provided complete HTML
+                    if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
+                        return self._parse_complete_claude_blog(blog_response, blog_title, season, keywords)
+                    else:
+                        # If incomplete, use our enhanced fallback
+                        logger.warning("Claude provided incomplete HTML, using enhanced fallback")
+                        return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
         
-             # Fallback if Claude fails
-             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+            # Fallback if Claude fails
+            return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
     
-         except Exception as e:
-             logger.error(f"Error generating blog with Claude: {str(e)}")
-             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+        except Exception as e:
+            logger.error(f"Error generating blog with Claude: {str(e)}")
+            return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
     
     def _parse_complete_claude_blog(self, claude_response, original_title, season, keywords):
-    """Parse complete HTML blog response from Claude"""
+        """Parse complete HTML blog response from Claude"""
         try:
             content = claude_response.strip()
         
@@ -901,39 +850,6 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         
         except Exception as e:
             logger.error(f"Error parsing complete Claude blog: {str(e)}")
-            return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
-                     
-    def _parse_enhanced_blog_response(self, claude_response, original_title, season, holiday_context, keywords):
-        """Parse Claude response and ensure it has all required components"""
-        try:
-            content = claude_response.strip()
-            
-            # Extract meta title and description if included
-            meta_title = self._extract_meta_title(content, original_title)
-            meta_description = self._extract_meta_description(content, original_title, season)
-            
-            # If Claude didn't provide complete HTML, wrap it
-            if not content.startswith('<!DOCTYPE html>'):
-                content = self._wrap_content_in_enhanced_template(content, original_title, meta_title, meta_description, keywords, season, holiday_context)
-            
-            # Generate additional components
-            schema_markup = self._generate_blog_schema(original_title, content, season, keywords)
-            image_suggestions = self._generate_image_suggestions(original_title, content, season)
-            
-            return {
-                'title': original_title,
-                'meta_title': meta_title,
-                'content': content,
-                'meta_description': meta_description,
-                'keywords': ', '.join(keywords),
-                'schema_markup': schema_markup,
-                'image_suggestions': image_suggestions,
-                'word_count': len(content.split()),
-                'reading_time': f"{len(content.split()) // 200 + 1} min read"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error parsing enhanced blog response: {str(e)}")
             return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
 
     def _get_enhanced_fallback_blog(self, title, season, holiday_context, keywords):
@@ -972,72 +888,63 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         schema_markup = self._generate_blog_schema(title, content_body, season, keywords)
         keywords_str = ', '.join(keywords) if isinstance(keywords, list) else str(keywords)
     
-        # Use triple quotes and avoid any CSS that might confuse Python
-        html_content = '''<!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{meta_title}</title>
-        <meta name="description" content="{meta_description}">
-        <meta name="keywords" content="{keywords_str}">
-    
-        <style>
-            body {{ font-family: Poppins, sans-serif; margin: 0; padding: 20px; background: #f9f7f5; color: #333; line-height: 1.6; }}
-            .container {{ max-width: 1000px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
-            .blog-header {{ text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #c9d393, #e8f4e0); margin: -30px -30px 40px -30px; border-radius: 15px 15px 0 0; }}
-            .blog-header h1 {{ font-size: 2.5rem; color: #114817; margin-bottom: 15px; font-weight: 700; }}
-            h2 {{ color: #114817; font-size: 1.8rem; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #4eb155; }}
-            h3 {{ color: #0a2b0d; font-size: 1.4rem; margin-top: 30px; margin-bottom: 15px; }}
-            p {{ margin-bottom: 18px; font-size: 1.05rem; }}
-            ul, ol {{ margin-bottom: 20px; padding-left: 25px; }}
-            li {{ margin-bottom: 10px; }}
-            .pull-quote {{ font-size: 1.2rem; color: #114817; font-style: italic; font-weight: 500; padding: 20px 35px; border-left: 4px solid #fec962; margin: 30px 0; background: #f9f7f5; border-radius: 0 10px 10px 0; }}
-            .product-highlight {{ background: linear-gradient(135deg, #c9d393, #e8f4e0); padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid rgba(17, 72, 23, 0.1); }}
-            .product-highlight h4 {{ margin-top: 0; color: #114817; font-size: 1.2rem; }}
-            .cta-box {{ background: linear-gradient(135deg, #114817, #0a2b0d); color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 40px 0; }}
-            .cta-button {{ display: inline-block; background: #fec962; color: #3a2313; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 15px; }}
-            strong {{ color: #114817; font-weight: 600; }}
-            @media (max-width: 768px) {{ .blog-header h1 {{ font-size: 2rem; }} }}
-        </style>
-
-        <script type="application/ld+json">
-        {schema_markup}
-        </script>
-    </head>
-    <body>
-        <div class="container">
-            <div class="blog-header">
-                <h1>{title}</h1>
-                <p>Expert gardening advice for {season} success with organic methods and sustainable practices</p>
-            </div>
-
-            <div class="main-content">
-                {content_body}
-            
-                <div class="cta-box">
-                    <h3>Ready to Transform Your {season_title} Garden?</h3>
-                    <p>Explore our complete line of organic soil amendments and plant nutrition products designed for {season} gardening success.</p>
-                    <a href="/collections/soil-amendments" class="cta-button">Shop {season_title} Solutions</a>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>'''
-   
-        # Use format() instead of f-strings to avoid CSS parsing issues
-        return html_content.format(
-            meta_title=meta_title,
-            meta_description=meta_description,
-            keywords_str=keywords_str,
-            schema_markup=schema_markup,
-            title=title,
-            season=season,
-            season_title=season.title(),
-            content_body=content_body
-        )    
+        # Create the HTML template using string concatenation to avoid f-string issues
+        html_parts = [
+            '<!DOCTYPE html>',
+            '<html lang="en">',
+            '<head>',
+            '    <meta charset="UTF-8">',
+            '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+            f'    <title>{meta_title}</title>',
+            f'    <meta name="description" content="{meta_description}">',
+            f'    <meta name="keywords" content="{keywords_str}">',
+            '',
+            '    <style>',
+            '        body { font-family: Poppins, sans-serif; margin: 0; padding: 20px; background: #f9f7f5; color: #333; line-height: 1.6; }',
+            '        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }',
+            '        .blog-header { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #c9d393, #e8f4e0); margin: -30px -30px 40px -30px; border-radius: 15px 15px 0 0; }',
+            '        .blog-header h1 { font-size: 2.5rem; color: #114817; margin-bottom: 15px; font-weight: 700; }',
+            '        h2 { color: #114817; font-size: 1.8rem; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #4eb155; }',
+            '        h3 { color: #0a2b0d; font-size: 1.4rem; margin-top: 30px; margin-bottom: 15px; }',
+            '        p { margin-bottom: 18px; font-size: 1.05rem; }',
+            '        ul, ol { margin-bottom: 20px; padding-left: 25px; }',
+            '        li { margin-bottom: 10px; }',
+            '        .pull-quote { font-size: 1.2rem; color: #114817; font-style: italic; font-weight: 500; padding: 20px 35px; border-left: 4px solid #fec962; margin: 30px 0; background: #f9f7f5; border-radius: 0 10px 10px 0; }',
+            '        .product-highlight { background: linear-gradient(135deg, #c9d393, #e8f4e0); padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid rgba(17, 72, 23, 0.1); }',
+            '        .product-highlight h4 { margin-top: 0; color: #114817; font-size: 1.2rem; }',
+            '        .cta-box { background: linear-gradient(135deg, #114817, #0a2b0d); color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 40px 0; }',
+            '        .cta-button { display: inline-block; background: #fec962; color: #3a2313; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 15px; }',
+            '        strong { color: #114817; font-weight: 600; }',
+            '        @media (max-width: 768px) { .blog-header h1 { font-size: 2rem; } }',
+            '    </style>',
+            '',
+            '    <script type="application/ld+json">',
+            schema_markup,
+            '    </script>',
+            '</head>',
+            '<body>',
+            '    <div class="container">',
+            '        <div class="blog-header">',
+            f'            <h1>{title}</h1>',
+            f'            <p>Expert gardening advice for {season} success with organic methods and sustainable practices</p>',
+            '        </div>',
+            '',
+            '        <div class="main-content">',
+            content_body,
+            '        ',
+            '            <div class="cta-box">',
+            f'                <h3>Ready to Transform Your {season.title()} Garden?</h3>',
+            f'                <p>Explore our complete line of organic soil amendments and plant nutrition products designed for {season} gardening success.</p>',
+            f'                <a href="/collections/soil-amendments" class="cta-button">Shop {season.title()} Solutions</a>',
+            '            </div>',
+            '        </div>',
+            '    </div>',
+            '</body>',
+            '</html>'
+        ]
         
-                    
+        return '\n'.join(html_parts)
+        
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
         """Generate comprehensive blog content with proper structure"""
     
@@ -1051,118 +958,117 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
     
         intro = season_intros.get(season, "Every season in the garden teaches us something new about working with nature's rhythms and building healthy, productive growing spaces.")
     
-        # Use triple quotes and .format() to avoid f-string quote issues
-        content_template = '''<p>{intro}</p>
+        # Build content sections
+        content_sections = [
+            f'<p>{intro}</p>',
+            '',
+            f'<p>Whether you are a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>',
+            '',
+            '<div class="pull-quote">',
+            '    "The health of your plants is a direct reflection of the health of your soil ecosystem."',
+            '</div>',
+            '',
+            f'<h2>Understanding {season.title()} Garden Fundamentals</h2>',
+            '',
+            f'<p>Every season presents unique opportunities and challenges for home gardeners. During {season}, your plants have specific environmental needs that must be met for optimal growth, health, and productivity.</p>',
+            '',
+            f'<p><strong>Key considerations for {season} gardening include:</strong></p>',
+            '',
+            '<ul>',
+            '<li><strong>Soil temperature and moisture management</strong> for optimal root development</li>',
+            '<li><strong>Seasonal pest and disease prevention</strong> using integrated organic methods</li>',
+            '<li><strong>Proper nutrition timing</strong> and organic fertilizer application schedules</li>',
+            '<li><strong>Weather protection strategies</strong> and microclimate creation</li>',
+            '<li><strong>Harvest timing optimization</strong> for peak nutrition and flavor</li>',
+            '</ul>',
+            '',
+            f'<h2>Building Living Soil: The Foundation of {season.title()} Success</h2>',
+            '',
+            '<p>The secret to any thriving garden lies beneath the surface in the complex ecosystem of living soil. <strong>Healthy, biologically active soil provides the stable foundation</strong> that supports vigorous plant growth, natural pest resistance, and abundant harvests.</p>',
+            '',
+            '<h3>Essential Components of Healthy Soil</h3>',
+            '',
+            '<p>Understanding what makes soil truly alive helps us make better decisions about amendments and care practices.</p>',
+            '',
+            '<ul>',
+            '<li><strong>Beneficial Microorganisms:</strong> Billions of bacteria, fungi, and other microbes that break down organic matter and protect plant roots</li>',
+            '<li><strong>Optimal pH Balance:</strong> Proper soil acidity/alkalinity (typically 6.0-7.0) for maximum nutrient availability</li>',
+            '<li><strong>Soil Structure:</strong> Well-aggregated soil with proper drainage and moisture retention</li>',
+            '<li><strong>Organic Matter Content:</strong> Decomposed materials that feed soil life and improve water retention</li>',
+            '</ul>',
+            '',
+            '<div class="product-highlight">',
+            '    <h4>🌱 Ancient Soil</h4>',
+            f'    <p>Our premium blend combines worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up. Perfect for {season} soil building.</p>',
+            '</div>',
+            '',
+            f'<h2>Organic {season.title()} Management Strategies</h2>',
+            '',
+            f'<p>Implementing proven organic gardening practices during {season} helps build long-term soil health while producing safe, nutritious food for your family.</p>',
+            '',
+            '<h3>Integrated Pest Management</h3>',
+            '',
+            '<p><strong>Prevention is always more effective</strong> than treatment when dealing with garden pests. Healthy plants in nutrient-rich soil naturally resist pest damage through stronger immune systems and better root development.</p>',
+            '',
+            '<h3>Seasonal Nutrition Management</h3>',
+            '',
+            '<p>Plants have varying nutritional requirements throughout their growth cycles. <strong>Understanding when and how to provide proper nutrition</strong> ensures optimal development without waste or environmental impact.</p>',
+            '',
+            '<div class="product-highlight">',
+            '    <h4>🌿 Plant Juice</h4>',
+            f'    <p>Our micronutrient and probiotic formula provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available when plants need them most. Ideal for {season} feeding schedules.</p>',
+            '</div>',
+            '',
+            f'<h2>Essential {season.title()} Maintenance Schedule</h2>',
+            '',
+            f'<p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential.</p>',
+            '',
+            '<h3>Weekly Garden Tasks</h3>',
+            '',
+            '<ul>',
+            '<li><strong>Soil Moisture Monitoring:</strong> Check soil 2-3 inches deep and adjust watering as needed</li>',
+            '<li><strong>Plant Health Inspection:</strong> Look for early signs of pest or disease issues</li>',
+            '<li><strong>Growth Assessment:</strong> Monitor plant development and adjust support as needed</li>',
+            '<li><strong>Harvest Planning:</strong> Identify crops approaching harvest time</li>',
+            '</ul>',
+            '',
+            '<h3>Monthly Soil Health Activities</h3>',
+            '',
+            '<ul>',
+            '<li><strong>Organic Matter Addition:</strong> Apply compost or worm castings as needed</li>',
+            '<li><strong>Soil Biology Support:</strong> Add beneficial microorganisms through liquid fertilizers</li>',
+            '<li><strong>pH Monitoring:</strong> Test and adjust soil pH if necessary</li>',
+            '<li><strong>Nutrient Assessment:</strong> Evaluate plant health and feeding schedules</li>',
+            '</ul>',
+            '',
+            '<div class="product-highlight">',
+            '    <h4>🌸 Bloom Juice</h4>',
+            f'    <p>Specially formulated for flowering and fruiting plants, Bloom Juice provides the phosphorus, calcium, and micronutrients needed for abundant {season} blooms and harvests.</p>',
+            '</div>',
+            '',
+            f'<h2>Troubleshooting Common {season.title()} Challenges</h2>',
+            '',
+            f'<p>Every gardener faces challenges, but understanding common {season} issues helps you respond quickly and effectively.</p>',
+            '',
+            '<h3>Environmental Stress Management</h3>',
+            '',
+            f'<p>Weather fluctuations during {season} can stress plants. Building soil health creates a buffer that helps plants cope with environmental challenges more effectively.</p>',
+            '',
+            '<h3>Natural Problem Prevention</h3>',
+            '',
+            '<p>The best defense against garden problems is creating conditions where plants can thrive naturally. Strong, healthy plants grown in living soil resist many common issues.</p>',
+            '',
+            f'<h2>Your Path to {season.title()} Garden Success</h2>',
+            '',
+            f'<p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, and gardeners work together in harmony. By focusing on soil health first and implementing organic practices, you will create a garden that produces abundantly this {season} and continues to improve year after year.</p>',
+            '',
+            f'<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes. Remember, every small step toward organic, sustainable gardening practices contributes to both your family health and environmental stewardship.</p>',
+            '',
+            '<p>Start with one improvement this week - whether it is adding organic matter to your soil, switching to organic fertilizers, or simply observing your garden more closely. Your plants will respond positively, and you will gain confidence in your ability to work with nature rather than against it.</p>'
+        ]
+        
+        return '\n'.join(content_sections)
 
-<p>Whether you are a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>
-
-<div class="pull-quote">
-    "The health of your plants is a direct reflection of the health of your soil ecosystem."
-</div>
-
-<h2>Understanding {season_title} Garden Fundamentals</h2>
-
-<p>Every season presents unique opportunities and challenges for home gardeners. During {season}, your plants have specific environmental needs that must be met for optimal growth, health, and productivity.</p>
-
-<p><strong>Key considerations for {season} gardening include:</strong></p>
-
-<ul>
-<li><strong>Soil temperature and moisture management</strong> for optimal root development</li>
-<li><strong>Seasonal pest and disease prevention</strong> using integrated organic methods</li>
-<li><strong>Proper nutrition timing</strong> and organic fertilizer application schedules</li>
-<li><strong>Weather protection strategies</strong> and microclimate creation</li>
-<li><strong>Harvest timing optimization</strong> for peak nutrition and flavor</li>
-</ul>
-
-<h2>Building Living Soil: The Foundation of {season_title} Success</h2>
-
-<p>The secret to any thriving garden lies beneath the surface in the complex ecosystem of living soil. <strong>Healthy, biologically active soil provides the stable foundation</strong> that supports vigorous plant growth, natural pest resistance, and abundant harvests.</p>
-
-<h3>Essential Components of Healthy Soil</h3>
-
-<p>Understanding what makes soil truly alive helps us make better decisions about amendments and care practices.</p>
-
-<ul>
-<li><strong>Beneficial Microorganisms:</strong> Billions of bacteria, fungi, and other microbes that break down organic matter and protect plant roots</li>
-<li><strong>Optimal pH Balance:</strong> Proper soil acidity/alkalinity (typically 6.0-7.0) for maximum nutrient availability</li>
-<li><strong>Soil Structure:</strong> Well-aggregated soil with proper drainage and moisture retention</li>
-<li><strong>Organic Matter Content:</strong> Decomposed materials that feed soil life and improve water retention</li>
-</ul>
-
-<div class="product-highlight">
-    <h4>🌱 Ancient Soil</h4>
-    <p>Our premium blend combines worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up. Perfect for {season} soil building.</p>
-</div>
-
-<h2>Organic {season_title} Management Strategies</h2>
-
-<p>Implementing proven organic gardening practices during {season} helps build long-term soil health while producing safe, nutritious food for your family.</p>
-
-<h3>Integrated Pest Management</h3>
-
-<p><strong>Prevention is always more effective</strong> than treatment when dealing with garden pests. Healthy plants in nutrient-rich soil naturally resist pest damage through stronger immune systems and better root development.</p>
-
-<h3>Seasonal Nutrition Management</h3>
-
-<p>Plants have varying nutritional requirements throughout their growth cycles. <strong>Understanding when and how to provide proper nutrition</strong> ensures optimal development without waste or environmental impact.</p>
-
-<div class="product-highlight">
-    <h4>🌿 Plant Juice</h4>
-    <p>Our micronutrient and probiotic formula provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available when plants need them most. Ideal for {season} feeding schedules.</p>
-</div>
-
-<h2>Essential {season_title} Maintenance Schedule</h2>
-
-<p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential.</p>
-
-<h3>Weekly Garden Tasks</h3>
-
-<ul>
-<li><strong>Soil Moisture Monitoring:</strong> Check soil 2-3 inches deep and adjust watering as needed</li>
-<li><strong>Plant Health Inspection:</strong> Look for early signs of pest or disease issues</li>
-<li><strong>Growth Assessment:</strong> Monitor plant development and adjust support as needed</li>
-<li><strong>Harvest Planning:</strong> Identify crops approaching harvest time</li>
-</ul>
-
-<h3>Monthly Soil Health Activities</h3>
-
-<ul>
-<li><strong>Organic Matter Addition:</strong> Apply compost or worm castings as needed</li>
-<li><strong>Soil Biology Support:</strong> Add beneficial microorganisms through liquid fertilizers</li>
-<li><strong>pH Monitoring:</strong> Test and adjust soil pH if necessary</li>
-<li><strong>Nutrient Assessment:</strong> Evaluate plant health and feeding schedules</li>
-</ul>
-
-<div class="product-highlight">
-    <h4>🌸 Bloom Juice</h4>
-    <p>Specially formulated for flowering and fruiting plants, Bloom Juice provides the phosphorus, calcium, and micronutrients needed for abundant {season} blooms and harvests.</p>
-</div>
-
-<h2>Troubleshooting Common {season_title} Challenges</h2>
-
-<p>Every gardener faces challenges, but understanding common {season} issues helps you respond quickly and effectively.</p>
-
-<h3>Environmental Stress Management</h3>
-
-<p>Weather fluctuations during {season} can stress plants. Building soil health creates a buffer that helps plants cope with environmental challenges more effectively.</p>
-
-<h3>Natural Problem Prevention</h3>
-
-<p>The best defense against garden problems is creating conditions where plants can thrive naturally. Strong, healthy plants grown in living soil resist many common issues.</p>
-
-<h2>Your Path to {season_title} Garden Success</h2>
-
-<p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, and gardeners work together in harmony. By focusing on soil health first and implementing organic practices, you will create a garden that produces abundantly this {season} and continues to improve year after year.</p>
-
-<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes. Remember, every small step toward organic, sustainable gardening practices contributes to both your family health and environmental stewardship.</p>
-
-<p>Start with one improvement this week - whether it is adding organic matter to your soil, switching to organic fertilizers, or simply observing your garden more closely. Your plants will respond positively, and you will gain confidence in your ability to work with nature rather than against it.</p>'''
-    
-        return content_template.format(
-            intro=intro,
-            season=season,
-            season_title=season.title()
-        )
     
     def _extract_meta_title(self, content, original_title):
         """Extract or generate SEO-optimized meta title"""
@@ -1622,7 +1528,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
             video_title = f"Complete {season.title()} Garden Mastery: {theme} (60-Min Deep Dive)"
         
         # 60-minute video outline
-        outline_content = """YouTube Video Outline - 60 Minutes
+        outline_content = f"""YouTube Video Outline - 60 Minutes
 Title: {video_title}
 
 INTRO (0-3 minutes)
@@ -1652,7 +1558,7 @@ SECTION 3: PLANT NUTRITION MASTERY (25-35 minutes)
 - Demonstration: Proper application techniques
 
 SECTION 4: SEASONAL STRATEGIES (35-45 minutes)
-- {season_title}-specific growing techniques
+- {season.title()}-specific growing techniques
 - Problem-solving common {season} challenges
 - Water management for {season} conditions
 - Pest and disease prevention naturally
@@ -1681,13 +1587,6 @@ RESOURCES MENTIONED:
 - Soil testing guide
 
 KEYWORDS: {season} gardening, organic fertilizer, soil health, plant nutrition, garden success"""
-       
-        outline_content = outline_template.format(
-            video_title=video_title,
-            season=season,
-            season_title=season.title(),
-            video_focus=video_focus
-        )
         
         content_piece = ContentPiece(
             id=str(uuid.uuid4()),
@@ -1947,648 +1846,4 @@ def index():
             contentPieces.slice(0, 6).forEach(piece => {
                 const contentCard = document.createElement('div');
                 contentCard.className = 'content-card';
-                
-                let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
-                if (piece.platform === 'blog' && piece.content.includes('<')) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = piece.content;
-                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                    preview = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
-                }
-                
-                let badges = '';
-                if (piece.content_type.includes('blog')) {
-                    badges += '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
-                }
-                if (piece.ai_provider === 'claude') {
-                    badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">AI-POWERED</span>';
-                }
-                
-                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4><p style="color: #666; margin: 10px 0;">' + preview + '</p><small style="color: #999;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
-                contentGrid.appendChild(contentCard);
-            });
-        }
-        
-        checkAPIStatus();
-        setDefaultDate();
-    </script>
-</body>
-</html>'''
-
-@app.route('/api/check-claude-status')
-def check_claude_status():
-    """Check if Claude API is enabled and working"""
-    claude_enabled = bool(content_generator.claude_client)
-    
-    return jsonify({
-        'claude_enabled': claude_enabled,
-        'api_key_configured': Config.CLAUDE_API_KEY != 'your_claude_api_key_here',
-        'fallback_mode': not claude_enabled
-    })
-
-@app.route('/api/generate-weekly-content', methods=['POST'])
-def generate_weekly_content():
-    """Generate a complete week of content with holiday awareness and enhanced daily blogs"""
-    data = request.json
-    
-    try:
-        week_start_str = data.get('week_start_date')
-        if not week_start_str:
-            return jsonify({
-                'success': False,
-                'error': 'week_start_date is required (YYYY-MM-DD format)'
-            }), 400
-        
-        week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
-        
-        if week_start_date.weekday() != 0:
-            week_start_date = week_start_date - timedelta(days=week_start_date.weekday())
-        
-        result = content_generator.generate_weekly_content(week_start_date)
-        
-        return jsonify(result)
-        
-    except ValueError as e:
-        return jsonify({
-            'success': False,
-            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
-        }), 400
-    except Exception as e:
-        logger.error(f"Error generating weekly content: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/test-enhanced-blog')
-def test_enhanced_blog():
-    """Test endpoint for enhanced blog generation"""
-    try:
-        # Test parameters
-        test_title = "Spring Garden Soil Preparation: Your Complete Success Guide"
-        test_season = "spring"
-        test_keywords = ["spring gardening", "soil preparation", "organic gardening", "garden success"]
-        test_holiday_context = "Spring Equinox - soil awakening and garden preparation"
-        
-        # Generate enhanced blog
-        if content_generator.claude_client:
-            blog_result = content_generator._generate_blog_with_claude(
-                test_title, test_keywords, test_season, test_holiday_context
-            )
-            generation_method = "claude_ai"
-        else:
-            blog_result = content_generator._get_enhanced_fallback_blog(
-                test_title, test_season, test_holiday_context, test_keywords
-            )
-            generation_method = "enhanced_fallback"
-        
-        return jsonify({
-            'success': True,
-            'generation_method': generation_method,
-            'blog_result': {
-                'title': blog_result['title'],
-                'meta_title': blog_result.get('meta_title', ''),
-                'meta_description': blog_result['meta_description'],
-                'keywords': blog_result['keywords'],
-                'word_count': blog_result['word_count'],
-                'reading_time': blog_result['reading_time'],
-                'has_schema': bool(blog_result.get('schema_markup')),
-                'has_images': bool(blog_result.get('image_suggestions')),
-                'image_count': len(blog_result.get('image_suggestions', [])),
-                'content_preview': blog_result['content'][:500] + '...' if len(blog_result['content']) > 500 else blog_result['content'],
-                'full_content_length': len(blog_result['content'])
-            },
-            'features': {
-                'enhanced_html': True,
-                'brand_styling': True,
-                'seo_optimized': True,
-                'schema_markup': True,
-                'image_suggestions': True,
-                'responsive_design': True
-            }
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/preview-enhanced-blog')
-def preview_enhanced_blog():
-    """Preview enhanced blog in browser"""
-    try:
-        # Generate sample blog
-        test_title = "Transform Your Garden with Living Soil This Spring"
-        test_season = "spring"
-        test_keywords = ["living soil", "spring gardening", "organic amendments", "soil health"]
-        test_holiday_context = "Spring gardening preparation and soil health"
-        
-        blog_result = content_generator._get_enhanced_fallback_blog(
-            test_title, test_season, test_holiday_context, test_keywords
-        )
-        
-        # Return the complete HTML for preview
-        return blog_result['content']
-        
-    except Exception as e:
-        return f"""<html><body><h1>Error Preview</h1><p>{str(e)}</p></body></html>"""
-
-@app.route('/api/blog-analytics/<week_id>')
-def get_blog_analytics(week_id):
-    """Get detailed blog analytics for a week"""
-    try:
-        analytics = db_manager.get_blog_analytics(week_id=week_id)
-        
-        return jsonify({
-            'success': True,
-            'week_id': week_id,
-            'analytics': analytics,
-            'generated_at': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/content/<content_id>')
-def get_content_piece(content_id):
-    """Get individual content piece by ID"""
-    try:
-        content_piece = content_generator.db_manager.get_content_piece(content_id)
-        if content_piece:
-            return jsonify({
-                'success': True,
-                'content': content_generator._content_piece_to_dict(content_piece)
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Content piece not found'
-            }), 404
-    except Exception as e:
-        logger.error(f"Error retrieving content piece: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/health')
-def health_check():
-    """Health check endpoint"""
-    claude_enabled = bool(content_generator.claude_client)
-    
-    # Check database status
-    try:
-        conn = sqlite3.connect(Config.DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [table[0] for table in cursor.fetchall()]
-        enhanced_tables = ['blog_metadata', 'image_suggestions']
-        enhanced_schema_ready = all(table in tables for table in enhanced_tables)
-        conn.close()
-    except Exception as e:
-        enhanced_schema_ready = False
-    
-    health_status = {
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'version': '3.1.0 Enhanced',
-        'mode': 'claude_ai' if claude_enabled else 'enhanced_fallback_templates',
-        'content_schedule': '56 pieces per week (including 6 enhanced daily blogs)',
-        'enhanced_features': {
-            'enhanced_html_blogs': True,
-            'seo_optimization': True,
-            'schema_markup': True,
-            'image_suggestions': True,
-            'blog_analytics': enhanced_schema_ready,
-            'brand_styling': True,
-            'responsive_design': True
-        },
-        'features': {
-            'weekly_calendar': True,
-            'holiday_awareness': True,
-            'content_preview': True,
-            'database_storage': True,
-            'bulk_generation': True,
-            'claude_ai_integration': claude_enabled,
-            'daily_blog_posts': True,
-            'html_formatted_blogs': True,
-            'enhanced_database': enhanced_schema_ready
-        },
-        'services': {
-            'claude_api': 'enabled' if claude_enabled else 'disabled',
-            'shopify_api': 'configured' if Config.SHOPIFY_PASSWORD != 'your_shopify_password' else 'not_configured',
-            'database': 'connected',
-            'enhanced_database': 'ready' if enhanced_schema_ready else 'basic'
-        }
-    }
-    
-    return jsonify(health_status)
-
-@app.route('/export')
-def export_page():
-    """Enhanced export page"""
-    return '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Enhanced Content Export</title>
-        <style>
-            body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
-            .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
-            .section { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .btn { padding: 15px 30px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-            .btn:hover { background: #3e8e41; }
-            .btn:disabled { background: #6c757d; cursor: not-allowed; }
-            .info-box { background: #e8f4fd; border-left: 4px solid #4eb155; padding: 15px; margin: 15px 0; border-radius: 5px; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>🌱 Enhanced Content Export</h1>
-            <p>Export your enhanced content with HTML blogs, SEO optimization, and more!</p>
-        </div>
-        
-        <div class="section">
-            <h2>📋 Export Enhanced Content</h2>
-            <div class="info-box">
-                <strong>🆕 Enhanced Features:</strong><br>
-                • Complete HTML blogs with CSS styling<br>
-                • SEO optimization with meta tags and schema markup<br>
-                • Detailed image suggestions with specifications<br>
-                • Brand-compliant styling and responsive design
-            </div>
-            
-            <input type="date" id="exportDate" onchange="updateDateInfo()">
-            <button class="btn" id="exportBtn" onclick="exportContent()">🚀 Export Enhanced Content</button>
-            <button class="btn" onclick="testEnhanced()">🧪 Test Enhanced Features</button>
-            
-            <div id="dateInfo" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px;"></div>
-            
-            <div id="exportResults" style="display: none; margin-top: 20px; padding: 20px; background: #d1e7dd; border-radius: 8px; border-left: 4px solid #198754;">
-                <h3>✅ Export Complete!</h3>
-                <p>Your content has been generated and opened in a new window for review.</p>
-            </div>
-        </div>
-
-        <script>
-        // Set today's date as default
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
-            updateDateInfo();
-        });
-
-        function updateDateInfo() {
-            const dateInput = document.getElementById('exportDate');
-            const dateInfo = document.getElementById('dateInfo');
-            
-            if (dateInput && dateInput.value) {
-                const selectedDate = new Date(dateInput.value + 'T12:00:00');
-                const dayOfWeek = selectedDate.getDay();
-                const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
-                
-                dateInfo.innerHTML = '<h3>📅 Export Content for ' + dayName + '</h3><p><strong>Will Generate:</strong> 1 Enhanced HTML Blog + 3 Instagram + 3 Facebook + 3 TikTok + 1 YouTube Outline = 11 pieces total</p>';
-                dateInfo.style.display = 'block';
-            }
-        }
-
-        async function exportContent() {
-            console.log('Export button clicked!');
-            
-            const dateStr = document.getElementById('exportDate').value;
-            if (!dateStr) {
-                alert('Please select a date');
-                return;
-            }
-            
-            const exportBtn = document.getElementById('exportBtn');
-            const originalText = exportBtn.textContent;
-            exportBtn.disabled = true;
-            exportBtn.textContent = '🔄 Generating Content...';
-            
-            try {
-                console.log('Making API call to /api/export-content');
-                const response = await fetch('/api/export-content', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ export_date: dateStr })
-                });
-                
-                console.log('API response status:', response.status);
-                const result = await response.json();
-                console.log('API result:', result);
-                
-                if (result.success) {
-                    displayExportedContent(result);
-                    document.getElementById('exportResults').style.display = 'block';
-                } else {
-                    throw new Error(result.error || 'Failed to export content');
-                }
-            } catch (error) {
-                console.error('Export error:', error);
-                alert('Error exporting content: ' + error.message);
-            } finally {
-                exportBtn.disabled = false;
-                exportBtn.textContent = originalText;
-            }
-        }
-
-        function displayExportedContent(result) {
-            console.log('Displaying exported content');
-            
-            const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes');
-            
-            if (!newWindow) {
-                alert('Please allow popups for this site to view the exported content.');
-                return;
-            }
-            
-            const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Exported Content - ` + result.export_date + `</title>
-                <style>
-                    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-                    .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
-                    .content-section { background: white; margin: 20px 0; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                    .content-title { color: #114817; font-size: 1.5rem; margin-bottom: 15px; border-bottom: 2px solid #4eb155; padding-bottom: 10px; }
-                    .content-meta { background: #e8f4fd; padding: 10px 15px; border-radius: 5px; margin: 10px 0; font-size: 0.9rem; }
-                    .blog-content { border: 2px solid #c9d393; border-radius: 8px; padding: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; }
-                    .social-post { background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0; }
-                    .hashtags { color: #4eb155; font-weight: bold; }
-                    .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 20px 0; }
-                    .breakdown-item { background: #4eb155; color: white; padding: 10px; border-radius: 8px; text-align: center; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>🌱 Exported Content</h1>
-                    <p>Generated for ` + result.export_date + ` • ` + result.content_count + ` pieces total</p>
-                </div>
-                
-                <div class="content-section">
-                    <h2>📊 Content Breakdown</h2>
-                    <div class="breakdown">
-                        <div class="breakdown-item">
-                            <strong>` + result.content_breakdown.blog_posts + `</strong><br>Blog Post
-                        </div>
-                        <div class="breakdown-item">
-                            <strong>` + result.content_breakdown.instagram_posts + `</strong><br>Instagram
-                        </div>
-                        <div class="breakdown-item">
-                            <strong>` + result.content_breakdown.facebook_posts + `</strong><br>Facebook
-                        </div>
-                        <div class="breakdown-item">
-                            <strong>` + result.content_breakdown.tiktok_posts + `</strong><br>TikTok
-                        </div>
-                        <div class="breakdown-item">
-                            <strong>` + result.content_breakdown.youtube_outlines + `</strong><br>YouTube
-                        </div>
-                    </div>
-                </div>
-                
-                ` + generateContentHTML(result.content) + `
-                
-            </body>
-            </html>`;
-            
-            newWindow.document.write(htmlContent);
-            newWindow.document.close();
-        }
-
-        function generateContentHTML(contentArray) {
-            let html = '';
-            
-            contentArray.forEach((content, index) => {
-                const platform = content.platform.toUpperCase();
-                const contentType = content.content_type.replace('_', ' ').toUpperCase();
-                
-                html += `
-                <div class="content-section">
-                    <div class="content-title">
-                        ` + (platform === 'BLOG' ? '📝' : platform === 'INSTAGRAM' ? '📸' : platform === 'FACEBOOK' ? '👥' : platform === 'TIKTOK' ? '🎵' : '🎥') + ` 
-                        ` + content.title + `
-                    </div>
-                    
-                    <div class="content-meta">
-                        <strong>Platform:</strong> ` + platform + ` • 
-                        <strong>Type:</strong> ` + contentType + ` • 
-                        <strong>Scheduled:</strong> ` + new Date(content.scheduled_time).toLocaleString() + `
-                        ` + (content.keywords && content.keywords.length > 0 ? ` • <strong>Keywords:</strong> ` + content.keywords.join(', ') : '') + `
-                    </div>
-                    
-                    ` + (platform === 'BLOG' ? 
-                        `<div class="blog-content">
-                            <iframe srcdoc="` + content.content.replace(/"/g, '&quot;') + `" width="100%" height="400" style="border: none; border-radius: 5px;"></iframe>
-                        </div>` :
-                        `<div class="social-post">
-                            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">` + content.content + `</pre>
-                            ` + (content.hashtags && content.hashtags.length > 0 ? 
-                                `<div class="hashtags" style="margin-top: 10px;">#` + content.hashtags.join(' #') + `</div>` : '') + `
-                        </div>`
-                    ) + `
-                    
-                    ` + (content.image_suggestion ? 
-                        `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                            <strong>📷 Image Suggestion:</strong> ` + content.image_suggestion + `
-                        </div>` : '') + `
-                </div>`;
-            });
-            
-            return html;
-        }
-
-        function testEnhanced() {
-            window.open('/api/preview-enhanced-blog', '_blank');
-        }
-        </script>
-    </body>
-    </html>
-    '''
-                         
-@app.route('/api/export-content', methods=['POST'])
-def export_content():
-    """Export enhanced content for a specific date"""
-    try:
-        data = request.json
-        export_date_str = data.get('export_date')
-        
-        if not export_date_str:
-            return jsonify({
-                'success': False,
-                'error': 'export_date is required (YYYY-MM-DD format)'
-            }), 400
-        
-        export_date = datetime.strptime(export_date_str, '%Y-%m-%d')
-        
-        # Generate content for the selected date
-        exported_content = []
-        
-        # 1. Generate 1 HTML Blog Post
-        blog_post = content_generator._generate_daily_blog_post(
-            date=export_date,
-            day_name=export_date.strftime('%A'),
-            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
-            theme=content_generator.holiday_manager.get_week_theme(export_date),
-            holidays=content_generator.holiday_manager.get_week_holidays(export_date),
-            week_id=f"export_{export_date.strftime('%Y_%m_%d')}"
-        )
-        exported_content.append(blog_post)
-        
-        # 2. Generate 3 Instagram Posts
-        instagram_posts = content_generator._generate_platform_posts(
-            platform='instagram',
-            count=3,
-            date=export_date,
-            day_name=export_date.strftime('%A'),
-            daily_theme=f"{export_date.strftime('%A')} Focus",
-            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
-            holiday_context=f"{export_date.strftime('%A')} gardening",
-            week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
-            blog_post=blog_post
-        )
-        exported_content.extend(instagram_posts)
-        
-        # 3. Generate 3 Facebook Posts
-        facebook_posts = content_generator._generate_platform_posts(
-            platform='facebook',
-            count=3,
-            date=export_date,
-            day_name=export_date.strftime('%A'),
-            daily_theme=f"{export_date.strftime('%A')} Focus",
-            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
-            holiday_context=f"{export_date.strftime('%A')} gardening",
-            week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
-            blog_post=blog_post
-        )
-        exported_content.extend(facebook_posts)
-        
-        # 4. Generate 3 TikTok Posts
-        for i in range(3):
-            tiktok_post = content_generator._generate_tiktok_video_script(
-                date=export_date.replace(hour=9+i*3),  # Different times
-                day_name=export_date.strftime('%A'),
-                daily_theme=f"TikTok Focus {i+1}",
-                season=content_generator.holiday_manager.get_seasonal_focus(export_date),
-                holiday_context=f"{export_date.strftime('%A')} gardening tip {i+1}",
-                week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
-                blog_post=blog_post
-            )
-            exported_content.append(tiktok_post)
-        
-        # 5. Generate 1 YouTube Outline
-        youtube_outline = content_generator._generate_youtube_outline(
-            week_start_date=export_date,
-            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
-            theme=f"{export_date.strftime('%A')} Special Focus",
-            holidays=content_generator.holiday_manager.get_week_holidays(export_date),
-            week_id=f"export_{export_date.strftime('%Y_%m_%d')}"
-        )
-        exported_content.append(youtube_outline)
-        
-        # Convert to serializable format
-        export_data = {
-            'success': True,
-            'export_date': export_date_str,
-            'content_count': len(exported_content),
-            'content_breakdown': {
-                'blog_posts': 1,
-                'instagram_posts': 3,
-                'facebook_posts': 3,
-                'tiktok_posts': 3,
-                'youtube_outlines': 1
-            },
-            'content': [content_generator._content_piece_to_dict(cp) for cp in exported_content]
-        }
-        
-        return jsonify(export_data)
-        
-    except ValueError as e:
-        return jsonify({
-            'success': False,
-            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
-        }), 400
-    except Exception as e:
-        logger.error(f"Error exporting content: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-            
-# Error handlers
-@app.errorhandler(404)
-def not_found(error):
-    """Handle 404 errors"""
-    return jsonify({
-        'success': False,
-        'error': 'Endpoint not found',
-        'available_endpoints': [
-            '/',
-            '/health',
-            '/export',
-            '/api/check-claude-status',
-            '/api/generate-weekly-content',
-            '/api/test-enhanced-blog',
-            '/api/preview-enhanced-blog',
-            '/api/blog-analytics/<week_id>',
-            '/api/content/<content_id>',
-            '/api/export-content'
-        ]
-    }), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    """Handle 500 errors"""
-    error_message = str(error)
-    logger.error("Internal server error: " + error_message)
-    return jsonify({
-        'success': False,
-        'error': 'Internal server error',
-        'message': 'Please check the logs for more details'
-    }), 500
-
-# Main application entry point
-if __name__ == '__main__':
-    logger.info("Starting Enhanced Elm Dirt Content Automation Platform v3.1")
-    logger.info(f"Claude API: {'Enabled' if content_generator.claude_client else 'Disabled (using enhanced fallback)'}")
-    logger.info("Enhanced Features: Complete HTML blogs, SEO optimization, schema markup, image suggestions")
-    logger.info("Content Schedule: 56 pieces per week including 6 enhanced daily blog posts")
-    logger.info("Database: SQLite with enhanced schema for blog metadata")
-    logger.info("Endpoints: Web interface and enhanced API routes configured")
-    
-    # Get port from environment or use default
-    port = int(os.getenv('PORT', 5000))
-    
-    # Run the application
-    app.run(debug=False, host='0.0.0.0', port=port)
-
-# End of Complete Enhanced Elm Dirt Content Automation Platform
-# 
-# FEATURES INCLUDED:
-# ✅ Enhanced HTML blogs with complete CSS styling and brand colors
-# ✅ SEO optimization with meta titles, descriptions, and JSON-LD schema markup
-# ✅ Detailed image suggestions with specifications and priorities
-# ✅ Enhanced database schema for blog metadata and analytics
-# ✅ Claude AI integration with sophisticated fallback system
-# ✅ Holiday awareness and seasonal content generation
-# ✅ Professional web interface with real-time status checking
-# ✅ Comprehensive API endpoints for testing and analytics
-# ✅ Mobile-responsive design and accessible content structure
-# ✅ 56 pieces of weekly content including 6 enhanced daily blogs
-# ✅ Complete integration of all enhancement features from the second file
-#
-# TOTAL OUTPUT: 56 pieces per week
-# - 6 Enhanced HTML Blog Posts (Monday-Saturday) with full styling, SEO, and schema
-# - 18 Instagram Posts (3 per day × 6 days)
-# - 18 Facebook Posts (3 per day × 6 days) 
-# - 6 TikTok Video Scripts (1 per day × 6 days)
-# - 6 LinkedIn Posts (1 per day × 6 days)
-# - 1 YouTube Video Outline (weekly)
-# - 1 Weekly Content Package Summary
-#
-# Ready for production deployment with all enhanced blog features integrated!# Complete Enhanced Elm Dirt Content Automation Platform
-# Single app.py file with all enhancements integrated
+                # Complete Enhanced Elm Dirt Content Automation Platform
