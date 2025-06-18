@@ -531,29 +531,37 @@ class ClaudeAPIClient:
             'anthropic-version': '2023-06-01'
         }
     
-    def generate_content(self, prompt: str, max_tokens: int = 8000) -> str:
+    def generate_content(self, prompt: str, max_tokens: int = 4000) -> str:
         """Generate content using Claude API with better error handling"""
         try:
             payload = {
                 'model': 'claude-3-5-sonnet-20241022',
-                'max_tokens': max_tokens,
+                'max_tokens': min(max_tokens, 8192),  # Claude 3.5 Sonnet max is 8192
                 'messages': [{
                     'role': 'user',
                     'content': prompt
-                }]
+                }],
+                'temperature': 0.7  # Add some creativity
             }
         
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json=payload,
-                timeout=240  # Increased timeout for longer content
+                timeout=240  # Give Claude more time
             )
         
             if response.status_code == 200:
                 result = response.json()
                 content = result['content'][0]['text']
-                logger.info(f"Claude API success. Response length: {len(content)} characters")
+            
+                # Check if response was truncated due to token limit
+                if 'usage' in result:
+                    output_tokens = result['usage'].get('output_tokens', 0)
+                    logger.info(f"Claude used {output_tokens} output tokens")
+                    if output_tokens >= max_tokens * 0.95:  # Near token limit
+                        logger.warning("Claude response may be truncated due to token limit")
+            
                 return content
             else:
                 logger.error(f"Claude API error: {response.status_code} - {response.text}")
@@ -834,7 +842,7 @@ class ContentGenerator:
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
         """Generate enhanced blog with Claude AI using the project prompt"""
     
-        prompt = f"""Generate an SEO-optimized blog article for the title '{blog_title}'.
+        prompt = f"""Generate an SEO-optimized blog article in HTML for the title '{blog_title}'.
 
 CONTEXT:
 - Season: {season}
@@ -865,25 +873,69 @@ HTML STRUCTURE REQUIREMENTS:
 - Add JSON-LD schema markup for SEO
 
 OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
-    
+CRITICAL: End with complete </html> tag. Do not truncate."""
+
         try:
             if self.claude_client:
+                # Try with even higher token limit
                 blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
-                if blog_response and len(blog_response) > 2000:
-                    # Ensure it's complete HTML
-                    if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
+            
+                if blog_response:
+                    # DEBUG: Log what Claude actually returned
+                    logger.info(f"Claude response length: {len(blog_response)}")
+                    logger.info(f"Starts with: {blog_response[:100]}")
+                    logger.info(f"Ends with: {blog_response[-100:]}")
+                
+                    response_clean = blog_response.strip()
+                
+                    # Check if it's complete
+                    has_doctype = response_clean.startswith('<!DOCTYPE html>') or response_clean.startswith('<html>')
+                    has_closing = response_clean.endswith('</html>')
+                
+                    logger.info(f"Has DOCTYPE: {has_doctype}, Has closing: {has_closing}")
+                
+                    if has_doctype and has_closing:
+                        logger.info("Claude provided complete HTML!")
                         return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
                     else:
-                        logger.warning("Claude provided incomplete HTML, using enhanced fallback")
+                        logger.warning(f"Claude HTML incomplete - DOCTYPE: {has_doctype}, Closing: {has_closing}")
+                        # Try to salvage partial HTML
+                        if has_doctype and len(response_clean) > 2000:
+                            # If we have good start but bad ending, try to fix it
+                            fixed_html = self._try_fix_incomplete_html(response_clean)
+                            if fixed_html:
+                                return self._parse_claude_blog_response(fixed_html, blog_title, season, keywords)
+                    
                         return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+                else:
+                    logger.warning("Claude returned empty response")
+                    return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
         
-            # Fallback if Claude fails
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
 
         except Exception as e:
             logger.error(f"Error generating blog with Claude: {str(e)}")
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
 
+    def _try_fix_incomplete_html(self, partial_html):
+        """Try to fix incomplete HTML from Claude"""
+        try:
+            # If we have a good start but incomplete end, try to close it properly
+            if not partial_html.endswith('</html>'):
+                # Look for unclosed tags and try to close them
+                if '</body>' not in partial_html:
+                    partial_html += '\n</body>'
+                if '</html>' not in partial_html:
+                    partial_html += '\n</html>'
+            
+                logger.info("Attempted to fix incomplete HTML")
+                return partial_html
+        
+            return partial_html
+        except Exception as e:
+            logger.error(f"Error fixing HTML: {str(e)}")
+            return None
+        
     def _parse_claude_blog_response(self, claude_response, original_title, season, keywords):
         """Parse Claude response and extract components"""
         try:
