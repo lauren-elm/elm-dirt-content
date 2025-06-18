@@ -1640,7 +1640,7 @@ SECTION 1: FOUNDATION KNOWLEDGE (3-15 minutes)
 SECTION 2: SOIL HEALTH DEEP DIVE (15-25 minutes)
 - The science of living soil
 - How Ancient Soil transforms your garden
-- Worm castings: nature's perfect fertilizer
+- Worm castings and natural fertilizer benefits
 - Building soil biology for {season} success
 - Demonstration: Testing and improving your soil
 
@@ -1668,7 +1668,7 @@ SECTION 5: ADVANCED TECHNIQUES (45-55 minutes)
 WRAP-UP & Q&A (55-60 minutes)
 - Key takeaways for {season} success
 - Viewer questions from comments
-- Next week's topic preview
+- Next week topic preview
 - Where to find Elm Dirt products
 - Subscribe and notification bell reminder
 
@@ -1681,6 +1681,7 @@ RESOURCES MENTIONED:
 - Soil testing guide
 
 KEYWORDS: {season} gardening, organic fertilizer, soil health, plant nutrition, garden success"""
+       
         outline_content = outline_template.format(
             video_title=video_title,
             season=season,
