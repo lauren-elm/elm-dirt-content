@@ -1626,61 +1626,67 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 Title: {video_title}
 
 INTRO (0-3 minutes)
-• Welcome and channel introduction
-• What viewers will learn in this complete guide
-• Why {season} gardening matters for {video_focus}
-• Quick preview of Elm Dirt products we'll discuss
+- Welcome and channel introduction
+- What viewers will learn in this complete guide
+- Why {season} gardening matters for {video_focus}
+- Quick preview of Elm Dirt products we'll discuss
 
 SECTION 1: FOUNDATION KNOWLEDGE (3-15 minutes)
-• Understanding {season} growing conditions
-• Soil preparation essentials for {season}
-• Common mistakes to avoid this {season}
-• Why organic methods work better long-term
+- Understanding {season} growing conditions
+- Soil preparation essentials for {season}
+- Common mistakes to avoid this {season}
+- Why organic methods work better long-term
 
 SECTION 2: SOIL HEALTH DEEP DIVE (15-25 minutes)
-• The science of living soil
-• How Ancient Soil transforms your garden
-• Worm castings: nature's perfect fertilizer
-• Building soil biology for {season} success
-• Demonstration: Testing and improving your soil
+- The science of living soil
+- How Ancient Soil transforms your garden
+- Worm castings: nature's perfect fertilizer
+- Building soil biology for {season} success
+- Demonstration: Testing and improving your soil
 
 SECTION 3: PLANT NUTRITION MASTERY (25-35 minutes)
-• Plant Juice: liquid nutrition that works
-• When and how to feed plants in {season}
-• Bloom Juice for flowering and fruiting plants
-• Organic feeding schedules that actually work
-• Demonstration: Proper application techniques
+- Plant Juice: liquid nutrition that works
+- When and how to feed plants in {season}
+- Bloom Juice for flowering and fruiting plants
+- Organic feeding schedules that actually work
+- Demonstration: Proper application techniques
 
 SECTION 4: SEASONAL STRATEGIES (35-45 minutes)
-• {season.title()}-specific growing techniques
-• Problem-solving common {season} challenges
-• Water management for {season} conditions
-• Pest and disease prevention naturally
-• Regional considerations across the US
+- {season_title}-specific growing techniques
+- Problem-solving common {season} challenges
+- Water management for {season} conditions
+- Pest and disease prevention naturally
+- Regional considerations across the US
 
 SECTION 5: ADVANCED TECHNIQUES (45-55 minutes)
-• Companion planting for {season}
-• Succession planting strategies
-• Container gardening optimization
-• Greenhouse and indoor growing tips
-• Scaling up: from hobby to market garden
+- Companion planting for {season}
+- Succession planting strategies
+- Container gardening optimization
+- Greenhouse and indoor growing tips
+- Scaling up: from hobby to market garden
 
 WRAP-UP & Q&A (55-60 minutes)
-• Key takeaways for {season} success
-• Viewer questions from comments
-• Next week's topic preview
-• Where to find Elm Dirt products
-• Subscribe and notification bell reminder
+- Key takeaways for {season} success
+- Viewer questions from comments
+- Next week's topic preview
+- Where to find Elm Dirt products
+- Subscribe and notification bell reminder
 
 RESOURCES MENTIONED:
-• Elm Dirt Ancient Soil
-• Plant Juice liquid fertilizer
-• Bloom Juice for flowering plants
-• Worm Castings
-• Seasonal planting calendar
-• Soil testing guide
+- Elm Dirt Ancient Soil
+- Plant Juice liquid fertilizer
+- Bloom Juice for flowering plants
+- Worm Castings
+- Seasonal planting calendar
+- Soil testing guide
 
 KEYWORDS: {season} gardening, organic fertilizer, soil health, plant nutrition, garden success"""
+        outline_content = outline_template.format(
+            video_title=video_title,
+            season=season,
+            season_title=season.title(),
+            video_focus=video_focus
+        )
         
         content_piece = ContentPiece(
             id=str(uuid.uuid4()),
