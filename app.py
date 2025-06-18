@@ -1622,14 +1622,14 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
             video_title = f"Complete {season.title()} Garden Mastery: {theme} (60-Min Deep Dive)"
         
         # 60-minute video outline
-        outline_content = f"""YouTube Video Outline - 60 Minutes
+        outline_content = """YouTube Video Outline - 60 Minutes
 Title: {video_title}
 
 INTRO (0-3 minutes)
 - Welcome and channel introduction
 - What viewers will learn in this complete guide
 - Why {season} gardening matters for {video_focus}
-- Quick preview of Elm Dirt products we'll discuss
+- Quick preview of Elm Dirt products we will discuss
 
 SECTION 1: FOUNDATION KNOWLEDGE (3-15 minutes)
 - Understanding {season} growing conditions
