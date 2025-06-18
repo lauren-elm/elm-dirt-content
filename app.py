@@ -1873,4 +1873,595 @@ def index():
     </script>
 </body>
 </html>'''
-                # Complete Enhanced Elm Dirt Content Automation Platform
+@app.route('/api/check-claude-status')
+def check_claude_status():
+    """Check if Claude API is enabled and working"""
+    claude_enabled = bool(content_generator.claude_client)
+    
+    return jsonify({
+        'claude_enabled': claude_enabled,
+        'api_key_configured': Config.CLAUDE_API_KEY != 'your_claude_api_key_here',
+        'fallback_mode': not claude_enabled
+    })
+
+@app.route('/api/generate-weekly-content', methods=['POST'])
+def generate_weekly_content():
+    """Generate a complete week of content with holiday awareness and enhanced daily blogs"""
+    data = request.json
+    
+    try:
+        week_start_str = data.get('week_start_date')
+        if not week_start_str:
+            return jsonify({
+                'success': False,
+                'error': 'week_start_date is required (YYYY-MM-DD format)'
+            }), 400
+        
+        week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
+        
+        if week_start_date.weekday() != 0:
+            week_start_date = week_start_date - timedelta(days=week_start_date.weekday())
+        
+        result = content_generator.generate_weekly_content(week_start_date)
+        
+        return jsonify(result)
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error generating weekly content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/test-enhanced-blog')
+def test_enhanced_blog():
+    """Test endpoint for enhanced blog generation"""
+    try:
+        # Test parameters
+        test_title = "Spring Garden Soil Preparation: Your Complete Success Guide"
+        test_season = "spring"
+        test_keywords = ["spring gardening", "soil preparation", "organic gardening", "garden success"]
+        test_holiday_context = "Spring Equinox - soil awakening and garden preparation"
+        
+        # Generate enhanced blog
+        if content_generator.claude_client:
+            blog_result = content_generator._generate_blog_with_claude(
+                test_title, test_keywords, test_season, test_holiday_context
+            )
+            generation_method = "claude_ai"
+        else:
+            blog_result = content_generator._get_enhanced_fallback_blog(
+                test_title, test_season, test_holiday_context, test_keywords
+            )
+            generation_method = "enhanced_fallback"
+        
+        return jsonify({
+            'success': True,
+            'generation_method': generation_method,
+            'blog_result': {
+                'title': blog_result['title'],
+                'meta_title': blog_result.get('meta_title', ''),
+                'meta_description': blog_result['meta_description'],
+                'keywords': blog_result['keywords'],
+                'word_count': blog_result['word_count'],
+                'reading_time': blog_result['reading_time'],
+                'has_schema': bool(blog_result.get('schema_markup')),
+                'has_images': bool(blog_result.get('image_suggestions')),
+                'image_count': len(blog_result.get('image_suggestions', [])),
+                'content_preview': blog_result['content'][:500] + '...' if len(blog_result['content']) > 500 else blog_result['content'],
+                'full_content_length': len(blog_result['content'])
+            },
+            'features': {
+                'enhanced_html': True,
+                'brand_styling': True,
+                'seo_optimized': True,
+                'schema_markup': True,
+                'image_suggestions': True,
+                'responsive_design': True
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/preview-enhanced-blog')
+def preview_enhanced_blog():
+    """Preview enhanced blog in browser"""
+    try:
+        # Generate sample blog
+        test_title = "Transform Your Garden with Living Soil This Spring"
+        test_season = "spring"
+        test_keywords = ["living soil", "spring gardening", "organic amendments", "soil health"]
+        test_holiday_context = "Spring gardening preparation and soil health"
+        
+        blog_result = content_generator._get_enhanced_fallback_blog(
+            test_title, test_season, test_holiday_context, test_keywords
+        )
+        
+        # Return the complete HTML for preview
+        return blog_result['content']
+        
+    except Exception as e:
+        return f"""<html><body><h1>Error Preview</h1><p>{str(e)}</p></body></html>"""
+
+@app.route('/api/blog-analytics/<week_id>')
+def get_blog_analytics(week_id):
+    """Get detailed blog analytics for a week"""
+    try:
+        analytics = db_manager.get_blog_analytics(week_id=week_id)
+        
+        return jsonify({
+            'success': True,
+            'week_id': week_id,
+            'analytics': analytics,
+            'generated_at': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/content/<content_id>')
+def get_content_piece(content_id):
+    """Get individual content piece by ID"""
+    try:
+        content_piece = content_generator.db_manager.get_content_piece(content_id)
+        if content_piece:
+            return jsonify({
+                'success': True,
+                'content': content_generator._content_piece_to_dict(content_piece)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Content piece not found'
+            }), 404
+    except Exception as e:
+        logger.error(f"Error retrieving content piece: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    claude_enabled = bool(content_generator.claude_client)
+    
+    # Check database status
+    try:
+        conn = sqlite3.connect(Config.DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [table[0] for table in cursor.fetchall()]
+        enhanced_tables = ['blog_metadata', 'image_suggestions']
+        enhanced_schema_ready = all(table in tables for table in enhanced_tables)
+        conn.close()
+    except Exception as e:
+        enhanced_schema_ready = False
+    
+    health_status = {
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'version': '3.1.0 Enhanced',
+        'mode': 'claude_ai' if claude_enabled else 'enhanced_fallback_templates',
+        'content_schedule': '56 pieces per week (including 6 enhanced daily blogs)',
+        'enhanced_features': {
+            'enhanced_html_blogs': True,
+            'seo_optimization': True,
+            'schema_markup': True,
+            'image_suggestions': True,
+            'blog_analytics': enhanced_schema_ready,
+            'brand_styling': True,
+            'responsive_design': True
+        },
+        'features': {
+            'weekly_calendar': True,
+            'holiday_awareness': True,
+            'content_preview': True,
+            'database_storage': True,
+            'bulk_generation': True,
+            'claude_ai_integration': claude_enabled,
+            'daily_blog_posts': True,
+            'html_formatted_blogs': True,
+            'enhanced_database': enhanced_schema_ready
+        },
+        'services': {
+            'claude_api': 'enabled' if claude_enabled else 'disabled',
+            'shopify_api': 'configured' if Config.SHOPIFY_PASSWORD != 'your_shopify_password' else 'not_configured',
+            'database': 'connected',
+            'enhanced_database': 'ready' if enhanced_schema_ready else 'basic'
+        }
+    }
+    
+    return jsonify(health_status)
+
+@app.route('/export')
+def export_page():
+    """Enhanced export page"""
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Enhanced Content Export</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f8f9fa; }
+            .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
+            .section { background: white; padding: 30px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { padding: 15px 30px; margin: 10px; background: #4eb155; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
+            .btn:hover { background: #3e8e41; }
+            .btn:disabled { background: #6c757d; cursor: not-allowed; }
+            .info-box { background: #e8f4fd; border-left: 4px solid #4eb155; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🌱 Enhanced Content Export</h1>
+            <p>Export your enhanced content with HTML blogs, SEO optimization, and more!</p>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Export Enhanced Content</h2>
+            <div class="info-box">
+                <strong>🆕 Enhanced Features:</strong><br>
+                • Complete HTML blogs with CSS styling<br>
+                • SEO optimization with meta tags and schema markup<br>
+                • Detailed image suggestions with specifications<br>
+                • Brand-compliant styling and responsive design
+            </div>
+            
+            <input type="date" id="exportDate" onchange="updateDateInfo()">
+            <button class="btn" id="exportBtn" onclick="exportContent()">🚀 Export Enhanced Content</button>
+            <button class="btn" onclick="testEnhanced()">🧪 Test Enhanced Features</button>
+            
+            <div id="dateInfo" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px;"></div>
+            
+            <div id="exportResults" style="display: none; margin-top: 20px; padding: 20px; background: #d1e7dd; border-radius: 8px; border-left: 4px solid #198754;">
+                <h3>✅ Export Complete!</h3>
+                <p>Your content has been generated and opened in a new window for review.</p>
+            </div>
+        </div>
+
+        <script>
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('exportDate').value = new Date().toISOString().split('T')[0];
+            updateDateInfo();
+        });
+
+        function updateDateInfo() {
+            const dateInput = document.getElementById('exportDate');
+            const dateInfo = document.getElementById('dateInfo');
+            
+            if (dateInput && dateInput.value) {
+                const selectedDate = new Date(dateInput.value + 'T12:00:00');
+                const dayOfWeek = selectedDate.getDay();
+                const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+                
+                dateInfo.innerHTML = '<h3>📅 Export Content for ' + dayName + '</h3><p><strong>Will Generate:</strong> 1 Enhanced HTML Blog + 3 Instagram + 3 Facebook + 3 TikTok + 1 YouTube Outline = 11 pieces total</p>';
+                dateInfo.style.display = 'block';
+            }
+        }
+
+        async function exportContent() {
+            console.log('Export button clicked!');
+            
+            const dateStr = document.getElementById('exportDate').value;
+            if (!dateStr) {
+                alert('Please select a date');
+                return;
+            }
+            
+            const exportBtn = document.getElementById('exportBtn');
+            const originalText = exportBtn.textContent;
+            exportBtn.disabled = true;
+            exportBtn.textContent = '🔄 Generating Content...';
+            
+            try {
+                console.log('Making API call to /api/export-content');
+                const response = await fetch('/api/export-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ export_date: dateStr })
+                });
+                
+                console.log('API response status:', response.status);
+                const result = await response.json();
+                console.log('API result:', result);
+                
+                if (result.success) {
+                    displayExportedContent(result);
+                    document.getElementById('exportResults').style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Failed to export content');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Error exporting content: ' + error.message);
+            } finally {
+                exportBtn.disabled = false;
+                exportBtn.textContent = originalText;
+            }
+        }
+
+        function displayExportedContent(result) {
+            console.log('Displaying exported content');
+            
+            const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes');
+            
+            if (!newWindow) {
+                alert('Please allow popups for this site to view the exported content.');
+                return;
+            }
+            
+            const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Exported Content - ` + result.export_date + `</title>
+                <style>
+                    body { font-family: 'Poppins', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+                    .header { background: linear-gradient(135deg, #114817, #4eb155); color: white; padding: 2rem; border-radius: 10px; text-align: center; margin-bottom: 2rem; }
+                    .content-section { background: white; margin: 20px 0; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .content-title { color: #114817; font-size: 1.5rem; margin-bottom: 15px; border-bottom: 2px solid #4eb155; padding-bottom: 10px; }
+                    .content-meta { background: #e8f4fd; padding: 10px 15px; border-radius: 5px; margin: 10px 0; font-size: 0.9rem; }
+                    .blog-content { border: 2px solid #c9d393; border-radius: 8px; padding: 15px; margin: 15px 0; max-height: 400px; overflow-y: auto; }
+                    .social-post { background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0; }
+                    .hashtags { color: #4eb155; font-weight: bold; }
+                    .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 20px 0; }
+                    .breakdown-item { background: #4eb155; color: white; padding: 10px; border-radius: 8px; text-align: center; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>🌱 Exported Content</h1>
+                    <p>Generated for ` + result.export_date + ` • ` + result.content_count + ` pieces total</p>
+                </div>
+                
+                <div class="content-section">
+                    <h2>📊 Content Breakdown</h2>
+                    <div class="breakdown">
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.blog_posts + `</strong><br>Blog Post
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.instagram_posts + `</strong><br>Instagram
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.facebook_posts + `</strong><br>Facebook
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.tiktok_posts + `</strong><br>TikTok
+                        </div>
+                        <div class="breakdown-item">
+                            <strong>` + result.content_breakdown.youtube_outlines + `</strong><br>YouTube
+                        </div>
+                    </div>
+                </div>
+                
+                ` + generateContentHTML(result.content) + `
+                
+            </body>
+            </html>`;
+            
+            newWindow.document.write(htmlContent);
+            newWindow.document.close();
+        }
+
+        function generateContentHTML(contentArray) {
+            let html = '';
+            
+            contentArray.forEach((content, index) => {
+                const platform = content.platform.toUpperCase();
+                const contentType = content.content_type.replace('_', ' ').toUpperCase();
+                
+                html += `
+                <div class="content-section">
+                    <div class="content-title">
+                        ` + (platform === 'BLOG' ? '📝' : platform === 'INSTAGRAM' ? '📸' : platform === 'FACEBOOK' ? '👥' : platform === 'TIKTOK' ? '🎵' : '🎥') + ` 
+                        ` + content.title + `
+                    </div>
+                    
+                    <div class="content-meta">
+                        <strong>Platform:</strong> ` + platform + ` • 
+                        <strong>Type:</strong> ` + contentType + ` • 
+                        <strong>Scheduled:</strong> ` + new Date(content.scheduled_time).toLocaleString() + `
+                        ` + (content.keywords && content.keywords.length > 0 ? ` • <strong>Keywords:</strong> ` + content.keywords.join(', ') : '') + `
+                    </div>
+                    
+                    ` + (platform === 'BLOG' ? 
+                        `<div class="blog-content">
+                            <iframe srcdoc="` + content.content.replace(/"/g, '&quot;') + `" width="100%" height="400" style="border: none; border-radius: 5px;"></iframe>
+                        </div>` :
+                        `<div class="social-post">
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">` + content.content + `</pre>
+                            ` + (content.hashtags && content.hashtags.length > 0 ? 
+                                `<div class="hashtags" style="margin-top: 10px;">#` + content.hashtags.join(' #') + `</div>` : '') + `
+                        </div>`
+                    ) + `
+                    
+                    ` + (content.image_suggestion ? 
+                        `<div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                            <strong>📷 Image Suggestion:</strong> ` + content.image_suggestion + `
+                        </div>` : '') + `
+                </div>`;
+            });
+            
+            return html;
+        }
+
+        function testEnhanced() {
+            window.open('/api/preview-enhanced-blog', '_blank');
+        }
+        </script>
+    </body>
+    </html>
+    '''
+                         
+@app.route('/api/export-content', methods=['POST'])
+def export_content():
+    """Export enhanced content for a specific date"""
+    try:
+        data = request.json
+        export_date_str = data.get('export_date')
+        
+        if not export_date_str:
+            return jsonify({
+                'success': False,
+                'error': 'export_date is required (YYYY-MM-DD format)'
+            }), 400
+        
+        export_date = datetime.strptime(export_date_str, '%Y-%m-%d')
+        
+        # Generate content for the selected date
+        exported_content = []
+        
+        # 1. Generate 1 HTML Blog Post
+        blog_post = content_generator._generate_daily_blog_post(
+            date=export_date,
+            day_name=export_date.strftime('%A'),
+            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
+            theme=content_generator.holiday_manager.get_week_theme(export_date),
+            holidays=content_generator.holiday_manager.get_week_holidays(export_date),
+            week_id=f"export_{export_date.strftime('%Y_%m_%d')}"
+        )
+        exported_content.append(blog_post)
+        
+        # 2. Generate 3 Instagram Posts
+        instagram_posts = content_generator._generate_platform_posts(
+            platform='instagram',
+            count=3,
+            date=export_date,
+            day_name=export_date.strftime('%A'),
+            daily_theme=f"{export_date.strftime('%A')} Focus",
+            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
+            holiday_context=f"{export_date.strftime('%A')} gardening",
+            week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
+            blog_post=blog_post
+        )
+        exported_content.extend(instagram_posts)
+        
+        # 3. Generate 3 Facebook Posts
+        facebook_posts = content_generator._generate_platform_posts(
+            platform='facebook',
+            count=3,
+            date=export_date,
+            day_name=export_date.strftime('%A'),
+            daily_theme=f"{export_date.strftime('%A')} Focus",
+            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
+            holiday_context=f"{export_date.strftime('%A')} gardening",
+            week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
+            blog_post=blog_post
+        )
+        exported_content.extend(facebook_posts)
+        
+        # 4. Generate 3 TikTok Posts
+        for i in range(3):
+            tiktok_post = content_generator._generate_tiktok_video_script(
+                date=export_date.replace(hour=9+i*3),  # Different times
+                day_name=export_date.strftime('%A'),
+                daily_theme=f"TikTok Focus {i+1}",
+                season=content_generator.holiday_manager.get_seasonal_focus(export_date),
+                holiday_context=f"{export_date.strftime('%A')} gardening tip {i+1}",
+                week_id=f"export_{export_date.strftime('%Y_%m_%d')}",
+                blog_post=blog_post
+            )
+            exported_content.append(tiktok_post)
+        
+        # 5. Generate 1 YouTube Outline
+        youtube_outline = content_generator._generate_youtube_outline(
+            week_start_date=export_date,
+            season=content_generator.holiday_manager.get_seasonal_focus(export_date),
+            theme=f"{export_date.strftime('%A')} Special Focus",
+            holidays=content_generator.holiday_manager.get_week_holidays(export_date),
+            week_id=f"export_{export_date.strftime('%Y_%m_%d')}"
+        )
+        exported_content.append(youtube_outline)
+        
+        # Convert to serializable format
+        export_data = {
+            'success': True,
+            'export_date': export_date_str,
+            'content_count': len(exported_content),
+            'content_breakdown': {
+                'blog_posts': 1,
+                'instagram_posts': 3,
+                'facebook_posts': 3,
+                'tiktok_posts': 3,
+                'youtube_outlines': 1
+            },
+            'content': [content_generator._content_piece_to_dict(cp) for cp in exported_content]
+        }
+        
+        return jsonify(export_data)
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error exporting content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+            
+# Error handlers
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({
+        'success': False,
+        'error': 'Endpoint not found',
+        'available_endpoints': [
+            '/',
+            '/health',
+            '/export',
+            '/api/check-claude-status',
+            '/api/generate-weekly-content',
+            '/api/test-enhanced-blog',
+            '/api/preview-enhanced-blog',
+            '/api/blog-analytics/<week_id>',
+            '/api/content/<content_id>',
+            '/api/export-content'
+        ]
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    error_message = str(error)
+    logger.error("Internal server error: " + error_message)
+    return jsonify({
+        'success': False,
+        'error': 'Internal server error',
+        'message': 'Please check the logs for more details'
+    }), 500
+
+# Main application entry point
+if __name__ == '__main__':
+    logger.info("Starting Enhanced Elm Dirt Content Automation Platform v3.1")
+    logger.info(f"Claude API: {'Enabled' if content_generator.claude_client else 'Disabled (using enhanced fallback)'}")
+    logger.info("Enhanced Features: Complete HTML blogs, SEO optimization, schema markup, image suggestions")
+    logger.info("Content Schedule: 56 pieces per week including 6 enhanced daily blog posts")
+    logger.info("Database: SQLite with enhanced schema for blog metadata")
+    logger.info("Endpoints: Web interface and enhanced API routes configured")
+    
+    # Get port from environment or use default
+    port = int(os.getenv('PORT', 5000))
+    
+    # Run the application
+    app.run(debug=False, host='0.0.0.0', port=port)      
+
+# Complete Enhanced Elm Dirt Content Automation Platform
