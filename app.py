@@ -972,7 +972,8 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         schema_markup = self._generate_blog_schema(title, content_body, season, keywords)
         keywords_str = ', '.join(keywords) if isinstance(keywords, list) else str(keywords)
     
-        return f"""<!DOCTYPE html>
+         # Build the HTML using string concatenation to avoid f-string CSS issues
+         html_template = """<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -1152,7 +1153,9 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         </div>
     </body>
     </html>"""
-
+         
+        return html_template
+                    
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
     """Generate comprehensive blog content with proper structure"""
     
