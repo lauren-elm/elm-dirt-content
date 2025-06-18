@@ -531,7 +531,7 @@ class ClaudeAPIClient:
             'anthropic-version': '2023-06-01'
         }
     
-    def generate_content(self, prompt: str, max_tokens: int = 6000) -> str:
+    def generate_content(self, prompt: str, max_tokens: int = 8000) -> str:
         """Generate content using Claude API with better error handling"""
         try:
             payload = {
@@ -547,7 +547,7 @@ class ClaudeAPIClient:
                 self.api_url,
                 headers=self.headers,
                 json=payload,
-                timeout=120  # Increased timeout for longer content
+                timeout=240  # Increased timeout for longer content
             )
         
             if response.status_code == 200:
@@ -868,8 +868,8 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
     
         try:
             if self.claude_client:
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=6000)
-                if blog_response and len(blog_response) > 1000:
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
+                if blog_response and len(blog_response) > 2000:
                     # Ensure it's complete HTML
                     if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
                         return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
