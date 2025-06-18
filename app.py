@@ -2005,9 +2005,10 @@ def index():
                         <button class="generate-btn" id="social-btn" onclick="generateSocialContent()">
                             🚀 Generate Social Media Content (8 pieces)
                         </button>
-                        <button class="generate-btn" id="blog-btn" onclick="generateBlogContent()" style="background: linear-gradient(135deg, #843648, #6d2a3a);">
-                            📝 Generate Enhanced Blog Post (HTML)
+                        <button class="generate-btn" onclick="testFunction()">
+                            🧪 Test Button
                         </button>
+
                     </div>
                 </div>
                 <div class="info-box" style="background: #e8f4fd; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #4eb155;">
@@ -2051,6 +2052,15 @@ def index():
             dateInput.value = monday.toISOString().split('T')[0];
         }
 
+       // Add this temporarily for testing - right before </script>
+console.log('JavaScript loaded successfully');
+console.log('generateSocialContent defined:', typeof generateSocialContent);
+console.log('generateBlogContent defined:', typeof generateBlogContent);
+
+// Test function
+function testFunction() {
+    alert('Test function works!');
+}
 
         async function generateSocialContent() {
             const dateInput = document.getElementById('week-date');
@@ -2326,6 +2336,7 @@ def index():
     </script>
 </body>
 </html>'''
+    
 @app.route('/api/check-claude-status')
 def check_claude_status():
     """Check if Claude API is enabled and working"""
