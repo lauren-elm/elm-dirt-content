@@ -1925,20 +1925,35 @@ def index():
                 const contentCard = document.createElement('div');
                 contentCard.className = 'content-card';
         
-                let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
+                let contentDisplay = '';
                 let copyButton = '';
         
                 if (piece.platform === 'blog') {
-                    // For blogs, show HTML code in a copyable text area
-                    copyButton = '<button onclick="copyBlogHTML(\'' + piece.id + '\')" style="background: #4eb155; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 10px; cursor: pointer;">Copy HTML Code</button>';
-                    preview = '<textarea id="blog-html-' + piece.id + '" style="width: 100%; height: 200px; font-family: monospace; font-size: 11px;" readonly>' + piece.content + '</textarea>';
-                } else if (piece.content.includes('<')) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = piece.content;
-                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
-                    preview = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
+                    // For blogs, show both preview and HTML code
+                    const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
+            
+                    // Create preview iframe
+                    const previewDiv = '<div style="margin: 10px 0;"><strong>Blog Preview:</strong><br><iframe srcdoc="' + piece.content.replace(/"/g, '&quot;') + '" width="100%" height="300" style="border: 1px solid #ddd; border-radius: 5px;"></iframe></div>';
+            
+                    // Create HTML code textarea
+                    const htmlCodeDiv = '<div style="margin: 10px 0;"><strong>HTML Code (Copy to Shopify):</strong><br><textarea id="' + blogId + '" style="width: 100%; height: 200px; font-family: monospace; font-size: 11px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>' + piece.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea></div>';
+            
+                    copyButton = '<button onclick="copyBlogHTML(\'' + blogId + '\')" style="background: #4eb155; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">📋 Copy HTML to Clipboard</button>';
+            
+                    contentDisplay = previewDiv + htmlCodeDiv;
+            
+                } else {
+                    // For other content, show normal preview
+                    let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
+                    if (piece.content.includes('<')) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = piece.content;
+                        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                        preview = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
+                    }
+                    contentDisplay = '<div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;"><pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">' + preview + '</pre></div>';
                 }
-        
+         
                 let badges = '';
                 if (piece.content_type.includes('blog')) {
                     badges += '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
@@ -1947,17 +1962,51 @@ def index():
                     badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">AI-POWERED</span>';
                 }
         
-                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4><div style="margin: 10px 0;">' + preview + '</div>' + copyButton + '<small style="color: #999; display: block; margin-top: 10px;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
+                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4>' + contentDisplay + '<div style="margin-top: 15px;">' + copyButton + '</div><small style="color: #999; display: block; margin-top: 10px;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
                 contentGrid.appendChild(contentCard);
             });
         }
 
         function copyBlogHTML(blogId) {
-            const textarea = document.getElementById('blog-html-' + blogId);
-            textarea.select();
-            textarea.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-            alert('Blog HTML copied to clipboard! Ready to paste into Shopify.');
+            const textarea = document.getElementById(blogId);
+            if (textarea) {
+                // Temporarily make it visible and select
+                textarea.style.display = 'block';
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+        
+                try {
+                    // Try the modern clipboard API first
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(textarea.value).then(() => {
+                            showCopySuccess();
+                        }).catch(() => {
+                            // Fallback to execCommand
+                            document.execCommand('copy');
+                            showCopySuccess();
+                        });
+                    } else {
+                        // Fallback for older browsers
+                        document.execCommand('copy');
+                        showCopySuccess();
+                    }
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                    alert('Copy failed. Please manually select and copy the HTML code.');
+                }
+            }
+        }
+
+        function showCopySuccess() {
+            // Create a temporary success message
+            const successMsg = document.createElement('div');
+            successMsg.innerHTML = '✅ HTML copied to clipboard! Ready to paste into Shopify.';
+            successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #d1e7dd; color: #0f5132; padding: 15px; border-radius: 5px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1);';
+            document.body.appendChild(successMsg);
+    
+            setTimeout(() => {
+                document.body.removeChild(successMsg);
+            }, 3000);
         }
         
         checkAPIStatus();
