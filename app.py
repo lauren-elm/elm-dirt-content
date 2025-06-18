@@ -2002,10 +2002,10 @@ def index():
                         <input type="date" id="week-date" />
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="generate-btn" id="social-btn" onclick="generateSocialContent()">
-                            🚀 Generate Social Media Content (8 pieces)
-                        </button>
-                       <button class="generate-btn" id="blog-btn" onclick="generateBlogContent()" style="background: linear-gradient(135deg, #843648, #6d2a3a);">
+                       <button class="generate-btn" id="social-btn">
+                           🚀 Generate Social Media Content (8 pieces)
+                       </button>
+                       <button class="generate-btn" id="blog-btn" style="background: linear-gradient(135deg, #843648, #6d2a3a);">
                            📝 Generate Enhanced Blog Post (HTML)
                        </button>
 
@@ -2325,12 +2325,27 @@ def index():
         checkAPIStatus();
         setDefaultDate();
 
-        // Make functions globally accessible
-        window.generateSocialContent = generateSocialContent;
-        window.generateBlogContent = generateBlogContent;
-        window.testFunction = testFunction;
-        window.displayBlogContent = displayBlogContent;
-        window.copyBlogHTML = copyBlogHTML;
+        // Add event listeners when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, attaching event listeners');
+            
+            const socialBtn = document.getElementById('social-btn');
+            const blogBtn = document.getElementById('blog-btn');
+            
+            if (socialBtn) {
+                socialBtn.addEventListener('click', generateSocialContent);
+                console.log('Social button listener attached');
+            } else {
+                console.log('Social button not found');
+            }
+            
+            if (blogBtn) {
+                blogBtn.addEventListener('click', generateBlogContent);
+                console.log('Blog button listener attached');
+            } else {
+                console.log('Blog button not found');
+            }
+        });
     </script>
 </body>
 </html>'''
