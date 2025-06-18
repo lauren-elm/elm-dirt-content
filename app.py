@@ -2053,134 +2053,134 @@ def index():
 
 
         async function generateSocialContent() {
-    const dateInput = document.getElementById('week-date');
-    const socialBtn = document.getElementById('social-btn');
-    const contentPreview = document.getElementById('content-preview');
-    const contentGrid = document.getElementById('content-grid');
+            const dateInput = document.getElementById('week-date');
+            const socialBtn = document.getElementById('social-btn');
+            const contentPreview = document.getElementById('content-preview');
+            const contentGrid = document.getElementById('content-grid');
     
-    if (!dateInput.value) { 
-        alert('Please select a date'); 
-        return; 
-    }
+            if (!dateInput.value) { 
+                alert('Please select a date'); 
+                return; 
+            }
     
-    socialBtn.disabled = true;
-    socialBtn.textContent = '🔄 Generating Social Content...';
-    contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating social media content...</p><p>Instagram, Facebook, TikTok, LinkedIn posts</p><p>This should take 10-15 seconds</p></div>';
-    contentPreview.style.display = 'block';
+            socialBtn.disabled = true;
+            socialBtn.textContent = '🔄 Generating Social Content...';
+            contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating social media content...</p><p>Instagram, Facebook, TikTok, LinkedIn posts</p><p>This should take 10-15 seconds</p></div>';
+            contentPreview.style.display = 'block';
     
-    try {
-        const response = await fetch('/api/generate-social-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ selected_date: dateInput.value })
-        });
-        const result = await response.json();
+            try {
+                const response = await fetch('/api/generate-social-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ selected_date: dateInput.value })
+                });
+                const result = await response.json();
         
-        if (result.success) {
-            displayContent(result.content, result.content_breakdown);
-            contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Successfully generated ' + result.content_pieces + ' social media posts!<br><strong>Platforms:</strong> Instagram, Facebook, TikTok, LinkedIn, YouTube<br><strong>Ready for:</strong> Social media scheduling and posting.</div>');
-        } else {
-            throw new Error(result.error || 'Failed to generate social content');
+                if (result.success) {
+                    displayContent(result.content, result.content_breakdown);
+                    contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Successfully generated ' + result.content_pieces + ' social media posts!<br><strong>Platforms:</strong> Instagram, Facebook, TikTok, LinkedIn, YouTube<br><strong>Ready for:</strong> Social media scheduling and posting.</div>');
+                } else {
+                    throw new Error(result.error || 'Failed to generate social content');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                contentGrid.innerHTML = '<div class="error-message">❌ Error generating social content: ' + error.message + '</div>';
+            } finally {
+                socialBtn.disabled = false;
+                socialBtn.textContent = '🚀 Generate Social Media Content (8 pieces)';
+            }
         }
-    } catch (error) {
-        console.error('Error:', error);
-        contentGrid.innerHTML = '<div class="error-message">❌ Error generating social content: ' + error.message + '</div>';
-    } finally {
-        socialBtn.disabled = false;
-        socialBtn.textContent = '🚀 Generate Social Media Content (8 pieces)';
-    }
-}
 
-async function generateBlogContent() {
-    const dateInput = document.getElementById('week-date');
-    const blogBtn = document.getElementById('blog-btn');
-    const contentPreview = document.getElementById('content-preview');
-    const contentGrid = document.getElementById('content-grid');
+        async function generateBlogContent() {
+            const dateInput = document.getElementById('week-date');
+            const blogBtn = document.getElementById('blog-btn');
+            const contentPreview = document.getElementById('content-preview');
+            const contentGrid = document.getElementById('content-grid');
     
-    if (!dateInput.value) { 
-        alert('Please select a date'); 
-        return; 
-    }
+            if (!dateInput.value) { 
+                alert('Please select a date'); 
+                return; 
+            }
     
-    blogBtn.disabled = true;
-    blogBtn.textContent = '🔄 Generating Enhanced Blog...';
+            blogBtn.disabled = true;
+            blogBtn.textContent = '🔄 Generating Enhanced Blog...';
     
-    // Add blog-specific loading message
-    const blogLoadingDiv = document.createElement('div');
-    blogLoadingDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating enhanced HTML blog post...</p><p>Using Claude AI for high-quality content</p><p>This may take 30-60 seconds for best results</p></div>';
-    contentGrid.appendChild(blogLoadingDiv);
-    contentPreview.style.display = 'block';
+            // Add blog-specific loading message
+            const blogLoadingDiv = document.createElement('div');
+            blogLoadingDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating enhanced HTML blog post...</p><p>Using Claude AI for high-quality content</p><p>This may take 30-60 seconds for best results</p></div>';
+            contentGrid.appendChild(blogLoadingDiv);
+            contentPreview.style.display = 'block';
     
-    try {
-        const response = await fetch('/api/generate-blog-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ selected_date: dateInput.value })
-        });
-        const result = await response.json();
+            try {
+                const response = await fetch('/api/generate-blog-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ selected_date: dateInput.value })
+                });
+                const result = await response.json();
         
-        if (result.success) {
-            // Remove loading message
-            contentGrid.removeChild(blogLoadingDiv);
+                if (result.success) {
+                    // Remove loading message
+                    contentGrid.removeChild(blogLoadingDiv);
             
-            // Add blog-specific display
-            displayBlogContent(result.blog_post);
-            contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Enhanced blog post generated!<br><strong>Features:</strong> ' + (result.blog_post.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template') + ', SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ' + (result.blog_post.word_count || 'Unknown') + ' words</div>');
-        } else {
-            throw new Error(result.error || 'Failed to generate blog content');
+                    // Add blog-specific display
+                    displayBlogContent(result.blog_post);
+                    contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Enhanced blog post generated!<br><strong>Features:</strong> ' + (result.blog_post.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template') + ', SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ' + (result.blog_post.word_count || 'Unknown') + ' words</div>');
+                } else {
+                    throw new Error(result.error || 'Failed to generate blog content');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                contentGrid.removeChild(blogLoadingDiv);
+                contentGrid.innerHTML = '<div class="error-message">❌ Error generating blog: ' + error.message + '</div>';
+            } finally {
+                blogBtn.disabled = false;
+                blogBtn.textContent = '📝 Generate Enhanced Blog Post (HTML)';
+            }
         }
-    } catch (error) {
-        console.error('Error:', error);
-        contentGrid.removeChild(blogLoadingDiv);
-        contentGrid.innerHTML = '<div class="error-message">❌ Error generating blog: ' + error.message + '</div>';
-    } finally {
-        blogBtn.disabled = false;
-        blogBtn.textContent = '📝 Generate Enhanced Blog Post (HTML)';
-    }
-}
 
-function displayBlogContent(blogPost) {
-    const contentGrid = document.getElementById('content-grid');
+        function displayBlogContent(blogPost) {
+            const contentGrid = document.getElementById('content-grid');
     
-    const blogCard = document.createElement('div');
-    blogCard.className = 'content-card';
-    blogCard.style.gridColumn = '1 / -1'; // Full width
+            const blogCard = document.createElement('div');
+            blogCard.className = 'content-card';
+            blogCard.style.gridColumn = '1 / -1'; // Full width
     
-    const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
+            const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
     
-    let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
-    if (blogPost.ai_provider === 'claude') {
-        badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
-    }
+            let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
+            if (blogPost.ai_provider === 'claude') {
+                badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
+            }
     
-    blogCard.innerHTML = `
-        <h3>${blogPost.title} ${badges}</h3>
+            blogCard.innerHTML = `
+                <h3>${blogPost.title} ${badges}</h3>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
-            <div>
-                <h4>📖 Blog Preview</h4>
-                <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
-            </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div>
+                        <h4>📖 Blog Preview</h4>
+                        <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
+                    </div>
             
-            <div>
-                <h4>📋 HTML Code (Copy to Shopify)</h4>
-                <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-                <button onclick="copyBlogHTML('${blogId}')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>
-            </div>
-        </div>
+                    <div>
+                        <h4>📋 HTML Code (Copy to Shopify)</h4>
+                        <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                        <button onclick="copyBlogHTML('${blogId}')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>
+                    </div>
+                </div>
         
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
-            <strong>📊 Blog Details:</strong><br>
-            Platform: ${blogPost.platform} • 
-            Word Count: ${blogPost.word_count || 'Unknown'} • 
-            Reading Time: ${blogPost.reading_time || 'Unknown'} • 
-            AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
-            Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
-        </div>
-    `;
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                    <strong>📊 Blog Details:</strong><br>
+                    Platform: ${blogPost.platform} • 
+                    Word Count: ${blogPost.word_count || 'Unknown'} • 
+                    Reading Time: ${blogPost.reading_time || 'Unknown'} • 
+                    AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
+                   Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
+                </div>
+            `;
     
-    contentGrid.appendChild(blogCard);
-}
+           contentGrid.appendChild(blogCard);
+        }
         
         async function generateWeeklyContent() {
             const dateInput = document.getElementById('week-date');
