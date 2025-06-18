@@ -873,7 +873,7 @@ HTML STRUCTURE REQUIREMENTS:
 - Add JSON-LD schema markup for SEO
 
 OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
-CRITICAL: End with complete </html> tag. Do not truncate."""
+
 
         try:
             if self.claude_client:
