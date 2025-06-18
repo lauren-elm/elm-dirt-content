@@ -532,7 +532,7 @@ class ClaudeAPIClient:
         }
     
     def generate_content(self, prompt: str, max_tokens: int = 4000) -> str:
-        """Generate content using Claude API"""
+        """Generate content using Claude API with better error handling"""
         try:
             payload = {
                 'model': 'claude-3-5-sonnet-20241022',
@@ -542,21 +542,23 @@ class ClaudeAPIClient:
                     'content': prompt
                 }]
             }
-            
+        
             response = requests.post(
                 self.api_url,
                 headers=self.headers,
                 json=payload,
-                timeout=30
+                timeout=60  # Increased timeout for longer content
             )
-            
+        
             if response.status_code == 200:
                 result = response.json()
-                return result['content'][0]['text']
+                content = result['content'][0]['text']
+                logger.info(f"Claude API success. Response length: {len(content)} characters")
+                return content
             else:
                 logger.error(f"Claude API error: {response.status_code} - {response.text}")
                 return None
-                
+            
         except Exception as e:
             logger.error(f"Error calling Claude API: {str(e)}")
             return None
@@ -932,22 +934,31 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
 
     def _get_enhanced_fallback_blog(self, title, season, holiday_context, keywords):
         """Generate enhanced fallback blog with complete HTML structure"""
-        
+    
         meta_title = f"{title} | Expert {season.title()} Gardening Guide | Elm Dirt"
+        if len(meta_title) > 60:
+            meta_title = f"{title[:30]}... | Elm Dirt Guide"
+          
         meta_description = f"Expert guide to {title.lower()} with proven organic methods for {season} gardening success. Professional tips for sustainable garden care."
-        
+        if len(meta_description) > 160:
+            meta_description = meta_description[:157] + "..."
+    
         # Generate comprehensive content
         content_html = self._generate_comprehensive_blog_content(title, season, holiday_context, keywords)
-        
+    
         # Wrap in complete HTML template
         full_html = self._wrap_content_in_enhanced_template(
             content_html, title, meta_title, meta_description, keywords, season, holiday_context
         )
-        
+    
         # Generate schema and image suggestions
         schema_markup = self._generate_blog_schema(title, content_html, season, keywords)
         image_suggestions = self._generate_image_suggestions(title, content_html, season)
-        
+    
+        # Verify it's complete HTML
+        if not full_html.strip().startswith('<!DOCTYPE html>') or not full_html.strip().endswith('</html>'):
+            logger.error("Fallback HTML is incomplete!")
+    
         return {
             'title': title,
             'meta_title': meta_title,
