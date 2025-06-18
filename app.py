@@ -842,7 +842,7 @@ class ContentGenerator:
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
         """Generate enhanced blog with Claude AI using the project prompt"""
     
-        prompt = f"""Generate an SEO-optimized blog article in HTML for the title '{blog_title}'.
+        prompt = f"""Generate an SEO-optimized blog article in HTML for the title '{blog_title}'. Generate the ENTIRE HTML document in one response without stopping or asking for continuation.
 
 CONTEXT:
 - Season: {season}
@@ -861,7 +861,7 @@ CONTENT REQUIREMENTS:
 - Include seasonal timing and regional considerations
 
 HTML STRUCTURE REQUIREMENTS:
-- Complete HTML document with proper head section
+- Complete HTML document with proper head and body sections
 - Include meta title (50-60 characters), meta description (150-160 characters)
 - Use Elm Dirt brand colors (#114817, #4eb155, #c9d393, #fec962) and Poppins font family
 - Include engaging introduction (2-3 paragraphs)
@@ -869,8 +869,17 @@ HTML STRUCTURE REQUIREMENTS:
 - 2-3 subsections with H3 headings under each main section
 - Use bullet points (ul/li) for actionable tips and lists
 - Include pull quotes for key insights
+- Naturally mention Elm Dirt products with benefits
 - Add product highlight boxes for Elm Dirt products
 - Add JSON-LD schema markup for SEO
+- Responsive design
+
+CRITICAL INSTRUCTIONS:
+1. Create the COMPLETE HTML document from <!DOCTYPE html> to </html>
+2. Do NOT stop mid-generation or ask "would you like me to continue"
+3. Generate ALL content in this single response
+4. Include 1000+ words of gardening content
+5. Must end with </html> tag
 
 OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
 
@@ -881,10 +890,12 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
                 blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
             
                 if blog_response:
-                    # DEBUG: Log what Claude actually returned
                     logger.info(f"Claude response length: {len(blog_response)}")
-                    logger.info(f"Starts with: {blog_response[:100]}")
-                    logger.info(f"Ends with: {blog_response[-100:]}")
+                
+                    # Check for the "would you like me to continue" pattern
+                    if "would you like me to continue" in blog_response.lower() or "note:" in blog_response.lower():
+                        logger.warning("Claude asked for continuation - using fallback")
+                        return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
                 
                     response_clean = blog_response.strip()
                 
@@ -892,20 +903,11 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
                     has_doctype = response_clean.startswith('<!DOCTYPE html>') or response_clean.startswith('<html>')
                     has_closing = response_clean.endswith('</html>')
                 
-                    logger.info(f"Has DOCTYPE: {has_doctype}, Has closing: {has_closing}")
-                
                     if has_doctype and has_closing:
                         logger.info("Claude provided complete HTML!")
                         return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
                     else:
                         logger.warning(f"Claude HTML incomplete - DOCTYPE: {has_doctype}, Closing: {has_closing}")
-                        # Try to salvage partial HTML
-                        if has_doctype and len(response_clean) > 2000:
-                            # If we have good start but bad ending, try to fix it
-                            fixed_html = self._try_fix_incomplete_html(response_clean)
-                            if fixed_html:
-                                return self._parse_claude_blog_response(fixed_html, blog_title, season, keywords)
-                    
                         return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
                 else:
                     logger.warning("Claude returned empty response")
