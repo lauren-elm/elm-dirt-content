@@ -968,189 +968,190 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 
     def _wrap_content_in_enhanced_template(self, content_body, title, meta_title, meta_description, keywords, season, holiday_context):
         """Wrap content in enhanced HTML template with brand styling"""
-        
+    
         schema_markup = self._generate_blog_schema(title, content_body, season, keywords)
-        
+        keywords_str = ', '.join(keywords) if isinstance(keywords, list) else str(keywords)
+    
         return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{meta_title}</title>
-    <meta name="description" content="{meta_description}">
-    <meta name="keywords" content="{', '.join(keywords)}">
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{meta_title}</title>
+        <meta name="description" content="{meta_description}">
+        <meta name="keywords" content="{keywords_str}">
     
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="article">
-    <meta property="og:title" content="{meta_title}">
-    <meta property="og:description" content="{meta_description}">
-    <meta property="og:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="article">
+        <meta property="og:title" content="{meta_title}">
+        <meta property="og:description" content="{meta_description}">
+        <meta property="og:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
     
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="{meta_title}">
-    <meta property="twitter:description" content="{meta_description}">
-    <meta property="twitter:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:title" content="{meta_title}">
+        <meta property="twitter:description" content="{meta_description}">
+        <meta property="twitter:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
     
-    <style>
-        :root {{
-            --primary-green: #114817;
-            --secondary-green: #4eb155;
-            --light-green: #c9d393;
-            --dark-green: #0a2b0d;
-            --accent-gold: #fec962;
-            --earth-brown: #3a2313;
-            --text-color: #333333;
-            --background-color: #ffffff;
-            --light-background: #f9f7f5;
-        }}
-
-        body {{
-            font-family: 'Poppins', sans-serif;
-            color: var(--text-color);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: var(--background-color);
-        }}
-
-        .container {{
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }}
-
-        .blog-header {{
-            text-align: center;
-            padding: 60px 20px;
-            background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
-            margin-bottom: 40px;
-            border-radius: 0 0 20px 20px;
-        }}
-
-        .blog-header h1 {{
-            font-size: 2.8rem;
-            color: var(--primary-green);
-            margin-bottom: 20px;
-            font-weight: 700;
-        }}
-
-        .main-content {{
-            max-width: 800px;
-            margin: 0 auto;
-        }}
-
-        h2 {{
-            color: var(--primary-green);
-            font-size: 2rem;
-            margin-top: 50px;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid var(--light-green);
-        }}
-
-        h3 {{
-            color: var(--dark-green);
-            font-size: 1.5rem;
-            margin-top: 35px;
-            margin-bottom: 20px;
-        }}
-
-        p {{
-            margin-bottom: 20px;
-            font-size: 1.1rem;
-        }}
-
-        ul, ol {{
-            margin-bottom: 25px;
-            padding-left: 25px;
-        }}
-
-        li {{
-            margin-bottom: 12px;
-        }}
-
-        .pull-quote {{
-            font-size: 1.3rem;
-            color: var(--primary-green);
-            font-style: italic;
-            font-weight: 500;
-            padding: 25px 45px;
-            border-left: 5px solid var(--accent-gold);
-            margin: 40px 0;
-            background: var(--light-background);
-            border-radius: 0 15px 15px 0;
-        }}
-
-        .product-highlight {{
-            background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
-            padding: 25px;
-            border-radius: 15px;
-            margin: 35px 0;
-            border: 1px solid rgba(17, 72, 23, 0.1);
-        }}
-
-        .product-highlight h4 {{
-            margin-top: 0;
-            color: var(--primary-green);
-            font-size: 1.3rem;
-        }}
-
-        .cta-box {{
-            background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
-            color: white;
-            padding: 40px;
-            border-radius: 15px;
-            text-align: center;
-            margin: 50px 0;
-        }}
-
-        .cta-button {{
-            display: inline-block;
-            background: var(--accent-gold);
-            color: var(--dark-green);
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            margin-top: 20px;
-        }}
-
-        strong {{
-            color: var(--primary-green);
-            font-weight: 600;
-        }}
-
-        @media (max-width: 768px) {{
-            .blog-header h1 {{
-                font-size: 2.2rem;
+        <style>
+            :root {{
+                --primary-green: #114817;
+                --secondary-green: #4eb155;
+                --light-green: #c9d393;
+                --dark-green: #0a2b0d;
+                --accent-gold: #fec962;
+                --earth-brown: #3a2313;
+                --text-color: #333333;
+                --background-color: #ffffff;
+                --light-background: #f9f7f5;
             }}
-        }}
-    </style>
 
-    <script type="application/ld+json">
-    {schema_markup}
-    </script>
-</head>
-<body>
-    <div class="container">
-        <div class="blog-header">
-            <h1>{title}</h1>
-            <p>Expert gardening advice for {season} success with organic methods and sustainable practices</p>
-        </div>
+            body {{
+                font-family: 'Poppins', sans-serif;
+                color: var(--text-color);
+                line-height: 1.6;
+                margin: 0;
+                padding: 0;
+                background-color: var(--background-color);
+            }}
 
-        <div class="main-content">
-            {content_body}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 20px;
+            }}
+
+            .blog-header {{
+                text-align: center;
+                padding: 60px 20px;
+                background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
+                margin-bottom: 40px;
+                border-radius: 0 0 20px 20px;
+            }}
+
+            .blog-header h1 {{
+                font-size: 2.8rem;
+                color: var(--primary-green);
+                margin-bottom: 20px;
+                font-weight: 700;
+            }}
+
+            .main-content {{
+                max-width: 800px;
+                margin: 0 auto;
+            }}
+
+            h2 {{
+                color: var(--primary-green);
+                font-size: 2.2rem;
+                margin-top: 50px;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 3px solid var(--light-green);
+            }}
+
+            h3 {{
+                color: var(--dark-green);
+                font-size: 2rem;
+                margin-top: 35px;
+                margin-bottom: 20px;
+            }}
+
+            p {{
+                margin-bottom: 20px;
+                font-size: 1.8rem;
+            }}
+
+            ul, ol {{
+                margin-bottom: 25px;
+                padding-left: 25px;
+            }}
+
+            li {{
+                margin-bottom: 12px;
+            }}
+
+            .pull-quote {{
+                font-size: 1.6rem;
+                color: var(--primary-green);
+                font-style: italic;
+                font-weight: 500;
+                padding: 25px 45px;
+                border-left: 5px solid var(--accent-gold);
+                margin: 40px 0;
+                background: var(--light-background);
+                border-radius: 0 15px 15px 0;
+            }}
+
+            .product-highlight {{
+                background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin: 35px 0;
+                border: 1px solid rgba(17, 72, 23, 0.1);
+            }}
+
+            .product-highlight h4 {{
+                margin-top: 0;
+                color: var(--primary-green);
+                font-size: 1.6rem;
+            }}
+
+            .cta-box {{
+                background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+                color: white;
+                padding: 40px;
+                border-radius: 15px;
+                text-align: center;
+                margin: 50px 0;
+            }}
+
+            .cta-button {{
+                display: inline-block;
+                background: var(--accent-gold);
+                color: var(--dark-green);
+                padding: 15px 30px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                margin-top: 20px;
+            }}
+
+            strong {{
+                color: var(--primary-green);
+                font-weight: 600;
+            }}
+
+            @media (max-width: 768px) {{
+                .blog-header h1 {{
+                    font-size: 2.2rem;
+                }}
+            }}
+        </style>
+
+        <script type="application/ld+json">
+        {schema_markup}
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="blog-header">
+                <h1>{title}</h1>
+                <p>Expert gardening advice for {season} success with organic methods and sustainable practices</p>
+            </div>
+
+            <div class="main-content">
+                {content_body}
             
-            <div class="cta-box">
-                <h3>Ready to Transform Your {season.title()} Garden?</h3>
-                <p>Explore our complete line of organic soil amendments and plant nutrition products designed for {season} gardening success.</p>
-                <a href="/collections/soil-amendments" class="cta-button">Shop {season.title()} Solutions</a>
+                <div class="cta-box">
+                    <h3>Ready to Transform Your {season.title()} Garden?</h3>
+                    <p>Explore our complete line of organic soil amendments and plant nutrition products designed for {season} gardening success.</p>
+                    <a href="/collections/soil-mixes" class="cta-button">Shop {season.title()} Solutions</a>
+                </div>
             </div>
         </div>
-    </div>
-</body>
-</html>"""
+    </body>
+    </html>"""
 
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
     """Generate comprehensive blog content with proper structure"""
