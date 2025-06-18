@@ -866,7 +866,7 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
     
         try:
             if self.claude_client:
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=6000)
                 if blog_response and len(blog_response) > 1000:
                     # Ensure it's complete HTML
                     if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
