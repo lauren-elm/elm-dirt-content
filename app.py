@@ -719,6 +719,61 @@ class ContentGenerator:
                 'error': str(e)
             }
 
+    def generate_single_day_content(self, selected_date: datetime) -> Dict:
+        """Generate content for a single day only"""
+        try:
+            day_id = f"day_{selected_date.strftime('%Y_%m_%d')}"
+            season = self.holiday_manager.get_seasonal_focus(selected_date)
+            holidays = self.holiday_manager.get_week_holidays(selected_date)
+            theme = self.holiday_manager.get_week_theme(selected_date)
+        
+            logger.info(f"Generating single day content for {selected_date.strftime('%Y-%m-%d')}")
+        
+            daily_content = []
+            day_name = selected_date.strftime('%A')
+        
+            # Generate 1 enhanced blog post
+            daily_blog = self._generate_daily_blog_post(
+                date=selected_date,
+                day_name=day_name,
+                season=season,
+                theme=theme,
+                holidays=holidays,
+                week_id=day_id
+            )
+            daily_content.append(daily_blog)
+        
+            # Generate daily social content package (8 pieces)
+            daily_social = self._generate_daily_content_package(
+                date=selected_date,
+                day_name=day_name,
+                season=season,
+                theme=theme,
+                holidays=holidays,
+                week_id=day_id,
+                blog_post=daily_blog
+            )
+            daily_content.extend(daily_social)
+        
+            return {
+                'success': True,
+                'day_id': day_id,
+                'selected_date': selected_date.isoformat(),
+                'season': season,
+                'theme': theme,
+                'holidays': [(h[0].isoformat(), h[1], h[2], h[3]) for h in holidays],
+                'content_pieces': len(daily_content),
+                'content_breakdown': self._get_content_breakdown(daily_content),
+                'content': [self._content_piece_to_dict(cp) for cp in daily_content]
+            }
+        
+        except Exception as e:
+            logger.error(f"Error generating single day content: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
     def _generate_daily_blog_post(self, date: datetime, day_name: str, season: str, 
                                   theme: str, holidays: List, week_id: str) -> ContentPiece:
         """Generate a daily blog post using enhanced Claude API or fallback"""
@@ -775,62 +830,66 @@ class ContentGenerator:
         return content_piece
 
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
-        """Generate enhanced blog with Claude API including full HTML structure and schema"""
-        
-        prompt = f"""Create a complete, ready-to-publish HTML blog post titled "{blog_title}". Generate the ENTIRE document from <!DOCTYPE html> to </html> without asking for permission to continue.
+        """Generate enhanced blog with Claude AI using the project prompt"""
+    
+        prompt = f"""Generate an SEO-optimized blog article for the title '{blog_title}'.
 
-REQUIREMENTS:
-- Season: {season} | Context: {holiday_context}
-- Company: Elm Dirt (organic soil amendments)
-- Target: Home gardeners 35-65 years old
-- Keywords: {', '.join(keywords)}
-- Length: 1500+ words minimum
+CONTEXT:
+- Season: {season}
+- Holiday Context: {holiday_context}
+- Company: Elm Dirt - Premium organic soil amendments and gardening products
+- Target: Home gardeners aged 35-65 across the United States
+- Brand Products: Ancient Soil, Plant Juice, Bloom Juice, Worm Castings
+- Keywords to include naturally: {', '.join(keywords)}
 
-MUST INCLUDE:
-- Complete HTML document with head section
-- Meta title (50-60 chars) and description (150-160 chars)
-- Elm Dirt brand colors (#114817, #4eb155, #c9d393, #fec962)
-- Poppins font family
-- 5+ main H2 sections with H3 subsections
-- Product mentions (Ancient Soil, Plant Juice, Bloom Juice)
-- CSS styling with classes
-- JSON-LD schema in script tag
+CONTENT REQUIREMENTS:
+- 1500-2000 words minimum for comprehensive coverage
+- Expert but approachable tone with colloquial elements for 50+ gardeners
+- Include practical, actionable advice with specific steps
+- Naturally mention Elm Dirt products where relevant with benefits
+- Focus on organic, sustainable gardening methods
+- Include seasonal timing and regional considerations
 
-OUTPUT FORMAT: Complete HTML document only. Do not ask to continue. Generate the full content immediately.
+HTML STRUCTURE REQUIREMENTS:
+- Complete HTML document with proper head section
+- Include meta title (50-60 characters), meta description (150-160 characters)
+- Use Elm Dirt brand colors (#114817, #4eb155, #c9d393, #fec962) and Poppins font family
+- Include engaging introduction (2-3 paragraphs)
+- 5-7 main sections with descriptive H2 headings
+- 2-3 subsections with H3 headings under each main section
+- Use bullet points (ul/li) for actionable tips and lists
+- Include pull quotes for key insights
+- Add product highlight boxes for Elm Dirt products
+- Add JSON-LD schema markup for SEO
 
-Begin with <!DOCTYPE html> and end with </html>. Include everything."""
-        
+OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
+    
         try:
             if self.claude_client:
                 blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
                 if blog_response and len(blog_response) > 1000:
-                    # Check if Claude provided complete HTML
+                    # Ensure it's complete HTML
                     if blog_response.strip().startswith('<!DOCTYPE html>') and blog_response.strip().endswith('</html>'):
-                        return self._parse_complete_claude_blog(blog_response, blog_title, season, keywords)
+                        return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
                     else:
-                        # If incomplete, use our enhanced fallback
                         logger.warning("Claude provided incomplete HTML, using enhanced fallback")
                         return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
         
             # Fallback if Claude fails
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
-    
+
         except Exception as e:
             logger.error(f"Error generating blog with Claude: {str(e)}")
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
-    
-    def _parse_complete_claude_blog(self, claude_response, original_title, season, keywords):
-        """Parse complete HTML blog response from Claude"""
+
+    def _parse_claude_blog_response(self, claude_response, original_title, season, keywords):
+        """Parse Claude response and extract components"""
         try:
             content = claude_response.strip()
         
-            # Extract meta title and description from the HTML
+            # Extract meta information
             meta_title = self._extract_meta_title(content, original_title)
             meta_description = self._extract_meta_description(content, original_title, season)
-        
-            # Generate additional components that might be missing
-            schema_markup = self._generate_blog_schema(original_title, content, season, keywords)
-            image_suggestions = self._generate_image_suggestions(original_title, content, season)
         
             # Count words (remove HTML tags for accurate count)
             text_content = re.sub(r'<[^>]+>', '', content)
@@ -839,18 +898,37 @@ Begin with <!DOCTYPE html> and end with </html>. Include everything."""
             return {
                 'title': original_title,
                 'meta_title': meta_title,
-                'content': content,
+                'content': content,  # This is the complete HTML
                 'meta_description': meta_description,
                 'keywords': ', '.join(keywords),
-                'schema_markup': schema_markup,
-                'image_suggestions': image_suggestions,
+                'schema_markup': self._extract_schema_from_html(content),
+                'image_suggestions': self._generate_image_suggestions(original_title, content, season),
                 'word_count': word_count,
                 'reading_time': f"{word_count // 200 + 1} min read"
             }
         
         except Exception as e:
-            logger.error(f"Error parsing complete Claude blog: {str(e)}")
+            logger.error(f"Error parsing Claude blog response: {str(e)}")
             return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
+
+    def _extract_schema_from_html(self, html_content):
+        """Extract JSON-LD schema from HTML content"""
+        try:
+            # Look for JSON-LD script tag
+            start_marker = '<script type="application/ld+json">'
+            end_marker = '</script>'
+        
+            start_pos = html_content.find(start_marker)
+            if start_pos != -1:
+                start_pos += len(start_marker)
+                end_pos = html_content.find(end_marker, start_pos)
+                if end_pos != -1:
+                    return html_content[start_pos:end_pos].strip()
+        
+            return "{}"
+        except Exception as e:
+            logger.error(f"Error extracting schema: {str(e)}")
+            return "{}"
 
     def _get_enhanced_fallback_blog(self, title, season, holiday_context, keywords):
         """Generate enhanced fallback blog with complete HTML structure"""
@@ -1836,25 +1914,31 @@ def index():
             const successMessage = contentGrid.querySelector('.success-message');
             contentGrid.innerHTML = '';
             if (successMessage) { contentGrid.appendChild(successMessage); }
-            
+    
             // Show content breakdown
             const breakdownSummary = document.createElement('div');
             breakdownSummary.innerHTML = '<div style="background: #e8f5e8; padding: 1rem; border-radius: 8px; margin: 1rem 0;"><h3>📊 Enhanced Content Breakdown</h3>' + Object.entries(contentBreakdown || {}).map(([platform, count]) => '<span style="background: #4eb155; color: white; padding: 4px 12px; border-radius: 20px; margin: 5px; display: inline-block;">' + platform + ': ' + count + '</span>').join('') + '</div>';
             contentGrid.appendChild(breakdownSummary);
-            
-            // Display sample content pieces
-            contentPieces.slice(0, 6).forEach(piece => {
+    
+            // Display content pieces
+            contentPieces.forEach(piece => {
                 const contentCard = document.createElement('div');
                 contentCard.className = 'content-card';
-                
+        
                 let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
-                if (piece.platform === 'blog' && piece.content.includes('<')) {
+                let copyButton = '';
+        
+                if (piece.platform === 'blog') {
+                    // For blogs, show HTML code in a copyable text area
+                    copyButton = '<button onclick="copyBlogHTML(\'' + piece.id + '\')" style="background: #4eb155; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 10px; cursor: pointer;">Copy HTML Code</button>';
+                    preview = '<textarea id="blog-html-' + piece.id + '" style="width: 100%; height: 200px; font-family: monospace; font-size: 11px;" readonly>' + piece.content + '</textarea>';
+                } else if (piece.content.includes('<')) {
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = piece.content;
                     const textContent = tempDiv.textContent || tempDiv.innerText || '';
                     preview = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
                 }
-                
+        
                 let badges = '';
                 if (piece.content_type.includes('blog')) {
                     badges += '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
@@ -1862,10 +1946,18 @@ def index():
                 if (piece.ai_provider === 'claude') {
                     badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">AI-POWERED</span>';
                 }
-                
-                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4><p style="color: #666; margin: 10px 0;">' + preview + '</p><small style="color: #999;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
+        
+                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4><div style="margin: 10px 0;">' + preview + '</div>' + copyButton + '<small style="color: #999; display: block; margin-top: 10px;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
                 contentGrid.appendChild(contentCard);
             });
+        }
+
+        function copyBlogHTML(blogId) {
+            const textarea = document.getElementById('blog-html-' + blogId);
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            alert('Blog HTML copied to clipboard! Ready to paste into Shopify.');
         }
         
         checkAPIStatus();
@@ -1886,23 +1978,21 @@ def check_claude_status():
 
 @app.route('/api/generate-weekly-content', methods=['POST'])
 def generate_weekly_content():
-    """Generate a complete week of content with holiday awareness and enhanced daily blogs"""
+    """Generate content for a single day instead of full week"""
     data = request.json
     
     try:
-        week_start_str = data.get('week_start_date')
-        if not week_start_str:
+        date_str = data.get('week_start_date')
+        if not date_str:
             return jsonify({
                 'success': False,
                 'error': 'week_start_date is required (YYYY-MM-DD format)'
             }), 400
         
-        week_start_date = datetime.strptime(week_start_str, '%Y-%m-%d')
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d')
         
-        if week_start_date.weekday() != 0:
-            week_start_date = week_start_date - timedelta(days=week_start_date.weekday())
-        
-        result = content_generator.generate_weekly_content(week_start_date)
+        # Generate content for just the selected day
+        result = content_generator.generate_single_day_content(selected_date)
         
         return jsonify(result)
         
@@ -1912,7 +2002,7 @@ def generate_weekly_content():
             'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
         }), 400
     except Exception as e:
-        logger.error(f"Error generating weekly content: {str(e)}")
+        logger.error(f"Error generating daily content: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
