@@ -1039,27 +1039,28 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         
                     
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
-    """Generate comprehensive blog content with proper structure"""
+        """Generate comprehensive blog content with proper structure"""
     
         # Generate season-specific intro
         season_intros = {
-            'spring': f"Spring has arrived, and it's time to awaken your garden from its winter slumber! As any experienced gardener knows, successful {season} gardening starts with understanding your soil's needs and preparing for the growing season ahead.",
-            'summer': f"Summer gardening brings both opportunities and challenges. The key to thriving plants during the hottest months lies in smart soil management and understanding how to support your garden through heat stress.",
-            'fall': f"Fall is nature's time for preparation and reflection. Smart gardeners use this season to build soil health and set the foundation for next year's incredible growing season.",
-            'winter': f"Winter might seem quiet in the garden, but it's actually the perfect time for planning, soil building, and nurturing your indoor plants while dreaming of spring."
+            'spring': "Spring has arrived, and it's time to awaken your garden from its winter slumber! As any experienced gardener knows, successful spring gardening starts with understanding your soil's needs and preparing for the growing season ahead.",
+            'summer': "Summer gardening brings both opportunities and challenges. The key to thriving plants during the hottest months lies in smart soil management and understanding how to support your garden through heat stress.",
+            'fall': "Fall is nature's time for preparation and reflection. Smart gardeners use this season to build soil health and set the foundation for next year's incredible growing season.",
+            'winter': "Winter might seem quiet in the garden, but it's actually the perfect time for planning, soil building, and nurturing your indoor plants while dreaming of spring."
         }
     
-        intro = season_intros.get(season, f"Every season in the garden teaches us something new about working with nature's rhythms and building healthy, productive growing spaces.")
+        intro = season_intros.get(season, "Every season in the garden teaches us something new about working with nature's rhythms and building healthy, productive growing spaces.")
     
-        return f"""<p>{intro}</p>
+        # Use triple quotes and .format() to avoid f-string quote issues
+        content_template = '''<p>{intro}</p>
 
-<p>Whether you're a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>
+<p>Whether you are a seasoned gardener or just beginning your {season} gardening journey, this comprehensive guide will provide you with proven strategies, expert insights, and practical techniques that make the difference between a struggling garden and a thriving ecosystem.</p>
 
 <div class="pull-quote">
     "The health of your plants is a direct reflection of the health of your soil ecosystem."
 </div>
 
-<h2>Understanding {season.title()} Garden Fundamentals</h2>
+<h2>Understanding {season_title} Garden Fundamentals</h2>
 
 <p>Every season presents unique opportunities and challenges for home gardeners. During {season}, your plants have specific environmental needs that must be met for optimal growth, health, and productivity.</p>
 
@@ -1073,7 +1074,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 <li><strong>Harvest timing optimization</strong> for peak nutrition and flavor</li>
 </ul>
 
-<h2>Building Living Soil: The Foundation of {season.title()} Success</h2>
+<h2>Building Living Soil: The Foundation of {season_title} Success</h2>
 
 <p>The secret to any thriving garden lies beneath the surface in the complex ecosystem of living soil. <strong>Healthy, biologically active soil provides the stable foundation</strong> that supports vigorous plant growth, natural pest resistance, and abundant harvests.</p>
 
@@ -1093,7 +1094,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
     <p>Our premium blend combines worm castings, biochar, sea kelp meal, aged bat guano, and volcanic azomite to create a complete, living soil ecosystem that supports optimal plant health from the ground up. Perfect for {season} soil building.</p>
 </div>
 
-<h2>Organic {season.title()} Management Strategies</h2>
+<h2>Organic {season_title} Management Strategies</h2>
 
 <p>Implementing proven organic gardening practices during {season} helps build long-term soil health while producing safe, nutritious food for your family.</p>
 
@@ -1110,7 +1111,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
     <p>Our micronutrient and probiotic formula provides over 250 beneficial microorganisms that work continuously to break down organic matter and make nutrients available when plants need them most. Ideal for {season} feeding schedules.</p>
 </div>
 
-<h2>Essential {season.title()} Maintenance Schedule</h2>
+<h2>Essential {season_title} Maintenance Schedule</h2>
 
 <p>Consistent attention to key maintenance tasks throughout {season} ensures your garden continues to thrive and produce at its maximum potential.</p>
 
@@ -1137,7 +1138,7 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
     <p>Specially formulated for flowering and fruiting plants, Bloom Juice provides the phosphorus, calcium, and micronutrients needed for abundant {season} blooms and harvests.</p>
 </div>
 
-<h2>Troubleshooting Common {season.title()} Challenges</h2>
+<h2>Troubleshooting Common {season_title} Challenges</h2>
 
 <p>Every gardener faces challenges, but understanding common {season} issues helps you respond quickly and effectively.</p>
 
@@ -1149,14 +1150,20 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
 
 <p>The best defense against garden problems is creating conditions where plants can thrive naturally. Strong, healthy plants grown in living soil resist many common issues.</p>
 
-<h2>Your Path to {season.title()} Garden Success</h2>
+<h2>Your Path to {season_title} Garden Success</h2>
 
-<p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, and gardeners work together in harmony. By focusing on soil health first and implementing organic practices, you'll create a garden that produces abundantly this {season} and continues to improve year after year.</p>
+<p><strong>Success in {season} gardening comes from understanding that healthy gardens are living ecosystems</strong> where soil organisms, plants, and gardeners work together in harmony. By focusing on soil health first and implementing organic practices, you will create a garden that produces abundantly this {season} and continues to improve year after year.</p>
 
-<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes. Remember, every small step toward organic, sustainable gardening practices contributes to both your family's health and environmental stewardship.</p>
+<p>The investment you make in building soil health will pay dividends not just this {season}, but for many seasons to come as your garden ecosystem matures and flourishes. Remember, every small step toward organic, sustainable gardening practices contributes to both your family health and environmental stewardship.</p>
 
-<p>Start with one improvement this week - whether it's adding organic matter to your soil, switching to organic fertilizers, or simply observing your garden more closely. Your plants will respond positively, and you'll gain confidence in your ability to work with nature rather than against it.</p>"""
-
+<p>Start with one improvement this week - whether it is adding organic matter to your soil, switching to organic fertilizers, or simply observing your garden more closely. Your plants will respond positively, and you will gain confidence in your ability to work with nature rather than against it.</p>'''
+    
+        return content_template.format(
+            intro=intro,
+            season=season,
+            season_title=season.title()
+        )
+    
     def _extract_meta_title(self, content, original_title):
         """Extract or generate SEO-optimized meta title"""
         if '<title>' in content:
