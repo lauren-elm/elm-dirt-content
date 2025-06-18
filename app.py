@@ -2005,9 +2005,9 @@ def index():
                         <button class="generate-btn" id="social-btn" onclick="generateSocialContent()">
                             🚀 Generate Social Media Content (8 pieces)
                         </button>
-                        <button class="generate-btn" onclick="testFunction()">
-                            🧪 Test Button
-                        </button>
+                       <button class="generate-btn" id="blog-btn" onclick="generateBlogContent()" style="background: linear-gradient(135deg, #843648, #6d2a3a);">
+                           📝 Generate Enhanced Blog Post (HTML)
+                       </button>
 
                     </div>
                 </div>
@@ -2052,15 +2052,6 @@ def index():
             dateInput.value = monday.toISOString().split('T')[0];
         }
 
-       // Add this temporarily for testing - right before </script>
-console.log('JavaScript loaded successfully');
-console.log('generateSocialContent defined:', typeof generateSocialContent);
-console.log('generateBlogContent defined:', typeof generateBlogContent);
-
-// Test function
-function testFunction() {
-    alert('Test function works!');
-}
 
         async function generateSocialContent() {
             const dateInput = document.getElementById('week-date');
@@ -2333,6 +2324,13 @@ function testFunction() {
         
         checkAPIStatus();
         setDefaultDate();
+
+        // Make functions globally accessible
+        window.generateSocialContent = generateSocialContent;
+        window.generateBlogContent = generateBlogContent;
+        window.testFunction = testFunction;
+        window.displayBlogContent = displayBlogContent;
+        window.copyBlogHTML = copyBlogHTML;
     </script>
 </body>
 </html>'''
