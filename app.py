@@ -1846,4 +1846,31 @@ def index():
             contentPieces.slice(0, 6).forEach(piece => {
                 const contentCard = document.createElement('div');
                 contentCard.className = 'content-card';
+                
+                let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
+                if (piece.platform === 'blog' && piece.content.includes('<')) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = piece.content;
+                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                    preview = textContent.length > 200 ? textContent.substring(0, 200) + '...' : textContent;
+                }
+                
+                let badges = '';
+                if (piece.content_type.includes('blog')) {
+                    badges += '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
+                }
+                if (piece.ai_provider === 'claude') {
+                    badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">AI-POWERED</span>';
+                }
+                
+                contentCard.innerHTML = '<h4>' + piece.title + badges + '</h4><p style="color: #666; margin: 10px 0;">' + preview + '</p><small style="color: #999;">Platform: ' + piece.platform + ' • Scheduled: ' + new Date(piece.scheduled_time).toLocaleString() + '</small>';
+                contentGrid.appendChild(contentCard);
+            });
+        }
+        
+        checkAPIStatus();
+        setDefaultDate();
+    </script>
+</body>
+</html>'''
                 # Complete Enhanced Elm Dirt Content Automation Platform
