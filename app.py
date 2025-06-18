@@ -2535,14 +2535,16 @@ def not_found(error):
             '/api/test-enhanced-blog',
             '/api/preview-enhanced-blog',
             '/api/blog-analytics/<week_id>',
-            '/api/content/<content_id>'
+            '/api/content/<content_id>',
+            '/api/export-content'
         ]
     }), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors"""
-    logger.error(f"Internal server error: {str(error)}")
+    error_message = str(error)
+    logger.error("Internal server error: " + error_message)
     return jsonify({
         'success': False,
         'error': 'Internal server error',
