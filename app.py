@@ -783,6 +783,105 @@ class ContentGenerator:
                 'success': False,
                 'error': str(e)
             }
+
+    def generate_social_only_content(self, selected_date: datetime) -> Dict:
+        """Generate only social media content (fast)"""
+        try:
+            day_id = f"social_{selected_date.strftime('%Y_%m_%d')}"
+            season = self.holiday_manager.get_seasonal_focus(selected_date)
+            holidays = self.holiday_manager.get_week_holidays(selected_date)
+            theme = self.holiday_manager.get_week_theme(selected_date)
+        
+            logger.info(f"Generating social-only content for {selected_date.strftime('%Y-%m-%d')}")
+        
+            social_content = []
+            day_name = selected_date.strftime('%A')
+        
+            # Create a dummy blog post for context (not returned)
+            dummy_blog = ContentPiece(
+                id="dummy",
+                title=f"{day_name} Garden Focus",
+                content="Garden content",
+                platform="blog",
+                content_type="reference",
+                status=ContentStatus.DRAFT,
+                scheduled_time=selected_date,
+                keywords=self._get_seasonal_keywords(season)[:3],
+                hashtags=[],
+                image_suggestion="",
+                ai_provider="reference",
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+        
+            # Generate social content package (8 pieces)
+            social_package = self._generate_daily_content_package(
+                date=selected_date,
+                day_name=day_name,
+                season=season,
+                theme=theme,
+                holidays=holidays,
+                week_id=day_id,
+                blog_post=dummy_blog
+            )
+            social_content.extend(social_package)
+        
+            return {
+                'success': True,
+                'day_id': day_id,
+                'selected_date': selected_date.isoformat(),
+                'season': season,
+                'theme': theme,
+                'content_pieces': len(social_content),
+                'content_breakdown': self._get_content_breakdown(social_content),
+                'content': [self._content_piece_to_dict(cp) for cp in social_content]
+            }
+        
+        except Exception as e:
+            logger.error(f"Error generating social content: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def generate_blog_only_content(self, selected_date: datetime) -> Dict:
+        """Generate only blog content (can take longer)"""
+        try:
+            day_id = f"blog_{selected_date.strftime('%Y_%m_%d')}"
+            season = self.holiday_manager.get_seasonal_focus(selected_date)
+            holidays = self.holiday_manager.get_week_holidays(selected_date)
+            theme = self.holiday_manager.get_week_theme(selected_date)
+        
+            logger.info(f"Generating blog-only content for {selected_date.strftime('%Y-%m-%d')}")
+        
+            day_name = selected_date.strftime('%A')
+        
+            # Generate enhanced blog post with more time allowed
+            blog_post = self._generate_daily_blog_post(
+                date=selected_date,
+                day_name=day_name,
+                season=season,
+                theme=theme,
+                holidays=holidays,
+                week_id=day_id
+            )
+        
+            return {
+                'success': True,
+                'day_id': day_id,
+                'selected_date': selected_date.isoformat(),
+                'season': season,
+                'theme': theme,
+                'blog_post': self._content_piece_to_dict(blog_post)
+            }
+        
+        except Exception as e:
+            logger.error(f"Error generating blog content: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
     
     def _generate_daily_blog_post(self, date: datetime, day_name: str, season: str, 
                                   theme: str, holidays: List, week_id: str) -> ContentPiece:
@@ -1896,13 +1995,23 @@ def index():
                 <strong>🔄 Checking API Status...</strong> Verifying Claude API connection...
             </div>
             <div class="calendar-section">
-                <h2 class="section-title">📅 Weekly Content Generator</h2>
+                <h2 class="section-title">📅 Daily Content Generator</h2>
                 <div class="calendar-controls">
                     <div class="week-selector">
-                        <label for="week-date">Select Week (Monday):</label>
+                        <label for="week-date">Select Date:</label>
                         <input type="date" id="week-date" />
                     </div>
-                    <button class="generate-btn" id="generate-btn" onclick="generateWeeklyContent()">Generate 56 Pieces of Enhanced Content</button>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="generate-btn" id="social-btn" onclick="generateSocialContent()">
+                            🚀 Generate Social Media Content (8 pieces)
+                        </button>
+                        <button class="generate-btn" id="blog-btn" onclick="generateBlogContent()" style="background: linear-gradient(135deg, #843648, #6d2a3a);">
+                            📝 Generate Enhanced Blog Post (HTML)
+                        </button>
+                    </div>
+                </div>
+                <div class="info-box" style="background: #e8f4fd; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #4eb155;">
+                    <strong>💡 Pro Tip:</strong> Generate social media content first (fast), then create your blog post separately (allows for longer, higher-quality generation).
                 </div>
             </div>
             <div class="content-preview" id="content-preview" style="display: none;">
@@ -1941,6 +2050,137 @@ def index():
             const dateInput = document.getElementById('week-date');
             dateInput.value = monday.toISOString().split('T')[0];
         }
+
+
+        async function generateSocialContent() {
+    const dateInput = document.getElementById('week-date');
+    const socialBtn = document.getElementById('social-btn');
+    const contentPreview = document.getElementById('content-preview');
+    const contentGrid = document.getElementById('content-grid');
+    
+    if (!dateInput.value) { 
+        alert('Please select a date'); 
+        return; 
+    }
+    
+    socialBtn.disabled = true;
+    socialBtn.textContent = '🔄 Generating Social Content...';
+    contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating social media content...</p><p>Instagram, Facebook, TikTok, LinkedIn posts</p><p>This should take 10-15 seconds</p></div>';
+    contentPreview.style.display = 'block';
+    
+    try {
+        const response = await fetch('/api/generate-social-content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selected_date: dateInput.value })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            displayContent(result.content, result.content_breakdown);
+            contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Successfully generated ' + result.content_pieces + ' social media posts!<br><strong>Platforms:</strong> Instagram, Facebook, TikTok, LinkedIn, YouTube<br><strong>Ready for:</strong> Social media scheduling and posting.</div>');
+        } else {
+            throw new Error(result.error || 'Failed to generate social content');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        contentGrid.innerHTML = '<div class="error-message">❌ Error generating social content: ' + error.message + '</div>';
+    } finally {
+        socialBtn.disabled = false;
+        socialBtn.textContent = '🚀 Generate Social Media Content (8 pieces)';
+    }
+}
+
+async function generateBlogContent() {
+    const dateInput = document.getElementById('week-date');
+    const blogBtn = document.getElementById('blog-btn');
+    const contentPreview = document.getElementById('content-preview');
+    const contentGrid = document.getElementById('content-grid');
+    
+    if (!dateInput.value) { 
+        alert('Please select a date'); 
+        return; 
+    }
+    
+    blogBtn.disabled = true;
+    blogBtn.textContent = '🔄 Generating Enhanced Blog...';
+    
+    // Add blog-specific loading message
+    const blogLoadingDiv = document.createElement('div');
+    blogLoadingDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating enhanced HTML blog post...</p><p>Using Claude AI for high-quality content</p><p>This may take 30-60 seconds for best results</p></div>';
+    contentGrid.appendChild(blogLoadingDiv);
+    contentPreview.style.display = 'block';
+    
+    try {
+        const response = await fetch('/api/generate-blog-content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selected_date: dateInput.value })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            // Remove loading message
+            contentGrid.removeChild(blogLoadingDiv);
+            
+            // Add blog-specific display
+            displayBlogContent(result.blog_post);
+            contentGrid.insertAdjacentHTML('afterbegin', '<div class="success-message">✅ Enhanced blog post generated!<br><strong>Features:</strong> ' + (result.blog_post.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template') + ', SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ' + (result.blog_post.word_count || 'Unknown') + ' words</div>');
+        } else {
+            throw new Error(result.error || 'Failed to generate blog content');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        contentGrid.removeChild(blogLoadingDiv);
+        contentGrid.innerHTML = '<div class="error-message">❌ Error generating blog: ' + error.message + '</div>';
+    } finally {
+        blogBtn.disabled = false;
+        blogBtn.textContent = '📝 Generate Enhanced Blog Post (HTML)';
+    }
+}
+
+function displayBlogContent(blogPost) {
+    const contentGrid = document.getElementById('content-grid');
+    
+    const blogCard = document.createElement('div');
+    blogCard.className = 'content-card';
+    blogCard.style.gridColumn = '1 / -1'; // Full width
+    
+    const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
+    
+    let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
+    if (blogPost.ai_provider === 'claude') {
+        badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
+    }
+    
+    blogCard.innerHTML = `
+        <h3>${blogPost.title} ${badges}</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+            <div>
+                <h4>📖 Blog Preview</h4>
+                <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
+            </div>
+            
+            <div>
+                <h4>📋 HTML Code (Copy to Shopify)</h4>
+                <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                <button onclick="copyBlogHTML('${blogId}')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>
+            </div>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+            <strong>📊 Blog Details:</strong><br>
+            Platform: ${blogPost.platform} • 
+            Word Count: ${blogPost.word_count || 'Unknown'} • 
+            Reading Time: ${blogPost.reading_time || 'Unknown'} • 
+            AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
+            Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
+        </div>
+    `;
+    
+    contentGrid.appendChild(blogCard);
+}
         
         async function generateWeeklyContent() {
             const dateInput = document.getElementById('week-date');
@@ -2124,6 +2364,70 @@ def generate_weekly_content():
         }), 400
     except Exception as e:
         logger.error(f"Error generating daily content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/generate-social-content', methods=['POST'])
+def generate_social_content():
+    """Generate only social media content (fast)"""
+    data = request.json
+    
+    try:
+        date_str = data.get('selected_date')
+        if not date_str:
+            return jsonify({
+                'success': False,
+                'error': 'selected_date is required (YYYY-MM-DD format)'
+            }), 400
+        
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        
+        # Generate only social content (no blog)
+        result = content_generator.generate_social_only_content(selected_date)
+        
+        return jsonify(result)
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error generating social content: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/generate-blog-content', methods=['POST'])
+def generate_blog_content():
+    """Generate only blog content (can take longer)"""
+    data = request.json
+    
+    try:
+        date_str = data.get('selected_date')
+        if not date_str:
+            return jsonify({
+                'success': False,
+                'error': 'selected_date is required (YYYY-MM-DD format)'
+            }), 400
+        
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        
+        # Generate only blog content
+        result = content_generator.generate_blog_only_content(selected_date)
+        
+        return jsonify(result)
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
+        }), 400
+    except Exception as e:
+        logger.error(f"Error generating blog content: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
