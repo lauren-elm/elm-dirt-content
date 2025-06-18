@@ -972,8 +972,8 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         schema_markup = self._generate_blog_schema(title, content_body, season, keywords)
         keywords_str = ', '.join(keywords) if isinstance(keywords, list) else str(keywords)
     
-         # Build the HTML using string concatenation to avoid f-string CSS issues
-         html_template = """<!DOCTYPE html>
+        # Use triple quotes and avoid any CSS that might confuse Python
+        html_content = '''<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -982,179 +982,61 @@ FORMAT: Return complete HTML document starting with <!DOCTYPE html> and includin
         <meta name="description" content="{meta_description}">
         <meta name="keywords" content="{keywords_str}">
     
-        <!-- Open Graph / Facebook -->
-        <meta property="og:type" content="article">
-        <meta property="og:title" content="{meta_title}">
-        <meta property="og:description" content="{meta_description}">
-        <meta property="og:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
-    
-        <!-- Twitter -->
-        <meta property="twitter:card" content="summary_large_image">
-        <meta property="twitter:title" content="{meta_title}">
-        <meta property="twitter:description" content="{meta_description}">
-        <meta property="twitter:image" content="https://cdn.shopify.com/s/files/1/0463/8261/2640/files/elm-dirt-blog-hero.jpg">
-    
         <style>
-            :root {
-                --primary-green: #114817;
-                --secondary-green: #4eb155;
-                --light-green: #c9d393;
-                --dark-green: #0a2b0d;
-                --accent-gold: #fec962;
-                --earth-brown: #3a2313;
-                --text-color: #333333;
-                --background-color: #ffffff;
-                --light-background: #f9f7f5;
-            }
-
-            body {
-                font-family: 'Poppins', sans-serif;
-                color: var(--text-color);
-                line-height: 1.6;
-                margin: 0;
-                padding: 0;
-                background-color: var(--background-color);
-            }
-
-            .container {
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 0 20px;
-            }
-
-            .blog-header {
-                text-align: center;
-                padding: 60px 20px;
-                background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
-                margin-bottom: 40px;
-                border-radius: 0 0 20px 20px;
-            }
-
-            .blog-header h1 {
-                font-size: 2.8rem;
-                color: var(--primary-green);
-                margin-bottom: 20px;
-                font-weight: 700;
-            }
-
-            .main-content {
-                max-width: 800px;
-                margin: 0 auto;
-            }
-
-            h2 {
-                color: var(--primary-green);
-                font-size: 2.2rem;
-                margin-top: 50px;
-                margin-bottom: 25px;
-                padding-bottom: 15px;
-                border-bottom: 3px solid var(--light-green);
-            }
-
-            h3 {
-                color: var(--dark-green);
-                font-size: 2rem;
-                margin-top: 35px;
-                margin-bottom: 20px;
-            }
-
-            p {
-                margin-bottom: 20px;
-                font-size: 1.8rem;
-            }
-
-            ul, ol {
-                margin-bottom: 25px;
-                padding-left: 25px;
-            }
-
-            li {
-                margin-bottom: 12px;
-            }
-
-            .pull-quote {
-                font-size: 1.6rem;
-                color: var(--primary-green);
-                font-style: italic;
-                font-weight: 500;
-                padding: 25px 45px;
-                border-left: 5px solid var(--accent-gold);
-                margin: 40px 0;
-                background: var(--light-background);
-                border-radius: 0 15px 15px 0;
-            }
-
-            .product-highlight {
-                background: linear-gradient(135deg, var(--light-green) 0%, #e8f4e0 100%);
-                padding: 25px;
-                border-radius: 15px;
-                margin: 35px 0;
-                border: 1px solid rgba(17, 72, 23, 0.1);
-            }
-
-            .product-highlight h4 {
-                margin-top: 0;
-                color: var(--primary-green);
-                font-size: 1.6rem;
-            }
-
-            .cta-box {
-                background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
-                color: white;
-                padding: 40px;
-                border-radius: 15px;
-                text-align: center;
-                margin: 50px 0;
-            }
-
-            .cta-button {
-                display: inline-block;
-                background: var(--accent-gold);
-                color: var(--dark-green);
-                padding: 15px 30px;
-                text-decoration: none;
-                border-radius: 8px;
-                font-weight: 600;
-                margin-top: 20px;
-            }
-
-            strong {
-                color: var(--primary-green);
-                font-weight: 600;
-            }
-
-            @media (max-width: 768px) {
-                .blog-header h1 {
-                    font-size: 2.2rem;
-                }
-            }
+            body {{ font-family: Poppins, sans-serif; margin: 0; padding: 20px; background: #f9f7f5; color: #333; line-height: 1.6; }}
+            .container {{ max-width: 1000px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
+            .blog-header {{ text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #c9d393, #e8f4e0); margin: -30px -30px 40px -30px; border-radius: 15px 15px 0 0; }}
+            .blog-header h1 {{ font-size: 2.5rem; color: #114817; margin-bottom: 15px; font-weight: 700; }}
+            h2 {{ color: #114817; font-size: 1.8rem; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #4eb155; }}
+            h3 {{ color: #0a2b0d; font-size: 1.4rem; margin-top: 30px; margin-bottom: 15px; }}
+            p {{ margin-bottom: 18px; font-size: 1.05rem; }}
+            ul, ol {{ margin-bottom: 20px; padding-left: 25px; }}
+            li {{ margin-bottom: 10px; }}
+            .pull-quote {{ font-size: 1.2rem; color: #114817; font-style: italic; font-weight: 500; padding: 20px 35px; border-left: 4px solid #fec962; margin: 30px 0; background: #f9f7f5; border-radius: 0 10px 10px 0; }}
+            .product-highlight {{ background: linear-gradient(135deg, #c9d393, #e8f4e0); padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid rgba(17, 72, 23, 0.1); }}
+            .product-highlight h4 {{ margin-top: 0; color: #114817; font-size: 1.2rem; }}
+            .cta-box {{ background: linear-gradient(135deg, #114817, #0a2b0d); color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 40px 0; }}
+            .cta-button {{ display: inline-block; background: #fec962; color: #3a2313; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 15px; }}
+            strong {{ color: #114817; font-weight: 600; }}
+            @media (max-width: 768px) {{ .blog-header h1 {{ font-size: 2rem; }} }}
         </style>
 
         <script type="application/ld+json">
-        """ + schema_markup + """
+        {schema_markup}
         </script>
     </head>
     <body>
         <div class="container">
             <div class="blog-header">
-                <h1>""" + title + """</h1>
-                <p>Expert gardening advice for """ + season + """ success with organic methods and sustainable practices</p>
+                <h1>{title}</h1>
+                <p>Expert gardening advice for {season} success with organic methods and sustainable practices</p>
             </div>
 
             <div class="main-content">
-                """ + content_body + """
+                {content_body}
             
                 <div class="cta-box">
-                    <h3>Ready to Transform Your """ + season.title() + """ Garden?</h3>
-                    <p>Explore our complete line of organic soil amendments and plant nutrition products designed for """ + season + """ gardening success.</p>
-                    <a href="/collections/soil-mixes" class="cta-button">Shop """ + season.title() + """ Solutions</a>
+                    <h3>Ready to Transform Your {season_title} Garden?</h3>
+                    <p>Explore our complete line of organic soil amendments and plant nutrition products designed for {season} gardening success.</p>
+                    <a href="/collections/soil-amendments" class="cta-button">Shop {season_title} Solutions</a>
                 </div>
             </div>
         </div>
     </body>
-    </html>"""
-         
-        return html_template
+    </html>'''
+   
+        # Use format() instead of f-strings to avoid CSS parsing issues
+        return html_content.format(
+            meta_title=meta_title,
+            meta_description=meta_description,
+            keywords_str=keywords_str,
+            schema_markup=schema_markup,
+            title=title,
+            season=season,
+            season_title=season.title(),
+            content_body=content_body
+        )    
+        
                     
     def _generate_comprehensive_blog_content(self, title, season, holiday_context, keywords):
     """Generate comprehensive blog content with proper structure"""
