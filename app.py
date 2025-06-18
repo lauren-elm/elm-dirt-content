@@ -531,7 +531,7 @@ class ClaudeAPIClient:
             'anthropic-version': '2023-06-01'
         }
     
-    def generate_content(self, prompt: str, max_tokens: int = 4000) -> str:
+    def generate_content(self, prompt: str, max_tokens: int = 6000) -> str:
         """Generate content using Claude API with better error handling"""
         try:
             payload = {
@@ -547,7 +547,7 @@ class ClaudeAPIClient:
                 self.api_url,
                 headers=self.headers,
                 json=payload,
-                timeout=60  # Increased timeout for longer content
+                timeout=120  # Increased timeout for longer content
             )
         
             if response.status_code == 200:
