@@ -874,6 +874,13 @@ HTML STRUCTURE REQUIREMENTS:
 - Add JSON-LD schema markup for SEO
 - Responsive design
 
+CONTENT FOCUS:
+- Expert {season} gardening advice for home gardeners
+- Organic soil health and plant nutrition
+- Practical, actionable tips
+- Regional considerations for {season}
+- Problem-solving common {season} challenges
+
 CRITICAL INSTRUCTIONS:
 1. Create the COMPLETE HTML document from <!DOCTYPE html> to </html>
 2. Do NOT stop mid-generation or ask "would you like me to continue"
@@ -886,7 +893,7 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
 
         try:
             if self.claude_client:
-                # Try with even higher token limit
+                # Use maximum token limit
                 blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
             
                 if blog_response:
