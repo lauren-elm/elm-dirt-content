@@ -2322,13 +2322,15 @@ def index():
             }, 3000);
         }
         
-        checkAPIStatus();
-        setDefaultDate();
-
-        // Add event listeners when DOM is ready
+        // Wait for DOM to be ready before doing anything
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, attaching event listeners');
+            console.log('DOM loaded, starting initialization...');
             
+            // Now it's safe to call these functions
+            checkAPIStatus();
+            setDefaultDate();
+            
+            // Attach event listeners
             const socialBtn = document.getElementById('social-btn');
             const blogBtn = document.getElementById('blog-btn');
             
