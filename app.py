@@ -2346,7 +2346,10 @@ def generate_blog_content():
     data = request.json
     
     try:
+        logger.info("=== BLOG GENERATION START ===")
         date_str = data.get('selected_date')
+        logger.info(f"Date received: {date_str}")
+        
         if not date_str:
             return jsonify({
                 'success': False,
@@ -2354,19 +2357,20 @@ def generate_blog_content():
             }), 400
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        logger.info(f"Date parsed successfully: {selected_date}")
         
         # Generate only blog content
+        logger.info("Starting content generation...")
         result = content_generator.generate_blog_only_content(selected_date)
+        logger.info(f"Content generation completed. Success: {result.get('success')}")
         
         return jsonify(result)
         
-    except ValueError as e:
-        return jsonify({
-            'success': False,
-            'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
-        }), 400
     except Exception as e:
-        logger.error(f"Error generating blog content: {str(e)}")
+        logger.error(f"Error in blog generation route: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'error': str(e)
