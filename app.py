@@ -972,6 +972,9 @@ HTML STRUCTURE REQUIREMENTS:
 - Add product highlight boxes for Elm Dirt products
 - Add JSON-LD schema markup for SEO
 - Responsive design
+- Add product highlight boxes for Elm Dirt products with links
+- Include image placeholders with detailed descriptions
+- Add call-to-action sections linking to product pages
 
 CONTENT FOCUS:
 - Expert {season} gardening advice for home gardeners
@@ -979,6 +982,18 @@ CONTENT FOCUS:
 - Practical, actionable tips
 - Regional considerations for {season}
 - Problem-solving common {season} challenges
+
+PRODUCT INTEGRATION:
+- Mention Ancient Soil for soil building sections
+- Reference Plant Juice for nutrition sections  
+- Include Bloom Juice for flowering/fruiting content
+- Add Worm Castings for soil health topics
+- Link to relevant product pages: /products/ancient-soil, /products/plant-juice, etc.
+
+IMAGE REQUIREMENTS:
+- Include 3-5 image placeholders with detailed alt text
+- Specify image placement and descriptions
+- Include suggested dimensions and style
 
 CRITICAL INSTRUCTIONS:
 1. Create the COMPLETE HTML document from <!DOCTYPE html> to </html>
@@ -2245,10 +2260,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
                 Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
             </div>
+
+            // Add this after the blog details section
+           if (blogPost.image_suggestions && blogPost.image_suggestions.length > 0) {
+              blogCard.innerHTML += `
+                  <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                    <strong>📷 Image Suggestions:</strong><br>
+                    ${blogPost.image_suggestions.map(img => `
+                         <div style="margin: 10px 0; padding: 10px; border-left: 3px solid #fec962;">
+                             <strong>${img.position}:</strong> ${img.description}<br>
+                             <small>Alt text: ${img.alt_text} | Size: ${img.size}</small>
+                         </div>
+                      `).join('')}
+                  </div>
+         `;
+     }
         `;
     
         contentGrid.appendChild(blogCard);
     }
+
 
    // Add copy function
    function copyToClipboard(textareaId) {
