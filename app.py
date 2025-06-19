@@ -939,25 +939,25 @@ class ContentGenerator:
         return content_piece
 
     def _create_image_placeholder(self, position, description, alt_text, size='800x600px'):
-    """Create a simple image placeholder with Shopify-ready code"""
+        """Create a simple image placeholder with Shopify-ready code"""
     
-    placeholder_html = f'''<div class="image-container" style="margin: 25px 0;">
-    <!-- IMAGE PLACEHOLDER: Replace with actual image in Shopify -->
-    <div class="image-placeholder" style="background: linear-gradient(135deg, #c9d393, #d7c4b5); border: 2px dashed #114817; border-radius: 10px; padding: 20px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-size: 2rem; margin-bottom: 10px; color: #114817;">📸</div>
-        <p style="color: #114817; margin: 5px 0; font-weight: bold;">{position.replace('_', ' ').title()} Image</p>
-        <p style="color: #0a2b0d; margin: 5px 0; font-size: 0.9rem;">{description}</p>
-        <p style="color: #666; margin: 5px 0; font-size: 0.8rem;">Size: {size} | Alt: {alt_text}</p>
-    </div>
-    <!-- SHOPIFY CODE: Uncomment and add your image filename
-    <img src="{{{{ 'your-image-filename.jpg' | asset_url }}}}" 
-         alt="{alt_text}" 
-         style="width: 100%; max-width: 800px; height: auto; border-radius: 10px; margin: 25px 0;"
-         loading="lazy" />
-    -->
-</div>'''
+        placeholder_html = f'''<div class="image-container" style="margin: 25px 0;">
+        <!-- IMAGE PLACEHOLDER: Replace with actual image in Shopify -->
+        <div class="image-placeholder" style="background: linear-gradient(135deg, #c9d393, #d7c4b5); border: 2px dashed #114817; border-radius: 10px; padding: 20px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 2rem; margin-bottom: 10px; color: #114817;">📸</div>
+            <p style="color: #114817; margin: 5px 0; font-weight: bold;">{position.replace('_', ' ').title()} Image</p>
+            <p style="color: #0a2b0d; margin: 5px 0; font-size: 0.9rem;">{description}</p>
+            <p style="color: #666; margin: 5px 0; font-size: 0.8rem;">Size: {size} | Alt: {alt_text}</p>
+        </div>
+        <!-- SHOPIFY CODE: Uncomment and add your image filename
+        <img src="{{{{ 'your-image-filename.jpg' | asset_url }}}}" 
+             alt="{alt_text}" 
+             style="width: 100%; max-width: 800px; height: auto; border-radius: 10px; margin: 25px 0;"
+             loading="lazy" />
+        -->
+    </div>'''
     
-    return placeholder_html
+        return placeholder_html
     
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
         """Generate enhanced blog with Claude AI using the project prompt"""
