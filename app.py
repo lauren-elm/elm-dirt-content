@@ -2102,7 +2102,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ selected_date: dateInput.value })
             });
             const result = await response.json();
+            // Add these debug logs
             console.log('Blog content result:', result);
+            console.log('Blog post content length:', result.blog_post?.content?.length);
+            console.log('AI provider:', result.blog_post?.ai_provider);
+            console.log('Word count:', result.blog_post?.word_count);
             if (result.success) {
                 displayBlogContent(result.blog_post);
             } else {
