@@ -2073,7 +2073,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const result = await response.json();
             console.log('Social content result:', result);
-            alert('Social content generated successfully!');
+            if (result.success) {
+               displayContent(result.content, result.content_breakdown);
+            } else {
+               alert('Error: ' + result.error);
+            }
         } catch (error) {
             console.error('Error:', error);
             alert('Error generating social content: ' + error.message);
@@ -2099,11 +2103,85 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const result = await response.json();
             console.log('Blog content result:', result);
-            alert('Blog content generated successfully!');
+            if (result.success) {
+                displayBlogContent(result.blog_post);
+            } else {
+               alert('Error: ' + result.error);
+            }
         } catch (error) {
             console.error('Error:', error);
             alert('Error generating blog content: ' + error.message);
         }
+    }
+
+    // Display content function
+    function displayContent(contentPieces, contentBreakdown) {
+        const contentGrid = document.getElementById('content-grid');
+        const contentPreview = document.getElementById('content-preview');
+        
+        // Show the content preview section
+        contentPreview.style.display = 'block';
+        
+        // Clear existing content
+        contentGrid.innerHTML = '';
+        
+        // Add success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.innerHTML = '✅ Successfully generated ' + contentPieces.length + ' pieces of content!';
+        contentGrid.appendChild(successDiv);
+        
+        // Display each content piece
+        contentPieces.forEach(piece => {
+            const contentCard = document.createElement('div');
+            contentCard.className = 'content-card';
+            
+            let preview = piece.content.length > 200 ? piece.content.substring(0, 200) + '...' : piece.content;
+            
+            contentCard.innerHTML = `
+                <h4>${piece.title}</h4>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${preview}</pre>
+                </div>
+                <small>Platform: ${piece.platform} • Type: ${piece.content_type}</small>
+            `;
+            
+            contentGrid.appendChild(contentCard);
+        });
+    }
+    
+    // Display blog content function
+    function displayBlogContent(blogPost) {
+        const contentGrid = document.getElementById('content-grid');
+        const contentPreview = document.getElementById('content-preview');
+        
+        // Show the content preview section
+        contentPreview.style.display = 'block';
+        
+        // Clear existing content
+        contentGrid.innerHTML = '';
+        
+        const blogCard = document.createElement('div');
+        blogCard.className = 'content-card';
+        blogCard.style.gridColumn = '1 / -1';
+        
+        const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
+        
+        blogCard.innerHTML = `
+            <h3>${blogPost.title}</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                <div>
+                    <h4>📖 Blog Preview</h4>
+                    <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
+                </div>
+                <div>
+                    <h4>📋 HTML Code</h4>
+                    <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                </div>
+            </div>
+        `;
+        
+        contentGrid.appendChild(blogCard);
     }
     
     // Initialize everything
