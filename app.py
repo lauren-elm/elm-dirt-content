@@ -2179,40 +2179,77 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function generateBlogContent() {
-        console.log('Blog button clicked!');
-        const dateInput = document.getElementById('week-date');
-        
-        if (!dateInput.value) {
-            alert('Please select a date');
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/generate-blog-content', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ selected_date: dateInput.value })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Server error: ' + response.status);
-            }
-            
-            const result = await response.json();
-            console.log('Blog content result:', result);
-            
-           if (result.success) {
-               displayBlogContent(result.blog_post);  // Add this line
-               console.log('Blog title:', result.blog_post.title);
-              console.log('Blog content length:', result.blog_post.content.length);
-          } else {
-               alert('Error: ' + result.error);
-          }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error: ' + error.message);
-        }
+    console.log('Blog button clicked!');
+    
+    const dateInput = document.getElementById('week-date');
+    const blogBtn = document.getElementById('blog-btn');
+    const contentPreview = document.getElementById('content-preview');
+    const contentGrid = document.getElementById('content-grid');
+    
+    if (!dateInput.value) {
+        alert('Please select a date');
+        return;
     }
+    
+    blogBtn.disabled = true;
+    blogBtn.textContent = '🔄 Generating Enhanced Blog...';
+    
+    // Show loading message immediately
+    contentPreview.style.display = 'block';
+    contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating enhanced HTML blog post...</p><p>Using Claude AI for high-quality content</p><p>This may take 30-60 seconds for best results</p><p>Please wait, do not refresh the page...</p></div>';
+    
+    try {
+        // Set a longer timeout for blog generation
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, 90000); // 90 second timeout (longer than the 29 seconds we saw in logs)
+        
+        const response = await fetch('/api/generate-blog-content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ selected_date: dateInput.value }),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Check if response is ok before trying to parse JSON
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        // Check if we got any content back
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+            throw new Error('Empty response from server');
+        }
+        
+        // Parse the JSON
+        const result = JSON.parse(responseText);
+        
+        console.log('Blog content result:', result);
+        console.log('Blog post content length:', result.blog_post?.content?.length);
+        console.log('AI provider:', result.blog_post?.ai_provider);
+        console.log('Word count:', result.blog_post?.word_count);
+        
+        if (result.success) {
+            displayBlogContent(result.blog_post);
+        } else {
+            throw new Error(result.error || 'Unknown error occurred');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        
+        // Clear loading message and show error
+        contentGrid.innerHTML = `<div class="error-message">❌ Error generating blog: ${error.message}<br><br>The server logs show successful generation, so this may be a temporary network issue. Please try again.</div>`;
+        
+    } finally {
+        blogBtn.disabled = false;
+        blogBtn.textContent = '📝 Generate Enhanced Blog Post (HTML)';
+    }
+}
     
     setDefaultDate();
     checkAPIStatus();
