@@ -2202,12 +2202,12 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Blog content result:', result);
             
            if (result.success) {
-    displayBlogContent(result.blog_post);  // Add this line
-    console.log('Blog title:', result.blog_post.title);
-    console.log('Blog content length:', result.blog_post.content.length);
-} else {
-    alert('Error: ' + result.error);
-}
+               displayBlogContent(result.blog_post);  // Add this line
+               console.log('Blog title:', result.blog_post.title);
+              console.log('Blog content length:', result.blog_post.content.length);
+          } else {
+               alert('Error: ' + result.error);
+          }
         } catch (error) {
             console.error('Error:', error);
             alert('Error: ' + error.message);
