@@ -2158,34 +2158,89 @@ document.addEventListener('DOMContentLoaded', function() {
     function displayBlogContent(blogPost) {
         const contentGrid = document.getElementById('content-grid');
         const contentPreview = document.getElementById('content-preview');
-        
+    
         // Show the content preview section
         contentPreview.style.display = 'block';
-        
-        // Clear existing content
+    
+       // Clear existing content
         contentGrid.innerHTML = '';
-        
+    
+        // Add success message first
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.innerHTML = `✅ Enhanced blog post generated!<br><strong>Features:</strong> ${blogPost.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template'}, SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ${blogPost.word_count || 'Unknown'} words`;
+        contentGrid.appendChild(successDiv);
+    
         const blogCard = document.createElement('div');
         blogCard.className = 'content-card';
         blogCard.style.gridColumn = '1 / -1';
-        
+    
         const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
-        
+    
+       let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
+       if (blogPost.ai_provider === 'claude') {
+            badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
+        }
+    
         blogCard.innerHTML = `
-            <h3>${blogPost.title}</h3>
+            <h3>${blogPost.title} ${badges}</h3>
+        
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
                 <div>
                     <h4>📖 Blog Preview</h4>
                     <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
                 </div>
                 <div>
-                    <h4>📋 HTML Code</h4>
+                    <h4>📋 HTML Code (Copy to Shopify)</h4>
                     <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+                    <button onclick="copyToClipboard('${blogId}')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>
                 </div>
             </div>
-        `;
         
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                <strong>📊 Blog Details:</strong><br>
+                Platform: ${blogPost.platform} • 
+                Word Count: ${blogPost.word_count || 'Unknown'} • 
+                Reading Time: ${blogPost.reading_time || 'Unknown'} • 
+                AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
+                Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
+            </div>
+        `;
+    
         contentGrid.appendChild(blogCard);
+    }
+
+   // Add copy function
+   function copyToClipboard(textareaId) {
+        const textarea = document.getElementById(textareaId);
+        if (textarea) {
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+        
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(textarea.value).then(() => {
+                        showCopySuccess();
+                    });
+                } else {
+                    document.execCommand('copy');
+                    showCopySuccess();
+                }
+            } catch (err) {
+                alert('Copy failed. Please manually select and copy the HTML code.');
+            }
+        }
+    }
+
+    function showCopySuccess() {
+        const successMsg = document.createElement('div');
+        successMsg.innerHTML = '✅ HTML copied to clipboard! Ready to paste into Shopify.';
+        successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #d1e7dd; color: #0f5132; padding: 15px; border-radius: 5px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1);';
+        document.body.appendChild(successMsg);
+
+        setTimeout(() => {
+            document.body.removeChild(successMsg);
+        }, 3000);
     }
     
     // Initialize everything
