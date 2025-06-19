@@ -2211,74 +2211,52 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Display blog content function
     function displayBlogContent(blogPost) {
-        const contentGrid = document.getElementById('content-grid');
-        const contentPreview = document.getElementById('content-preview');
+    const contentGrid = document.getElementById('content-grid');
+    const contentPreview = document.getElementById('content-preview');
     
-        // Show the content preview section
-        contentPreview.style.display = 'block';
+    contentPreview.style.display = 'block';
+    contentGrid.innerHTML = '';
     
-       // Clear existing content
-        contentGrid.innerHTML = '';
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-message';
+    successDiv.innerHTML = '✅ Enhanced blog post generated!<br><strong>Features:</strong> ' + (blogPost.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template') + ', SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ' + (blogPost.word_count || 'Unknown') + ' words';
+    contentGrid.appendChild(successDiv);
     
-        // Add success message first
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success-message';
-        successDiv.innerHTML = `✅ Enhanced blog post generated!<br><strong>Features:</strong> ${blogPost.ai_provider === 'claude' ? 'Claude AI generated' : 'Enhanced template'}, SEO optimized, HTML ready for Shopify<br><strong>Word count:</strong> ${blogPost.word_count || 'Unknown'} words`;
-        contentGrid.appendChild(successDiv);
+    const blogCard = document.createElement('div');
+    blogCard.className = 'content-card';
+    blogCard.style.gridColumn = '1 / -1';
     
-        const blogCard = document.createElement('div');
-        blogCard.className = 'content-card';
-        blogCard.style.gridColumn = '1 / -1';
+    const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
     
-        const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
-    
-       let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
-       if (blogPost.ai_provider === 'claude') {
-            badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
-        }
-    
-        blogCard.innerHTML = `
-            <h3>${blogPost.title} ${badges}</h3>
-        
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
-                <div>
-                    <h4>📖 Blog Preview</h4>
-                    <iframe srcdoc="${blogPost.content.replace(/"/g, '&quot;')}" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>
-                </div>
-                <div>
-                    <h4>📋 HTML Code (Copy to Shopify)</h4>
-                    <textarea id="${blogId}" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>${blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
-                    <button onclick="copyToClipboard('${blogId}')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>
-                </div>
-            </div>
-        
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                <strong>📊 Blog Details:</strong><br>
-                Platform: ${blogPost.platform} • 
-                Word Count: ${blogPost.word_count || 'Unknown'} • 
-                Reading Time: ${blogPost.reading_time || 'Unknown'} • 
-                AI Provider: ${blogPost.ai_provider || 'Unknown'}<br>
-                Scheduled: ${new Date(blogPost.scheduled_time).toLocaleString()}
-            </div>
-
-            // Add this after the blog details section
-           if (blogPost.image_suggestions && blogPost.image_suggestions.length > 0) {
-              blogCard.innerHTML += `
-                  <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                    <strong>📷 Image Suggestions:</strong><br>
-                    ${blogPost.image_suggestions.map(img => `
-                         <div style="margin: 10px 0; padding: 10px; border-left: 3px solid #fec962;">
-                             <strong>${img.position}:</strong> ${img.description}<br>
-                             <small>Alt text: ${img.alt_text} | Size: ${img.size}</small>
-                         </div>
-                      `).join('')}
-                  </div>
-         `;
-     }
-        `;
-    
-        contentGrid.appendChild(blogCard);
+    let badges = '<span style="background: #843648; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">ENHANCED BLOG</span>';
+    if (blogPost.ai_provider === 'claude') {
+        badges += '<span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 0.5rem;">CLAUDE AI</span>';
     }
+    
+    blogCard.innerHTML = 
+        '<h3>' + blogPost.title + ' ' + badges + '</h3>' +
+        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">' +
+            '<div>' +
+                '<h4>📖 Blog Preview</h4>' +
+                '<iframe srcdoc="' + blogPost.content.replace(/"/g, '&quot;') + '" width="100%" height="400" style="border: 1px solid #ddd; border-radius: 5px;"></iframe>' +
+            '</div>' +
+            '<div>' +
+                '<h4>📋 HTML Code (Copy to Shopify)</h4>' +
+                '<textarea id="' + blogId + '" style="width: 100%; height: 400px; font-family: monospace; font-size: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px;" readonly>' + blogPost.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</textarea>' +
+                '<button onclick="copyToClipboard(\'' + blogId + '\')" style="background: #4eb155; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">📋 Copy HTML to Clipboard</button>' +
+            '</div>' +
+        '</div>' +
+        '<div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">' +
+            '<strong>📊 Blog Details:</strong><br>' +
+            'Platform: ' + blogPost.platform + ' • ' +
+            'Word Count: ' + (blogPost.word_count || 'Unknown') + ' • ' +
+            'Reading Time: ' + (blogPost.reading_time || 'Unknown') + ' • ' +
+            'AI Provider: ' + (blogPost.ai_provider || 'Unknown') + '<br>' +
+            'Scheduled: ' + new Date(blogPost.scheduled_time).toLocaleString() +
+        '</div>';
+    
+    contentGrid.appendChild(blogCard);
+}
 
 
    // Add copy function
