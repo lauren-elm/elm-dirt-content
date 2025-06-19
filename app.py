@@ -2039,6 +2039,93 @@ def index():
    <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded successfully');
+
+    function displayBlogContent(blogPost) {
+        const contentGrid = document.getElementById('content-grid');
+        const contentPreview = document.getElementById('content-preview');
+        
+        // Show the content preview section
+        contentPreview.style.display = 'block';
+        
+        // Clear existing content
+        contentGrid.innerHTML = '';
+        
+        // Add success message
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.innerHTML = 'Enhanced blog post generated! Word count: ' + (blogPost.word_count || 'Unknown') + ' words';
+        contentGrid.appendChild(successDiv);
+        
+        // Create blog display card
+        const blogCard = document.createElement('div');
+        blogCard.className = 'content-card';
+        blogCard.style.gridColumn = '1 / -1';
+        
+        const blogId = 'blog-' + Math.random().toString(36).substr(2, 9);
+        
+        // Build the content safely using createElement
+        const titleDiv = document.createElement('div');
+        titleDiv.innerHTML = '<h3>' + blogPost.title + ' <span style="background: #4eb155; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem;">CLAUDE AI</span></h3>';
+        
+        const gridDiv = document.createElement('div');
+        gridDiv.style.display = 'grid';
+        gridDiv.style.gridTemplateColumns = '1fr 1fr';
+        gridDiv.style.gap = '20px';
+        gridDiv.style.margin = '20px 0';
+        
+        // Preview section
+        const previewDiv = document.createElement('div');
+        previewDiv.innerHTML = '<h4>Blog Preview</h4>';
+        const iframe = document.createElement('iframe');
+        iframe.srcdoc = blogPost.content;
+        iframe.width = '100%';
+        iframe.height = '400';
+        iframe.style.border = '1px solid #ddd';
+        iframe.style.borderRadius = '5px';
+        previewDiv.appendChild(iframe);
+        
+        // HTML code section
+        const codeDiv = document.createElement('div');
+        codeDiv.innerHTML = '<h4>HTML Code (Copy to Shopify)</h4>';
+        const textarea = document.createElement('textarea');
+        textarea.id = blogId;
+        textarea.value = blogPost.content;
+        textarea.readOnly = true;
+        textarea.style.width = '100%';
+        textarea.style.height = '400px';
+        textarea.style.fontFamily = 'monospace';
+        textarea.style.fontSize = '10px';
+        textarea.style.border = '1px solid #ddd';
+        textarea.style.borderRadius = '5px';
+        textarea.style.padding = '10px';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copy HTML to Clipboard';
+        copyBtn.style.background = '#4eb155';
+        copyBtn.style.color = 'white';
+        copyBtn.style.border = 'none';
+        copyBtn.style.padding = '10px 20px';
+        copyBtn.style.borderRadius = '5px';
+        copyBtn.style.cursor = 'pointer';
+        copyBtn.style.fontWeight = 'bold';
+        copyBtn.style.marginTop = '10px';
+        copyBtn.style.width = '100%';
+        copyBtn.onclick = function() {
+            textarea.select();
+            document.execCommand('copy');
+            alert('HTML copied to clipboard!');
+        };
+        
+        codeDiv.appendChild(textarea);
+        codeDiv.appendChild(copyBtn);
+        
+        gridDiv.appendChild(previewDiv);
+        gridDiv.appendChild(codeDiv);
+        
+        blogCard.appendChild(titleDiv);
+        blogCard.appendChild(gridDiv);
+        contentGrid.appendChild(blogCard);
+    }
     
     function setDefaultDate() {
         const today = new Date();
@@ -2114,13 +2201,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             console.log('Blog content result:', result);
             
-            if (result.success) {
-                alert('Blog generated! Check console for details.');
-                console.log('Blog title:', result.blog_post.title);
-                console.log('Blog content length:', result.blog_post.content.length);
-            } else {
-                alert('Error: ' + result.error);
-            }
+           if (result.success) {
+    displayBlogContent(result.blog_post);  // Add this line
+    console.log('Blog title:', result.blog_post.title);
+    console.log('Blog content length:', result.blog_post.content.length);
+} else {
+    alert('Error: ' + result.error);
+}
         } catch (error) {
             console.error('Error:', error);
             alert('Error: ' + error.message);
