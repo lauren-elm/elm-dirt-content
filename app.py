@@ -2179,7 +2179,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
         // Show loading immediately
         contentPreview.style.display = 'block';
-        contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating social media content...</p><p>Creating posts for Instagram, Facebook, TikTok, and LinkedIn</p></div>';
+        contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating social media content...</p></div>';
     
         try {
             const response = await fetch('/api/generate-social-content', {
@@ -2187,6 +2187,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ selected_date: dateInput.value })
             });
+        
+            if (!response.ok) {
+                throw new Error('Server responded with status: ' + response.status);
+            }
+        
             const result = await response.json();
         
             if (result.success) {
@@ -2196,7 +2201,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Error:', error);
-            contentGrid.innerHTML = `<div class="error-message">❌ Error generating social content: ${error.message}</div>`;
+            contentGrid.innerHTML = '<div class="error-message">❌ Error generating social content: ' + error.message + '</div>';
         } finally {
             socialBtn.disabled = false;
             socialBtn.textContent = originalText;
@@ -2212,110 +2217,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add success message
         const successDiv = document.createElement('div');
         successDiv.className = 'success-message';
-        successDiv.innerHTML = `✅ Generated ${result.content_pieces} social media posts for ${result.selected_date}`;
+        successDiv.textContent = 'Generated ' + result.content_pieces + ' social media posts for ' + result.selected_date;
         contentGrid.appendChild(successDiv);
     
-        // Group content by platform
-        const contentByPlatform = {};
-        result.content.forEach(content => {
-            const platform = content.platform;
-            if (!contentByPlatform[platform]) {
-                contentByPlatform[platform] = [];
+        // Simple list display for now
+        result.content.forEach(function(post, index) {
+            const postCard = document.createElement('div');
+            postCard.className = 'content-card';
+        
+            const postTitle = document.createElement('h4');
+            postTitle.textContent = post.platform.toUpperCase() + ' - ' + post.title;
+            postCard.appendChild(postTitle);
+        
+            const postContent = document.createElement('div');
+            postContent.style.cssText = 'background: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; margin: 10px 0;';
+            postContent.textContent = post.content;
+            postCard.appendChild(postContent);
+        
+            if (post.hashtags && post.hashtags.length > 0) {
+                const hashtags = document.createElement('div');
+                hashtags.style.cssText = 'color: #4eb155; font-weight: bold; margin-top: 10px;';
+                hashtags.textContent = '#' + post.hashtags.join(' #');
+                postCard.appendChild(hashtags);
             }
-            contentByPlatform[platform].push(content);
-        });
-    
-        // Display each platform's content
-        Object.keys(contentByPlatform).forEach(platform => {
-            const platformCard = document.createElement('div');
-            platformCard.className = 'content-card';
         
-            const platformIcon = {
-                'instagram': '📸',
-                'facebook': '👥', 
-                'tiktok': '🎵',
-                'linkedin': '💼'
-            };
-        
-            const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
-            const posts = contentByPlatform[platform];
-        
-            // Create header
-            const headerDiv = document.createElement('div');
-            headerDiv.innerHTML = `<h3>${platformIcon[platform] || '📱'} ${platformName} (${posts.length} posts)</h3>`;
-            platformCard.appendChild(headerDiv);
-        
-            // Create posts container
-            const postsContainer = document.createElement('div');
-            postsContainer.className = 'platform-posts';
-        
-            posts.forEach((post, index) => {
-                const postDiv = document.createElement('div');
-                postDiv.className = 'social-post';
-                postDiv.style.cssText = 'background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0;';
-            
-                // Post header
-                const postHeader = document.createElement('div');
-                postHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e9ecef; padding-bottom: 8px;';
-                postHeader.innerHTML = `
-                    <strong>Post ${index + 1}</strong>
-                    <span style="font-size: 0.8rem; color: #666;">${new Date(post.scheduled_time).toLocaleTimeString()}</span>
-                `;
-                postDiv.appendChild(postHeader);
-            
-                // Post content
-                const postContent = document.createElement('div');
-                postContent.style.cssText = 'white-space: pre-wrap; margin-bottom: 10px; line-height: 1.4;';
-                postContent.textContent = post.content; // Use textContent to avoid HTML injection
-                postDiv.appendChild(postContent);
-            
-                // Hashtags
-                if (post.hashtags && post.hashtags.length > 0) {
-                    const hashtagsDiv = document.createElement('div');
-                    hashtagsDiv.style.cssText = 'color: #4eb155; font-weight: bold; font-family: monospace; font-size: 0.9rem;';
-                    hashtagsDiv.textContent = '#' + post.hashtags.join(' #');
-                    postDiv.appendChild(hashtagsDiv);
-                }
-            
-                // Image suggestion
-                if (post.image_suggestion) {
-                    const imageDiv = document.createElement('div');
-                    imageDiv.style.cssText = 'background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem; font-style: italic;';
-                    imageDiv.innerHTML = '<strong>📷 Image:</strong> ' + post.image_suggestion;
-                    postDiv.appendChild(imageDiv);
-                }
-            
-                // Copy button
-                const copyBtn = document.createElement('button');
-                copyBtn.textContent = 'Copy Post';
-                copyBtn.style.cssText = 'background: #4eb155; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 0.8rem;';
-                copyBtn.onclick = function() {
-                    const textToCopy = post.content + (post.hashtags && post.hashtags.length > 0 ? '\n\n#' + post.hashtags.join(' #') : '');
-                    navigator.clipboard.writeText(textToCopy).then(function() {
-                        copyBtn.textContent = '✅ Copied!';
-                        copyBtn.style.background = '#198754';
-                        setTimeout(() => {
-                            copyBtn.textContent = 'Copy Post';
-                            copyBtn.style.background = '#4eb155';
-                        }, 2000);
-                    }).catch(function() {
-                        // Fallback for older browsers
-                        const textarea = document.createElement('textarea');
-                        textarea.value = textToCopy;
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textarea);
-                        copyBtn.textContent = '✅ Copied!';
-                    });
-                };
-                postDiv.appendChild(copyBtn);
-            
-                postsContainer.appendChild(postDiv);
-            });
-        
-            platformCard.appendChild(postsContainer);
-            contentGrid.appendChild(platformCard);
+            contentGrid.appendChild(postCard);
         });
     }
     
