@@ -793,34 +793,34 @@ class ContentGenerator:
 
     def generate_social_only_content(self, selected_date: datetime) -> Dict:
         """Generate only social media content (fast)"""
+        day_id = f"social_{selected_date.strftime('%Y_%m_%d')}"
+        season = self.holiday_manager.get_seasonal_focus(selected_date)
+        holidays = self.holiday_manager.get_week_holidays(selected_date)
+        theme = self.holiday_manager.get_week_theme(selected_date)
+        day_name = selected_date.strftime('%A')
+
+        logger.info(f"Generating social-only content for {selected_date.strftime('%Y-%m-%d')}")
+
+        # Create dummy blog post first (outside try block)
+        dummy_blog = ContentPiece(
+            id="dummy",
+            title=f"{day_name} Garden Focus",
+            content="Garden content",
+            platform="blog",
+            content_type="reference",
+            status=ContentStatus.DRAFT,
+            scheduled_time=selected_date,
+            keywords=self._get_seasonal_keywords(season)[:3],
+            hashtags=[],
+            image_suggestion="",
+            ai_provider="reference",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
         try:
-            day_id = f"social_{selected_date.strftime('%Y_%m_%d')}"
-            season = self.holiday_manager.get_seasonal_focus(selected_date)
-            holidays = self.holiday_manager.get_week_holidays(selected_date)
-            theme = self.holiday_manager.get_week_theme(selected_date)
-        
-            logger.info(f"Generating social-only content for {selected_date.strftime('%Y-%m-%d')}")
-        
             social_content = []
-            day_name = selected_date.strftime('%A')
-        
-            # Create a dummy blog post for context (not returned)
-            dummy_blog = ContentPiece(
-                id="dummy",
-                title=f"{day_name} Garden Focus",
-                content="Garden content",
-                platform="blog",
-                content_type="reference",
-                status=ContentStatus.DRAFT,
-                scheduled_time=selected_date,
-                keywords=self._get_seasonal_keywords(season)[:3],
-                hashtags=[],
-                image_suggestion="",
-                ai_provider="reference",
-                created_at=datetime.now(),
-                updated_at=datetime.now()
-            )
-        
+
             # Generate social content package (8 pieces)
             social_package = self._generate_daily_content_package(
                 date=selected_date,
@@ -833,11 +833,7 @@ class ContentGenerator:
             )
             social_content.extend(social_package)
             logger.info(f"Generated {len(social_content)} social content pieces")
-            
-            except Exception as e:
-                logger.error(f"Error in _generate_daily_content_package: {str(e)}")
-                raise e
-            
+
             return {
                 'success': True,
                 'day_id': day_id,
@@ -848,7 +844,7 @@ class ContentGenerator:
                 'content_breakdown': self._get_content_breakdown(social_content),
                 'content': [self._content_piece_to_dict(cp) for cp in social_content]
             }
-        
+
         except Exception as e:
             logger.error(f"Error generating social content: {str(e)}")
             return {
