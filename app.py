@@ -1082,35 +1082,35 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
             return None
 
     def _inject_image_placeholders_into_claude_response(self, html_content, season, title):
-    """Inject image placeholders into Claude-generated HTML if they're missing"""
+        """Inject image placeholders into Claude-generated HTML if they're missing"""
     
-    # Check if Claude already included image placeholders
-    if 'image-placeholder' in html_content:
-        return html_content  # Claude included them, return as-is
+        # Check if Claude already included image placeholders
+        if 'image-placeholder' in html_content:
+            return html_content  # Claude included them, return as-is
     
-    # Simple, fast injection - just add one hero image after the first </div>
-    try:
-        # Find first </div> and inject hero image
-        first_div_close = html_content.find('</div>')
-        if first_div_close != -1:
-            hero_image = self._create_image_placeholder(
-                "hero", 
-                f"Wide shot of a thriving {season} garden showcasing healthy plants and rich soil",
-                f"{title} - {season} gardening guide"
-            )
+        # Simple, fast injection - just add one hero image after the first </div>
+        try:
+            # Find first </div> and inject hero image
+            first_div_close = html_content.find('</div>')
+            if first_div_close != -1:
+                hero_image = self._create_image_placeholder(
+                    "hero", 
+                    f"Wide shot of a thriving {season} garden showcasing healthy plants and rich soil",
+                    f"{title} - {season} gardening guide"
+                )
             
-            # Insert hero image after first </div>
-            before = html_content[:first_div_close + 6]  # Include </div>
-            after = html_content[first_div_close + 6:]
+                # Insert hero image after first </div>
+                before = html_content[:first_div_close + 6]  # Include </div>
+                after = html_content[first_div_close + 6:]
             
-            return before + '\n\n' + hero_image + '\n\n' + after
+                return before + '\n\n' + hero_image + '\n\n' + after
         
-        # If no </div> found, just return original content
-        return html_content
+            # If no </div> found, just return original content
+            return html_content
         
-    except Exception as e:
-        logger.error(f"Error injecting images: {str(e)}")
-        return html_content  # Return original on any error
+        except Exception as e:
+            logger.error(f"Error injecting images: {str(e)}")
+            return html_content  # Return original on any error
     
     def _parse_claude_blog_response(self, claude_response, original_title, season, keywords):
         """Parse Claude response and extract components"""
