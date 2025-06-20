@@ -938,31 +938,11 @@ class ContentGenerator:
         self.db_manager.save_enhanced_content_piece(content_piece)
         return content_piece
 
-    def _create_image_placeholder(self, position, description, alt_text, size='800x600px'):
-        """Create a simple image placeholder with Shopify-ready code"""
-    
-        placeholder_html = f'''<div class="image-container" style="margin: 25px 0;">
-        <!-- IMAGE PLACEHOLDER: Replace with actual image in Shopify -->
-        <div class="image-placeholder" style="background: linear-gradient(135deg, #c9d393, #d7c4b5); border: 2px dashed #114817; border-radius: 10px; padding: 20px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center;">
-            <div style="font-size: 2rem; margin-bottom: 10px; color: #114817;">📸</div>
-            <p style="color: #114817; margin: 5px 0; font-weight: bold;">{position.replace('_', ' ').title()} Image</p>
-            <p style="color: #0a2b0d; margin: 5px 0; font-size: 0.9rem;">{description}</p>
-            <p style="color: #666; margin: 5px 0; font-size: 0.8rem;">Size: {size} | Alt: {alt_text}</p>
-        </div>
-        <!-- SHOPIFY CODE: Uncomment and add your image filename
-        <img src="{{{{ 'your-image-filename.jpg' | asset_url }}}}" 
-             alt="{alt_text}" 
-             style="width: 100%; max-width: 800px; height: auto; border-radius: 10px; margin: 25px 0;"
-             loading="lazy" />
-        -->
-    </div>'''
-    
-        return placeholder_html
     
     def _generate_blog_with_claude(self, blog_title, keywords, season, holiday_context):
         """Generate enhanced blog with Claude AI using the project prompt"""
     
-        prompt = f"""Generate an SEO-optimized blog article in HTML for the title '{blog_title}'. Generate the ENTIRE HTML document in one response without stopping or asking for continuation.
+        prompt = f"""Generate an SEO-optimized blog article in HTML for the title '{blog_title}'. Generate the ENTIRE HTML document in one response without stopping or asking for continuation. Put in image placeholders and suggest what images to use with this blog post.
 
 CONTEXT:
 - Season: {season}
@@ -1080,53 +1060,20 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
         except Exception as e:
             logger.error(f"Error fixing HTML: {str(e)}")
             return None
-
-    def _inject_image_placeholders_into_claude_response(self, html_content, season, title):
-        """Inject image placeholders into Claude-generated HTML if they're missing"""
-    
-        # Check if Claude already included image placeholders
-        if 'image-placeholder' in html_content:
-            return html_content  # Claude included them, return as-is
-    
-        # Simple, fast injection - just add one hero image after the first </div>
-        try:
-            # Find first </div> and inject hero image
-            first_div_close = html_content.find('</div>')
-            if first_div_close != -1:
-                hero_image = self._create_image_placeholder(
-                    "hero", 
-                    f"Wide shot of a thriving {season} garden showcasing healthy plants and rich soil",
-                    f"{title} - {season} gardening guide"
-                )
-            
-                # Insert hero image after first </div>
-                before = html_content[:first_div_close + 6]  # Include </div>
-                after = html_content[first_div_close + 6:]
-            
-                return before + '\n\n' + hero_image + '\n\n' + after
-        
-            # If no </div> found, just return original content
-            return html_content
-        
-        except Exception as e:
-            logger.error(f"Error injecting images: {str(e)}")
-            return html_content  # Return original on any error
     
     def _parse_claude_blog_response(self, claude_response, original_title, season, keywords):
         """Parse Claude response and extract components"""
         try:
             content = claude_response.strip()
-            # Inject image placeholders if Claude didn't include them
-            content = self._inject_image_placeholders_into_claude_response(content, season, original_title)
         
             # Extract meta information
             meta_title = self._extract_meta_title(content, original_title)
             meta_description = self._extract_meta_description(content, original_title, season)
-    
+        
             # Count words (remove HTML tags for accurate count)
             text_content = re.sub(r'<[^>]+>', '', content)
             word_count = len(text_content.split())
-    
+        
             return {
                 'title': original_title,
                 'meta_title': meta_title,
@@ -1138,11 +1085,10 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
                 'word_count': word_count,
                 'reading_time': f"{word_count // 200 + 1} min read"
             }
-    
+        
         except Exception as e:
             logger.error(f"Error parsing Claude blog response: {str(e)}")
-            # Fix: Pass the season as holiday_context for fallback
-            return self._get_enhanced_fallback_blog(original_title, season, f"{season} gardening", keywords)
+            return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
 
     def _extract_schema_from_html(self, html_content):
         """Extract JSON-LD schema from HTML content"""
