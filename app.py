@@ -2240,56 +2240,83 @@ document.addEventListener('DOMContentLoaded', function() {
             const platformName = platform.charAt(0).toUpperCase() + platform.slice(1);
             const posts = contentByPlatform[platform];
         
-            platformCard.innerHTML = `
-                <h3>${platformIcon[platform] || '📱'} ${platformName} (${posts.length} posts)</h3>
-                <div class="platform-posts">
-                    ${posts.map((post, index) => `
-                        <div class="social-post" style="background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0;">
-                            <div class="post-header" style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
-                                <strong>Post ${index + 1}</strong>
-                                <span style="font-size: 0.8rem; color: #666;">${new Date(post.scheduled_time).toLocaleTimeString()}</span>
-                            </div>
-                            <div class="post-content" style="white-space: pre-wrap; margin-bottom: 10px;">${post.content}</div>
-                            ${post.hashtags && post.hashtags.length > 0 ? 
-                                `<div class="hashtags" style="color: #4eb155; font-weight: bold;">#${post.hashtags.join(' #')}</div>` : ''
-                            }
-                            ${post.image_suggestion ? 
-                                `<div class="image-suggestion" style="background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem;">
-                                    <strong>📷 Image:</strong> ${post.image_suggestion}
-                                </div>` : ''
-                            }
-                            <button onclick="copyToClipboard('${post.id}')" class="copy-btn" style="background: #4eb155; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 0.8rem;">
-                                Copy Post
-                            </button>
-                            <textarea id="${post.id}" style="display: none;">${post.content}${post.hashtags && post.hashtags.length > 0 ? '\n\n#' + post.hashtags.join(' #') : ''}</textarea>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+            // Create header
+            const headerDiv = document.createElement('div');
+            headerDiv.innerHTML = `<h3>${platformIcon[platform] || '📱'} ${platformName} (${posts.length} posts)</h3>`;
+            platformCard.appendChild(headerDiv);
         
+            // Create posts container
+            const postsContainer = document.createElement('div');
+            postsContainer.className = 'platform-posts';
+        
+            posts.forEach((post, index) => {
+                const postDiv = document.createElement('div');
+                postDiv.className = 'social-post';
+                postDiv.style.cssText = 'background: #f8f9fa; border-left: 4px solid #4eb155; padding: 15px; margin: 10px 0; border-radius: 0 8px 8px 0;';
+            
+                // Post header
+                const postHeader = document.createElement('div');
+                postHeader.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #e9ecef; padding-bottom: 8px;';
+                postHeader.innerHTML = `
+                    <strong>Post ${index + 1}</strong>
+                    <span style="font-size: 0.8rem; color: #666;">${new Date(post.scheduled_time).toLocaleTimeString()}</span>
+                `;
+                postDiv.appendChild(postHeader);
+            
+                // Post content
+                const postContent = document.createElement('div');
+                postContent.style.cssText = 'white-space: pre-wrap; margin-bottom: 10px; line-height: 1.4;';
+                postContent.textContent = post.content; // Use textContent to avoid HTML injection
+                postDiv.appendChild(postContent);
+            
+                // Hashtags
+                if (post.hashtags && post.hashtags.length > 0) {
+                    const hashtagsDiv = document.createElement('div');
+                    hashtagsDiv.style.cssText = 'color: #4eb155; font-weight: bold; font-family: monospace; font-size: 0.9rem;';
+                    hashtagsDiv.textContent = '#' + post.hashtags.join(' #');
+                    postDiv.appendChild(hashtagsDiv);
+                }
+            
+                // Image suggestion
+                if (post.image_suggestion) {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.style.cssText = 'background: #fff3cd; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 0.9rem; font-style: italic;';
+                    imageDiv.innerHTML = '<strong>📷 Image:</strong> ' + post.image_suggestion;
+                    postDiv.appendChild(imageDiv);
+                }
+            
+                // Copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.textContent = 'Copy Post';
+                copyBtn.style.cssText = 'background: #4eb155; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 8px; font-size: 0.8rem;';
+                copyBtn.onclick = function() {
+                    const textToCopy = post.content + (post.hashtags && post.hashtags.length > 0 ? '\n\n#' + post.hashtags.join(' #') : '');
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        copyBtn.textContent = '✅ Copied!';
+                        copyBtn.style.background = '#198754';
+                        setTimeout(() => {
+                            copyBtn.textContent = 'Copy Post';
+                            copyBtn.style.background = '#4eb155';
+                        }, 2000);
+                    }).catch(function() {
+                        // Fallback for older browsers
+                        const textarea = document.createElement('textarea');
+                        textarea.value = textToCopy;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        copyBtn.textContent = '✅ Copied!';
+                    });
+                };
+                postDiv.appendChild(copyBtn);
+            
+                postsContainer.appendChild(postDiv);
+            });
+        
+            platformCard.appendChild(postsContainer);
             contentGrid.appendChild(platformCard);
         });
-    }
-
-    function copyToClipboard(postId) {
-        const textarea = document.getElementById(postId);
-        if (textarea) {
-            textarea.style.display = 'block';
-            textarea.select();
-            document.execCommand('copy');
-            textarea.style.display = 'none';
-        
-            // Show feedback
-            const button = event.target;
-            const originalText = button.textContent;
-            button.textContent = '✅ Copied!';
-            button.style.background = '#198754';
-        
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.style.background = '#4eb155';
-            }, 2000);
-        }
     }
     
     async function generateBlogContent() {
