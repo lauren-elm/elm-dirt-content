@@ -536,7 +536,7 @@ class ClaudeAPIClient:
         try:
             payload = {
                 'model': 'claude-3-5-sonnet-20241022',
-                'max_tokens': min(max_tokens, 8192),  # Claude 3.5 Sonnet max is 8192
+                'max_tokens': min(max_tokens, 4000),  # Claude 3.5 Sonnet max is 8192
                 'messages': [{
                     'role': 'user',
                     'content': prompt
