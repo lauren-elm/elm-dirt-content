@@ -1003,19 +1003,19 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
 
         try:
             if self.claude_client:
-                # Use shorter timeout and smaller token limit
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
+                logger.info("Starting Claude AI generation...")
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=6000)
         
                 if blog_response and len(blog_response) > 1000:
-                logger.info(f"Claude generated {len(blog_response)} characters")
+                    logger.info(f"Claude generated {len(blog_response)} characters")
                 
-                    # Quick validation
                     if '<!DOCTYPE html>' in blog_response and '</html>' in blog_response:
+                        logger.info("Claude provided complete HTML blog!")
                         return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
                     else:
-                        logger.warning("Claude response incomplete, using fallback")
+                        logger.warning("Claude response incomplete, using enhanced fallback")
         
-            # Use fallback if Claude fails
+            logger.info("Using enhanced fallback for high-quality blog")
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
 
         except Exception as e:
