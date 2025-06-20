@@ -536,7 +536,7 @@ class ClaudeAPIClient:
         try:
             payload = {
                 'model': 'claude-3-5-sonnet-20241022',
-                'max_tokens': min(max_tokens, 4000),  # Claude 3.5 Sonnet max is 8192
+                'max_tokens': min(max_tokens, 8000),  # Claude 3.5 Sonnet max is 8192
                 'messages': [{
                     'role': 'user',
                     'content': prompt
@@ -997,7 +997,7 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
         try:
             if self.claude_client:
                 # Use shorter timeout and smaller token limit
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
         
                 if blog_response and blog_response.strip():
                     logger.info(f"Claude response received: {len(blog_response)} characters")
