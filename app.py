@@ -2403,6 +2403,11 @@ def generate_social_content():
         if result.get('success'):
             result['message'] = f"Generated {result.get('content_pieces', 0)} social media posts successfully!"
             result['breakdown_summary'] = f"Created content for {selected_date.strftime('%A, %B %d, %Y')}"
+
+        # Clean up memory after generation
+        del dummy_blog
+        del social_package
+        gc.collect()  # Force garbage collection
         
         return jsonify(result)
         
