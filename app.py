@@ -832,7 +832,12 @@ class ContentGenerator:
                 blog_post=dummy_blog
             )
             social_content.extend(social_package)
-        
+            logger.info(f"Generated {len(social_content)} social content pieces")
+            
+            except Exception as e:
+                logger.error(f"Error in _generate_daily_content_package: {str(e)}")
+                raise e
+            
             return {
                 'success': True,
                 'day_id': day_id,
@@ -2394,7 +2399,10 @@ def generate_social_content():
     data = request.json
     
     try:
+        logger.info("=== SOCIAL CONTENT GENERATION START ===")
         date_str = data.get('selected_date')
+        logger.info(f"Date received: {date_str}")
+        
         if not date_str:
             return jsonify({
                 'success': False,
@@ -2402,29 +2410,31 @@ def generate_social_content():
             }), 400
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        logger.info(f"Date parsed successfully: {selected_date}")
         
-         # Generate only social content (no blog)
+        # Generate only social content (no blog)
+        logger.info("Starting social content generation...")
         result = content_generator.generate_social_only_content(selected_date)
+        logger.info(f"Social content generation completed. Success: {result.get('success')}")
         
         # Add content count info for better feedback
         if result.get('success'):
             result['message'] = f"Generated {result.get('content_pieces', 0)} social media posts successfully!"
             result['breakdown_summary'] = f"Created content for {selected_date.strftime('%A, %B %d, %Y')}"
-
-        # Clean up memory after generation
-        del dummy_blog
-        del social_package
-        gc.collect()  # Force garbage collection
         
         return jsonify(result)
         
     except ValueError as e:
+        logger.error(f"Date parsing error: {str(e)}")
         return jsonify({
             'success': False,
             'error': f'Invalid date format. Use YYYY-MM-DD: {str(e)}'
         }), 400
     except Exception as e:
         logger.error(f"Error generating social content: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'error': str(e)
