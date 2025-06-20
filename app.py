@@ -2273,55 +2273,55 @@ document.addEventListener('DOMContentLoaded', function() {
     contentGrid.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating enhanced HTML blog post...</p><p>Using Claude AI for high-quality content</p><p>This may take 30-60 seconds for best results</p><p>Please wait, do not refresh the page...</p></div>';
     
     try {
-        // Set a longer timeout for blog generation
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-            controller.abort();
-        }, 90000); // 90 second timeout (longer than the 29 seconds we saw in logs)
-        
+        // Start generation
         const response = await fetch('/api/generate-blog-content', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ selected_date: dateInput.value }),
-            signal: controller.signal
+            body: JSON.stringify({ selected_date: dateInput.value })
         });
         
-        clearTimeout(timeoutId);
-        
-        // Check if response is ok before trying to parse JSON
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
-        
-        // Check if we got any content back
-        const responseText = await response.text();
-        if (!responseText || responseText.trim() === '') {
-            throw new Error('Empty response from server');
-        }
-        
-        // Parse the JSON
-        const result = JSON.parse(responseText);
-        
-        console.log('Blog content result:', result);
-        console.log('Blog post content length:', result.blog_post?.content?.length);
-        console.log('AI provider:', result.blog_post?.ai_provider);
-        console.log('Word count:', result.blog_post?.word_count);
+        const result = await response.json();
         
         if (result.success) {
-            displayBlogContent(result.blog_post);
+            // Start polling for status
+            pollBlogStatus(result.blog_id, contentGrid);
         } else {
-            throw new Error(result.error || 'Unknown error occurred');
+            throw new Error(result.error || 'Failed to start blog generation');
         }
         
     } catch (error) {
         console.error('Error:', error);
-        
-        // Clear loading message and show error
-        contentGrid.innerHTML = `<div class="error-message">❌ Error generating blog: ${error.message}<br><br>The server logs show successful generation, so this may be a temporary network issue. Please try again.</div>`;
-        
+        contentGrid.innerHTML = `<div class="error-message">❌ Error: ${error.message}</div>`;
     } finally {
         blogBtn.disabled = false;
         blogBtn.textContent = '📝 Generate Enhanced Blog Post (HTML)';
+    }
+}
+
+async function pollBlogStatus(blogId, contentGrid) {
+    try {
+        const response = await fetch(`/api/blog-status/${blogId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.status === 'generating') {
+                // Update progress
+                contentGrid.innerHTML = `<div class="loading"><div class="spinner"></div><p>${result.progress}</p><p>Claude AI is crafting high-quality content...</p><p>Estimated time remaining: 30-45 seconds</p></div>`;
+                
+                // Poll again in 3 seconds
+                setTimeout(() => pollBlogStatus(blogId, contentGrid), 3000);
+                
+            } else if (result.status === 'complete') {
+                // Blog is ready!
+                displayBlogContent(result.blog_post);
+                
+            } else if (result.status === 'failed') {
+                contentGrid.innerHTML = `<div class="error-message">❌ Blog generation failed: ${result.error}</div>`;
+            }
+        }
+    } catch (error) {
+        console.error('Polling error:', error);
+        contentGrid.innerHTML = `<div class="error-message">❌ Error checking status: ${error.message}</div>`;
     }
 }
     
