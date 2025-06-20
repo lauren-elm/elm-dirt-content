@@ -2440,6 +2440,14 @@ def generate_blog_content():
             }), 400
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        try:
+            conn = sqlite3.connect(Config.DB_PATH, timeout=5.0)
+            conn.close()
+            logger.info("Database connection test passed")
+        except Exception as db_error:
+            logger.warning(f"Database issue detected: {db_error}")
+        
+        
         logger.info(f"Date parsed successfully: {selected_date}")
         
         # Generate only blog content
