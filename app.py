@@ -2434,6 +2434,7 @@ def generate_social_content():
 def generate_blog_content():
     """Generate only blog content (can take longer)"""
     data = request.json
+    blog_id = None  # Define it early so it's available in except block 
     
     try:
         logger.info("=== BLOG GENERATION START ===")
@@ -2447,6 +2448,8 @@ def generate_blog_content():
             }), 400
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
+        blog_id = f"blog_{selected_date.strftime('%Y_%m_%d')}_{int(datetime.now().timestamp())}"
+        
         # Start generation status
         blog_generation_status[blog_id] = {
             'status': BlogStatus.GENERATING,
