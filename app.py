@@ -16,6 +16,13 @@ from enum import Enum
 import uuid
 import random
 
+blog_generation_status = {}
+
+class BlogStatus(Enum):
+    GENERATING = "generating"
+    COMPLETE = "complete" 
+    FAILED = "failed"
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -999,8 +1006,8 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
                 # Use shorter timeout and smaller token limit
                 blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
         
-                if blog_response and blog_response.strip():
-                    logger.info(f"Claude response received: {len(blog_response)} characters")
+                if blog_response and len(blog_response) > 1000:
+                logger.info(f"Claude generated {len(blog_response)} characters")
                 
                     # Quick validation
                     if '<!DOCTYPE html>' in blog_response and '</html>' in blog_response:
@@ -2440,24 +2447,34 @@ def generate_blog_content():
             }), 400
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
-        try:
-            conn = sqlite3.connect(Config.DB_PATH, timeout=5.0)
-            conn.close()
-            logger.info("Database connection test passed")
-        except Exception as db_error:
-            logger.warning(f"Database issue detected: {db_error}")
+        # Start generation status
+        blog_generation_status[blog_id] = {
+            'status': BlogStatus.GENERATING,
+            'progress': 'Starting Claude AI generation...',
+            'blog_post': None,
+            'error': None
+        }
         
+        # Start Claude generation in a separate thread
+        import threading
+        thread = threading.Thread(
+            target=generate_claude_blog_background,
+            args=(blog_id, selected_date)
+        )
+        thread.daemon = True
+        thread.start()
         
-        logger.info(f"Date parsed successfully: {selected_date}")
-        
-        # Generate only blog content
-        logger.info("Starting content generation...")
-        result = content_generator.generate_blog_only_content(selected_date)
-        logger.info(f"Content generation completed. Success: {result.get('success')}")
-        
-        return jsonify(result)
+        # Return immediately with status
+        return jsonify({
+            'success': True,
+            'blog_id': blog_id,
+            'status': 'generating',
+            'message': 'Claude AI is generating your high-quality blog post...',
+            'estimated_time': '45-60 seconds'
+        })
         
     except Exception as e:
+        logger.error(f"Error starting blog generation: {str(e)}")
         logger.error(f"Error in blog generation route: {str(e)}")
         logger.error(f"Exception type: {type(e).__name__}")
         import traceback
@@ -2466,6 +2483,65 @@ def generate_blog_content():
             'success': False,
             'error': str(e)
         }), 500
+
+def generate_claude_blog_background(blog_id: str, selected_date: datetime):
+    """Generate blog with Claude in background thread"""
+    try:
+        # Update status
+        blog_generation_status[blog_id]['progress'] = 'Claude AI is writing your blog...'
+        
+        day_name = selected_date.strftime('%A')
+        season = content_generator.holiday_manager.get_seasonal_focus(selected_date)
+        holidays = content_generator.holiday_manager.get_week_holidays(selected_date)
+        theme = content_generator.holiday_manager.get_week_theme(selected_date)
+        
+        # Generate the blog post with Claude
+        blog_post = content_generator._generate_daily_blog_post(
+            date=selected_date,
+            day_name=day_name,
+            season=season,
+            theme=theme,
+            holidays=holidays,
+            week_id=f"blog_{selected_date.strftime('%Y_%m_%d')}"
+        )
+        
+        # Mark as complete
+        blog_generation_status[blog_id] = {
+            'status': BlogStatus.COMPLETE,
+            'progress': 'Blog generation complete!',
+            'blog_post': content_generator._content_piece_to_dict(blog_post),
+            'error': None
+        }
+        
+        logger.info(f"Blog {blog_id} generated successfully with Claude")
+        
+    except Exception as e:
+        logger.error(f"Background blog generation failed: {str(e)}")
+        blog_generation_status[blog_id] = {
+            'status': BlogStatus.FAILED,
+            'progress': 'Generation failed',
+            'blog_post': None,
+            'error': str(e)
+        }
+
+@app.route('/api/blog-status/<blog_id>')
+def check_blog_status(blog_id):
+    """Check status of blog generation"""
+    if blog_id not in blog_generation_status:
+        return jsonify({
+            'success': False,
+            'error': 'Blog ID not found'
+        }), 404
+    
+    status_info = blog_generation_status[blog_id]
+    
+    return jsonify({
+        'success': True,
+        'status': status_info['status'].value,
+        'progress': status_info['progress'],
+        'blog_post': status_info['blog_post'],
+        'error': status_info['error']
+    })
 
 @app.route('/api/test-enhanced-blog')
 def test_enhanced_blog():
