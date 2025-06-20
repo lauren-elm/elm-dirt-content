@@ -1082,102 +1082,51 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
             return None
 
     def _inject_image_placeholders_into_claude_response(self, html_content, season, title):
-        """Inject image placeholders into Claude-generated HTML if they're missing"""
+    """Inject image placeholders into Claude-generated HTML if they're missing"""
     
-        # Check if Claude already included image placeholders
-        if 'image-placeholder' in html_content:
-            return html_content  # Claude included them, return as-is
+    # Check if Claude already included image placeholders
+    if 'image-placeholder' in html_content:
+        return html_content  # Claude included them, return as-is
     
-        # Define where to inject images based on HTML structure
-        injections = [
-            {
-                'marker': '</div>',  # After intro section
-                'placeholder': self._create_image_placeholder(
-                    "hero", 
-                    f"Wide shot of a thriving {season} garden showcasing healthy plants and rich soil",
-                    f"{title} - {season} gardening guide"
-                ),
-                'position': 'first'
-            },
-            {
-                'marker': '<h2>',  # Before second H2
-                'placeholder': self._create_image_placeholder(
-                    "soil_closeup",
-                    "Close-up of rich, dark organic soil showing texture and beneficial organisms", 
-                    "Rich organic garden soil with visible texture"
-                ),
-                'position': 'second'
-            },
-            {
-                'marker': '<h2>',  # Before third H2  
-                'placeholder': self._create_image_placeholder(
-                    "gardening_action",
-                    f"Gardener applying organic soil amendments in {season} garden",
-                    f"Organic gardening techniques for {season}"
-                ),
-                'position': 'third'
-            },
-            {
-                'marker': '<h2>',  # Before last H2
-                'placeholder': self._create_image_placeholder(
-                    "garden_results", 
-                    f"Healthy thriving {season} garden showing results of organic care",
-                    f"Successful {season} garden with organic methods"
-                ),
-                'position': 'fourth'
-            }
-        ]
-    
-        # Simple injection logic
-        h2_count = 0
-        lines = html_content.split('\n')
-        result_lines = []
-    
-        for line in lines:
-            result_lines.append(line)
+    # Simple, fast injection - just add one hero image after the first </div>
+    try:
+        # Find first </div> and inject hero image
+        first_div_close = html_content.find('</div>')
+        if first_div_close != -1:
+            hero_image = self._create_image_placeholder(
+                "hero", 
+                f"Wide shot of a thriving {season} garden showcasing healthy plants and rich soil",
+                f"{title} - {season} gardening guide"
+            )
+            
+            # Insert hero image after first </div>
+            before = html_content[:first_div_close + 6]  # Include </div>
+            after = html_content[first_div_close + 6:]
+            
+            return before + '\n\n' + hero_image + '\n\n' + after
         
-            # Inject hero image after first div close
-            if '</div>' in line and injections[0]['position'] == 'first':
-                result_lines.append('')
-                result_lines.append(injections[0]['placeholder'])
-                result_lines.append('')
-                injections[0]['position'] = 'done'
+        # If no </div> found, just return original content
+        return html_content
         
-            # Inject other images before H2 tags
-            elif '<h2>' in line:
-                h2_count += 1
-                for injection in injections[1:]:
-                    if h2_count == 2 and injection['position'] == 'second':
-                        result_lines.insert(-1, injection['placeholder'])
-                        result_lines.insert(-1, '')
-                        injection['position'] = 'done'
-                    elif h2_count == 3 and injection['position'] == 'third':
-                        result_lines.insert(-1, injection['placeholder']) 
-                        result_lines.insert(-1, '')
-                        injection['position'] = 'done'
-                    elif h2_count >= 4 and injection['position'] == 'fourth':
-                        result_lines.insert(-1, injection['placeholder'])
-                        result_lines.insert(-1, '')
-                        injection['position'] = 'done'
-    
-        return '\n'.join(result_lines)
+    except Exception as e:
+        logger.error(f"Error injecting images: {str(e)}")
+        return html_content  # Return original on any error
     
     def _parse_claude_blog_response(self, claude_response, original_title, season, keywords):
         """Parse Claude response and extract components"""
         try:
             content = claude_response.strip()
-
             # Inject image placeholders if Claude didn't include them
             content = self._inject_image_placeholders_into_claude_response(content, season, original_title)
-            
+        
             # Extract meta information
             meta_title = self._extract_meta_title(content, original_title)
             meta_description = self._extract_meta_description(content, original_title, season)
-        
+    
             # Count words (remove HTML tags for accurate count)
             text_content = re.sub(r'<[^>]+>', '', content)
             word_count = len(text_content.split())
-        
+    
             return {
                 'title': original_title,
                 'meta_title': meta_title,
@@ -1189,10 +1138,11 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
                 'word_count': word_count,
                 'reading_time': f"{word_count // 200 + 1} min read"
             }
-        
+    
         except Exception as e:
             logger.error(f"Error parsing Claude blog response: {str(e)}")
-            return self._get_enhanced_fallback_blog(original_title, season, holiday_context, keywords)
+            # Fix: Pass the season as holiday_context for fallback
+            return self._get_enhanced_fallback_blog(original_title, season, f"{season} gardening", keywords)
 
     def _extract_schema_from_html(self, html_content):
         """Extract JSON-LD schema from HTML content"""
