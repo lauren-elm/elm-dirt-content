@@ -950,7 +950,7 @@ CONTEXT:
 - Company: Elm Dirt - Premium organic soil amendments and gardening products
 - Target: Home gardeners aged 35-65 across the United States
 - Brand Products: Ancient Soil, Plant Juice, Bloom Juice, Worm Castings
-- Keywords to include naturally: {', '.join(keywords)}
+- Keywords: {', '.join(keywords)}
 
 CONTENT REQUIREMENTS:
 - 1500-2000 words minimum for comprehensive coverage
@@ -972,23 +972,11 @@ HTML STRUCTURE REQUIREMENTS:
 - Naturally mention Elm Dirt products with benefits
 - Add product highlight boxes for Elm Dirt products
 - Add JSON-LD schema markup for SEO
-- Responsive design
 - Add product highlight boxes for Elm Dirt products with links
 - Include image placeholders with detailed descriptions
 - Add call-to-action sections linking to product pages
 
-CONTENT FOCUS:
-- Expert {season} gardening advice for home gardeners
-- Organic soil health and plant nutrition
-- Practical, actionable tips
-- Regional considerations for {season}
-- Problem-solving common {season} challenges
-
 PRODUCT INTEGRATION:
-- Mention Ancient Soil for soil building sections
-- Reference Plant Juice for nutrition sections  
-- Include Bloom Juice for flowering/fruiting content
-- Add Worm Castings for soil health topics
 - Link to relevant product pages: /products/ancient-soil, /products/plant-juice, etc.
 
 IMAGE REQUIREMENTS:
@@ -1006,40 +994,25 @@ CRITICAL INSTRUCTIONS:
 
 OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and including all necessary CSS, content, and schema markup."""
 
-
         try:
             if self.claude_client:
-                # Use maximum token limit
-                blog_response = self.claude_client.generate_content(prompt, max_tokens=8000)
-            
-                if blog_response:
-                    logger.info(f"Claude response length: {len(blog_response)}")
+                # Use shorter timeout and smaller token limit
+                blog_response = self.claude_client.generate_content(prompt, max_tokens=4000)
+        
+                if blog_response and blog_response.strip():
+                    logger.info(f"Claude response received: {len(blog_response)} characters")
                 
-                    # Check for the "would you like me to continue" pattern
-                    if "would you like me to continue" in blog_response.lower() or "note:" in blog_response.lower():
-                        logger.warning("Claude asked for continuation - using fallback")
-                        return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
-                
-                    response_clean = blog_response.strip()
-                
-                    # Check if it's complete
-                    has_doctype = response_clean.startswith('<!DOCTYPE html>') or response_clean.startswith('<html>')
-                    has_closing = response_clean.endswith('</html>')
-                
-                    if has_doctype and has_closing:
-                        logger.info("Claude provided complete HTML!")
+                    # Quick validation
+                    if '<!DOCTYPE html>' in blog_response and '</html>' in blog_response:
                         return self._parse_claude_blog_response(blog_response, blog_title, season, keywords)
                     else:
-                        logger.warning(f"Claude HTML incomplete - DOCTYPE: {has_doctype}, Closing: {has_closing}")
-                        return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
-                else:
-                    logger.warning("Claude returned empty response")
-                    return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
+                        logger.warning("Claude response incomplete, using fallback")
         
+            # Use fallback if Claude fails
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
 
         except Exception as e:
-            logger.error(f"Error generating blog with Claude: {str(e)}")
+            logger.error(f"Error with Claude: {str(e)}")
             return self._get_enhanced_fallback_blog(blog_title, season, holiday_context, keywords)
 
     def _try_fix_incomplete_html(self, partial_html):
@@ -2188,15 +2161,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function generateSocialContent() {
+   async function generateSocialContent() {
         console.log('Social button clicked!');
         const dateInput = document.getElementById('week-date');
-        
+        const socialBtn = document.getElementById('social-btn');
+    
         if (!dateInput.value) {
             alert('Please select a date');
             return;
         }
-        
+    
+        const originalText = socialBtn.textContent;
+        socialBtn.disabled = true;
+        socialBtn.textContent = '🔄 Generating Social Content...';
+    
         try {
             const response = await fetch('/api/generate-social-content', {
                 method: 'POST',
@@ -2204,11 +2182,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ selected_date: dateInput.value })
             });
             const result = await response.json();
-            console.log('Social content result:', result);
-            alert('Social content generated successfully!');
+        
+            if (result.success) {
+                alert(`✅ Success! Generated ${result.content_pieces} social media posts for ${result.breakdown_summary}`);
+                console.log('Social content result:', result);
+            } else {
+                throw new Error(result.error || 'Failed to generate social content');
+            }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error: ' + error.message);
+            alert('❌ Error: ' + error.message);
+        } finally {
+            socialBtn.disabled = false;
+            socialBtn.textContent = originalText;
         }
     }
     
@@ -2363,8 +2349,13 @@ def generate_social_content():
         
         selected_date = datetime.strptime(date_str, '%Y-%m-%d')
         
-        # Generate only social content (no blog)
+         # Generate only social content (no blog)
         result = content_generator.generate_social_only_content(selected_date)
+        
+        # Add content count info for better feedback
+        if result.get('success'):
+            result['message'] = f"Generated {result.get('content_pieces', 0)} social media posts successfully!"
+            result['breakdown_summary'] = f"Created content for {selected_date.strftime('%A, %B %d, %Y')}"
         
         return jsonify(result)
         
