@@ -1734,9 +1734,9 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
              ]
          }
     
-         fallback_list = fallback_titles.get(season, fallback_titles['spring'])
-         title_index = (date.day - 1) % len(fallback_list)
-         return fallback_list[title_index]
+        fallback_list = fallback_titles.get(season, fallback_titles['spring'])
+        title_index = (date.day - 1) % len(fallback_list)
+        return fallback_list[title_index]
     
     def get_related_blog_suggestions(self, current_title: str, season: str) -> List[str]:
         """Generate related article suggestions based on current blog topic"""
