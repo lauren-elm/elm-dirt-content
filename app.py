@@ -884,7 +884,6 @@ class ContentGenerator:
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
         
-        
         # Initialize Claude API client
         if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key_here':
             self.claude_client = ClaudeAPIClient(self.config.CLAUDE_API_KEY)
@@ -893,7 +892,7 @@ class ContentGenerator:
             self.claude_client = None
             logger.info("Running in fallback mode - Claude API key not provided")
     
-    self.blog_idea_generator = BlogIdeaGenerator(self.claude_client)
+        self.blog_idea_generator = BlogIdeaGenerator(self.claude_client)
     
     def generate_weekly_content(self, week_start_date: datetime) -> Dict:
         """Generate a complete week of content including daily blog posts"""
