@@ -1681,30 +1681,30 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
     def _generate_daily_blog_title(self, date: datetime, day_name: str, season: str, theme: str, holidays: List) -> str:
         """Generate seasonally relevant blog post titles using Claude AI or curated ideas"""
         
-         # Check for holidays first (keep existing holiday logic)
-         for holiday_date, holiday_name, gardening_focus, content_theme in holidays:
-             if holiday_date.date() == date.date():
-                 return f"{holiday_name} Garden Guide: {content_theme} for {season.title()} Success"
+        # Check for holidays first (keep existing holiday logic)
+        for holiday_date, holiday_name, gardening_focus, content_theme in holidays:
+            if holiday_date.date() == date.date():
+                return f"{holiday_name} Garden Guide: {content_theme} for {season.title()} Success"
     
-         # Generate or get seasonal blog ideas
-         try:
-             seasonal_ideas = self.blog_idea_generator.generate_seasonal_blog_ideas(season, date)
+        # Generate or get seasonal blog ideas
+        try:
+            seasonal_ideas = self.blog_idea_generator.generate_seasonal_blog_ideas(season, date)
         
-             if seasonal_ideas:
-                 # Use a deterministic selection based on the date to ensure consistency
-                 # This ensures the same date always gets the same title
-                 title_index = (date.day - 1) % len(seasonal_ideas)
-                 selected_title = seasonal_ideas[title_index]
+            if seasonal_ideas:
+                # Use a deterministic selection based on the date to ensure consistency
+                # This ensures the same date always gets the same title
+                title_index = (date.day - 1) % len(seasonal_ideas)
+                selected_title = seasonal_ideas[title_index]
             
-                 logger.info(f"Selected blog title for {date.strftime('%B %d')}: {selected_title}")
-                 return selected_title
+                logger.info(f"Selected blog title for {date.strftime('%B %d')}: {selected_title}")
+                return selected_title
         
-         except Exception as e:
-             logger.error(f"Error getting seasonal blog ideas: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error getting seasonal blog ideas: {str(e)}")
     
-         # Final fallback to essential seasonal topics
-         fallback_titles = {
-             'spring': [
+        # Final fallback to essential seasonal topics
+        fallback_titles = {
+            'spring': [
                  "Spring Soil Preparation: Your Complete Success Guide",
                  "Why Ancient Soil Transforms Spring Gardens", 
                  "Plant Juice for Spring Growth: Organic Nutrition That Works",
