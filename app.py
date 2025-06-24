@@ -650,11 +650,240 @@ class HolidayManager:
             theme_index = (week_of_year % 4)
             return seasonal_themes[season][theme_index]
 
+class BlogIdeaGenerator:
+    def __init__(self, claude_client):
+        self.claude_client = claude_client
+        self.config = Config()
+        
+    def generate_seasonal_blog_ideas(self, season: str, date: datetime) -> List[str]:
+        """Generate blog ideas using the project prompt for seasonal relevance"""
+        
+        # Determine seasonal context
+        month = date.month
+        seasonal_contexts = {
+            'spring': {
+                'months': [3, 4, 5],
+                'focus': 'soil preparation, planting, early growth',
+                'challenges': 'late frosts, soil warming, seed starting'
+            },
+            'summer': {
+                'months': [6, 7, 8], 
+                'focus': 'maintenance, watering, harvest',
+                'challenges': 'heat stress, drought, pest management'
+            },
+            'fall': {
+                'months': [9, 10, 11],
+                'focus': 'harvest, preparation, soil building',
+                'challenges': 'first frost, winter prep, cleanup'
+            },
+            'winter': {
+                'months': [12, 1, 2],
+                'focus': 'planning, indoor growing, tool maintenance', 
+                'challenges': 'cold protection, houseplant care, garden planning'
+            }
+        }
+        
+        context = seasonal_contexts.get(season, seasonal_contexts['spring'])
+        
+        # Use the project prompt for generating blog ideas
+        blog_ideas_prompt = f"""Generate blog article ideas for my ecommerce Shopify store, focusing on optimizing bestselling products and collections for organic search traffic.
+
+CONTEXT:
+- Company: Elm Dirt - Premium organic soil amendments and gardening products
+- Target Audience: 40+ year old home gardeners across the United States
+- Current Season: {season.title()}
+- Current Month: {date.strftime('%B')}
+- Seasonal Focus: {context['focus']}
+- Common Challenges: {context['challenges']}
+
+BESTSELLING PRODUCTS (from Orders CSV context):
+- Ancient Soil (organic worm castings blend) - 482 reviews, top seller
+- Plant Juice (liquid organic fertilizer) - 1,626 reviews
+- Bloom Juice (flowering plant fertilizer) - 363 reviews
+- All-Purpose Soil Mix - 15 reviews
+- Worm Castings - 34 reviews
+
+SEMRUSH KEYWORDS (high value for {season}):
+- "organic fertilizer" (600 vol, 40 KD, Commercial)
+- "{season} gardening" (400 vol, 35 KD, Commercial/Informational) 
+- "soil amendments" (300 vol, 30 KD, Commercial)
+- "plant nutrition" (250 vol, 28 KD, Informational)
+- "garden soil health" (200 vol, 25 KD, Informational)
+
+BRAND VOICE: Expert but approachable tone for 50+ year old home gardeners across the US
+
+Task: Suggest 5 blog article titles with a 2-3 sentence description of each article's essence that would be perfect for {season} {date.strftime('%B')} content.
+
+Requirements:
+- Incorporate keywords naturally into titles and descriptions
+- Base ideas on seasonal gardening needs and challenges
+- Align with user intents (Commercial, Informational)
+- Focus on practical, actionable advice for mature gardeners
+- Naturally mention Elm Dirt products where relevant
+
+Deliverable Format:
+Title: [Blog Post Title]
+Essence: [2-3 sentence description]"""
+
+        try:
+            if self.claude_client:
+                response = self.claude_client.generate_content(blog_ideas_prompt, max_tokens=2000)
+                if response:
+                    return self._parse_blog_ideas_from_response(response)
+            
+            # Fallback to curated seasonal ideas
+            return self._get_curated_seasonal_ideas(season, date)
+            
+        except Exception as e:
+            logger.error(f"Error generating blog ideas: {str(e)}")
+            return self._get_curated_seasonal_ideas(season, date)
+    
+    def _parse_blog_ideas_from_response(self, response: str) -> List[str]:
+        """Parse blog titles from Claude's response"""
+        titles = []
+        lines = response.split('\n')
+        
+        for line in lines:
+            if line.strip().startswith('Title:'):
+                title = line.replace('Title:', '').strip()
+                if title and len(title) > 10:  # Basic validation
+                    titles.append(title)
+        
+        # If parsing fails, extract any lines that look like titles
+        if not titles:
+            for line in lines:
+                line = line.strip()
+                if (len(line) > 20 and len(line) < 100 and 
+                    any(keyword in line.lower() for keyword in ['garden', 'soil', 'plant', 'grow', 'organic']) and
+                    not line.startswith(('The', 'A ', 'An ', 'This', 'These', 'For', 'In '))):
+                    titles.append(line)
+        
+        return titles[:5] if titles else []
+    
+    def _get_curated_seasonal_ideas(self, season: str, date: datetime) -> List[str]:
+        """Fallback curated ideas organized by season and timing"""
+        
+        month = date.month
+        
+        seasonal_ideas = {
+            'spring': {
+                3: [  # March
+                    "Spring Soil Preparation: Testing and Amending for Garden Success",
+                    "Why Your Garden Needs Ancient Soil This Spring: The Living Soil Advantage", 
+                    "Early Spring Garden Tasks That Set You Up for Success",
+                    "Organic Soil Amendments vs Chemical Fertilizers: What Mature Gardeners Need to Know",
+                    "Building Soil Biology: How Worm Castings Transform Your Garden"
+                ],
+                4: [  # April  
+                    "April Planting Guide: Timing Your Garden for Optimal Growth",
+                    "Plant Juice for Spring Seedlings: Gentle Nutrition That Works",
+                    "Preventing Common Spring Garden Problems with Soil Health",
+                    "Container Gardening Success: Soil Mix Secrets for Mature Gardeners", 
+                    "Spring Fertilizing Schedule: When and How to Feed Your Garden"
+                ],
+                5: [  # May
+                    "Late Spring Garden Boost: Maximizing Growing Season Potential",
+                    "Bloom Juice for Spring Flowers: Getting More Blooms Naturally",
+                    "Transplant Shock Prevention: Soil Strategies That Work",
+                    "May Garden Maintenance: Essential Tasks for Busy Gardeners",
+                    "Building Disease Resistance Through Healthy Soil Biology"
+                ]
+            },
+            'summer': {
+                6: [  # June
+                    "Summer Soil Management: Keeping Plants Healthy in the Heat", 
+                    "Water-Wise Gardening: How Organic Matter Reduces Watering Needs",
+                    "June Garden Care: Nutrition Strategies for Peak Growing Season",
+                    "Beat the Summer Slump: Plant Juice for Heat-Stressed Gardens",
+                    "Mulching and Soil Health: Summer Protection Strategies"
+                ],
+                7: [  # July
+                    "Mid-Summer Garden Revival: Organic Solutions for Tired Plants",
+                    "Bloom Juice for Summer Flowers: Extending the Flowering Season", 
+                    "July Heat Wave Survival: Soil Strategies That Protect Plants",
+                    "Container Garden Care in Summer: Soil and Nutrition Tips",
+                    "Summer Pest Management Through Healthy Soil Biology"
+                ],
+                8: [  # August
+                    "Late Summer Garden Success: Preparing for Fall Transitions",
+                    "August Soil Building: Setting Up for Fall Planting Season",
+                    "Summer Harvest Care: Nutrition for Continuous Production",
+                    "Heat Stress Recovery: How Ancient Soil Helps Plants Bounce Back",
+                    "Planning Fall Gardens: Soil Preparation in Late Summer"
+                ]
+            },
+            'fall': {
+                9: [  # September
+                    "Fall Garden Transitions: Soil Care for Season Extension",
+                    "September Planting Success: Cool Season Crops and Soil Prep",
+                    "Extending the Growing Season with Healthy Soil Biology",
+                    "Fall Fertilizing: Why Plant Juice Works Better Than Synthetics", 
+                    "Harvest Season Nutrition: Keeping Plants Productive Longer"
+                ],
+                10: [  # October
+                    "October Soil Building: Foundation Work for Next Year's Garden",
+                    "Fall Cleanup and Soil Health: What to Leave and What to Remove",
+                    "Compost and Worm Castings: Fall Soil Amendment Strategies",
+                    "Preparing Garden Beds for Winter: Organic Matter Matters",
+                    "Fall Planting Guide: Trees, Shrubs, and Soil Preparation"
+                ],
+                11: [  # November  
+                    "Winter Garden Preparation: Soil Protection Strategies",
+                    "November Garden Tasks: Building Soil for Spring Success",
+                    "Cover Crops and Green Manures: Natural Soil Building",
+                    "Protecting Soil Biology Through Winter: Organic Approaches",
+                    "Late Fall Soil Care: Ancient Soil Application Timing"
+                ]
+            },
+            'winter': {
+                12: [  # December
+                    "Winter Garden Planning: Soil Health as Your Foundation",
+                    "Houseplant Care in Winter: Container Soil and Nutrition", 
+                    "December Garden Reflection: Learning from This Year's Soil Care",
+                    "Indoor Growing Success: Soil Mix Recipes for Winter Gardens",
+                    "Planning Next Year's Garden: Soil Improvement Strategies"
+                ],
+                1: [  # January
+                    "New Year Garden Resolutions: Start with Soil Health",
+                    "January Planning: Mapping Your Garden's Soil Improvement",
+                    "Winter Houseplant Care: Plant Juice for Indoor Success",
+                    "Seed Starting Prep: Soil Mix Secrets for Healthy Seedlings", 
+                    "Garden Tool Care and Soil Testing: Winter Maintenance Tasks"
+                ],
+                2: [  # February
+                    "February Garden Prep: Early Soil Care for Spring Success",
+                    "Seed Starting Success: Ancient Soil for Healthy Transplants",
+                    "Late Winter Garden Tasks: Soil Preparation Strategies",
+                    "Planning Your Best Garden Yet: Soil Health as Priority One",
+                    "Indoor Growing Tips: Winter Container Garden Success"
+                ]
+            }
+        }
+        
+        # Get ideas for current month, with fallback to season defaults
+        month_ideas = seasonal_ideas.get(season, {}).get(month, [])
+        if not month_ideas:
+            # Fallback to any month in the season
+            season_months = seasonal_ideas.get(season, {})
+            for month_key in season_months:
+                if season_months[month_key]:
+                    month_ideas = season_months[month_key]
+                    break
+        
+        return month_ideas[:5] if month_ideas else [
+            f"Essential {season.title()} Garden Guide: Soil Health Fundamentals",
+            f"{season.title()} Organic Gardening: Plant Nutrition That Works", 
+            f"Seasonal Garden Care: {season.title()} Soil Management Tips",
+            f"Building Healthy Soil for {season.title()} Success",
+            f"{season.title()} Garden Planning: Start with Ancient Soil"
+        ]
+
 class ContentGenerator:
     def __init__(self, db_manager: DatabaseManager):
         self.config = Config()
         self.db_manager = db_manager
         self.holiday_manager = HolidayManager()
+        self.blog_idea_generator = BlogIdeaGenerator(self.claude_client)
         
         # Initialize Claude API client
         if self.config.CLAUDE_API_KEY and self.config.CLAUDE_API_KEY != 'your_claude_api_key_here':
@@ -1450,43 +1679,127 @@ OUTPUT FORMAT: Return complete HTML document starting with <!DOCTYPE html> and i
         return suggestions
 
     def _generate_daily_blog_title(self, date: datetime, day_name: str, season: str, theme: str, holidays: List) -> str:
-        """Generate daily blog post titles"""
+        """Generate seasonally relevant blog post titles using Claude AI or curated ideas"""
         
-        # Check for holidays first
-        for holiday_date, holiday_name, gardening_focus, content_theme in holidays:
-            if holiday_date.date() == date.date():
-                return f"{holiday_name} Garden Guide: {content_theme} for {season.title()} Success"
+         # Check for holidays first (keep existing holiday logic)
+         for holiday_date, holiday_name, gardening_focus, content_theme in holidays:
+             if holiday_date.date() == date.date():
+                 return f"{holiday_name} Garden Guide: {content_theme} for {season.title()} Success"
+    
+         # Generate or get seasonal blog ideas
+         try:
+             seasonal_ideas = self.blog_idea_generator.generate_seasonal_blog_ideas(season, date)
         
-        # Day-specific blog themes
-        daily_blog_themes = {
-            'Monday': [
-                f"Monday Motivation: {season.title()} Garden Goals That Actually Work",
-                f"Start Your Week Right: Essential {season.title()} Garden Tasks"
+             if seasonal_ideas:
+                 # Use a deterministic selection based on the date to ensure consistency
+                 # This ensures the same date always gets the same title
+                 title_index = (date.day - 1) % len(seasonal_ideas)
+                 selected_title = seasonal_ideas[title_index]
+            
+                 logger.info(f"Selected blog title for {date.strftime('%B %d')}: {selected_title}")
+                 return selected_title
+        
+         except Exception as e:
+             logger.error(f"Error getting seasonal blog ideas: {str(e)}")
+    
+         # Final fallback to essential seasonal topics
+         fallback_titles = {
+             'spring': [
+                 "Spring Soil Preparation: Your Complete Success Guide",
+                 "Why Ancient Soil Transforms Spring Gardens", 
+                 "Plant Juice for Spring Growth: Organic Nutrition That Works",
+                 "Spring Garden Success: Building Healthy Soil Biology",
+                 "Essential Spring Tasks: Soil Health Fundamentals"
             ],
-            'Tuesday': [
-                f"Tuesday Tips: Professional {season.title()} Garden Techniques",
-                f"Transform Tuesday: {season.title()} Garden Problem Solutions"
-            ],
-            'Wednesday': [
-                f"Wednesday Wisdom: Time-Tested {season.title()} Garden Secrets",
-                f"Mid-Week Garden Guide: {season.title()} Care Essentials"
-            ],
-            'Thursday': [
-                f"Thursday Thoughts: Why {season.title()} Soil Health Matters",
-                f"Transform Thursday: {season.title()} Garden Success Stories"
-            ],
-            'Friday': [
-                f"Friday Focus: Weekend {season.title()} Garden Projects",
-                f"Feature Friday: Best {season.title()} Garden Products"
-            ],
-            'Saturday': [
-                f"Saturday Success: Easy {season.title()} Garden Wins",
-                f"Weekend Warrior: {season.title()} Garden Project Guide"
+             'summer': [
+                 "Summer Garden Care: Soil Strategies for Heat Success",
+                 "Beat Summer Heat: How Healthy Soil Protects Plants",
+                 "Bloom Juice for Summer Gardens: Continuous Flowering Tips", 
+                 "Summer Soil Management: Water-Wise Organic Strategies",
+                 "Mid-Summer Plant Nutrition: Organic Solutions That Work"
+             ],
+             'fall': [
+                 "Fall Soil Building: Foundation for Next Year's Success",
+                 "Autumn Garden Care: Organic Soil Preparation Guide",
+                 "Fall Planting Success: Soil Health Strategies",
+                 "October Garden Tasks: Building Living Soil",
+                 "Preparing Garden Soil for Winter: Organic Approaches"
+             ],
+             'winter': [
+                 "Winter Garden Planning: Start with Soil Health",
+                 "Indoor Growing Success: Container Soil Strategies", 
+                 "Houseplant Care: Plant Juice for Winter Growth",
+                 "Planning Your Best Garden: Soil Improvement Guide",
+                 "Winter Soil Care: Organic Matter and Amendments"
+             ]
+         }
+    
+         fallback_list = fallback_titles.get(season, fallback_titles['spring'])
+         title_index = (date.day - 1) % len(fallback_list)
+         return fallback_list[title_index]
+    
+    def get_related_blog_suggestions(self, current_title: str, season: str) -> List[str]:
+        """Generate related article suggestions based on current blog topic"""
+    
+        if not self.claude_client:
+            return self._get_fallback_related_suggestions(current_title, season)
+    
+        related_prompt = f"""Based on the blog article title "{current_title}" for a {season} gardening blog, suggest 3 related article ideas that would interest 40+ year old home gardeners.
+
+Context:
+- Company: Elm Dirt - Organic soil amendments and plant nutrition
+- Products: Ancient Soil, Plant Juice, Bloom Juice, Worm Castings
+- Season: {season}
+- Audience: Experienced home gardeners aged 40+
+
+Requirements:
+- Topics should complement but not duplicate the main article
+- Focus on practical, actionable advice
+- Include organic/sustainable approaches
+- Naturally incorporate Elm Dirt products where relevant
+
+Format: Just list 3 title suggestions, one per line."""
+
+        try:
+            response = self.claude_client.generate_content(related_prompt, max_tokens=500)
+            if response:
+                suggestions = [line.strip() for line in response.split('\n') if line.strip() and len(line.strip()) > 10]
+                return suggestions[:3]
+        except Exception as e:
+            logger.error(f"Error generating related suggestions: {str(e)}")
+    
+        return self._get_fallback_related_suggestions(current_title, season)
+
+    def _get_fallback_related_suggestions(self, current_title: str, season: str) -> List[str]:
+        """Fallback related article suggestions"""
+    
+        # Analyze current title for topic focus
+        title_lower = current_title.lower()
+    
+        if 'soil' in title_lower:
+            return [
+                f"Plant Nutrition Basics: Feeding Your {season.title()} Garden Naturally",
+                f"Compost vs Worm Castings: Which is Better for {season.title()}?",
+                f"Common {season.title()} Soil Problems and Organic Solutions"
             ]
-        }
-        
-        day_themes = daily_blog_themes.get(day_name, daily_blog_themes['Monday'])
-        return random.choice(day_themes)
+        elif 'plant' in title_lower or 'nutrition' in title_lower:
+            return [
+                f"Soil Testing Made Simple: {season.title()} Garden Assessment",
+                f"Organic vs Synthetic Fertilizers: Best Choice for {season.title()}",
+                f"Building Soil Biology for Long-Term {season.title()} Success" 
+            ]
+        elif 'bloom' in title_lower or 'flower' in title_lower:
+            return [
+                f"Container Flower Gardening: {season.title()} Soil and Care Tips",
+                f"Extending Bloom Time: Organic Nutrition Strategies",
+                f"Pollinator-Friendly {season.title()} Gardens: Soil to Success"
+            ]
+        else:
+            return [
+                f"Essential {season.title()} Garden Tasks: Month-by-Month Guide",
+                f"Organic Garden Success: Building Healthy Soil Biology",
+                f"Ancient Soil vs Regular Compost: The Difference Makers"
+            ]
 
     def _generate_daily_content_package(self, date: datetime, day_name: str, season: str, 
                                        theme: str, holidays: List, week_id: str, 
